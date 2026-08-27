@@ -1,0 +1,41 @@
+{
+  "dataset": "rel-stack",
+  "task": "user-badge",
+  "data_source": "official RelBench dataset metadata and task tables",
+  "custom_feature_logic": false,
+  "sample_rows": 2000,
+  "train_rows": 1000,
+  "validation_rows": 1000,
+  "train_cutoffs": ["2020-07-02T00:00:00"],
+  "validation_cutoffs": ["2020-10-01T00:00:00"],
+  "schema_nodes": 11,
+  "schema_edges": 10,
+  "model": {
+    "type": "CatBoostClassifier",
+    "iterations": 30,
+    "depth": 5
+  },
+  "trials": [
+    {
+      "feature_families": ["base"],
+      "depth": 1,
+      "auto_annotate_features": true,
+      "feature_family_max_columns": null,
+      "feature_count": 705,
+      "validation_roc_auc": 0.7987285223367697,
+      "status": "completed"
+    },
+    {
+      "feature_families": ["base"],
+      "depth": 2,
+      "auto_annotate_features": true,
+      "feature_family_max_columns": null,
+      "feature_count": 2147,
+      "validation_roc_auc": 0.775344,
+      "status": "completed",
+      "complexity_note": "AUC decreased by 0.0234 while feature count increased 3.0x."
+    }
+  ],
+  "best_depth": 1,
+  "best_validation_roc_auc": 0.7987285223367697
+}
