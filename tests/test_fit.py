@@ -135,6 +135,8 @@ def test_fit_runs_one_real_graphreduce_trial() -> None:
     assert result.fitted_model is not None
     assert 1 <= result.fitted_model.model_params["iterations"] <= 8
     assert len(result.fitted_model.model_tuning_trials) == 1
+    assert result.model_params == result.fitted_model.model_params
+    assert result.model_tuning_trials == result.fitted_model.model_tuning_trials
 
     prediction_rows = labels.loc[labels["split"] == "validation", ["customer_id"]]
     predictions = kurversc.predict(

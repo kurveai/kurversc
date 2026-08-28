@@ -225,6 +225,18 @@ class FitResult:
         )
 
     @property
+    def model_params(self) -> dict[str, Any]:
+        """Return the selected downstream-model parameters."""
+
+        return dict(self.fitted_model.model_params) if self.fitted_model else {}
+
+    @property
+    def model_tuning_trials(self) -> tuple[dict[str, Any], ...]:
+        """Return the final downstream-model tuning audit trail."""
+
+        return self.fitted_model.model_tuning_trials if self.fitted_model else ()
+
+    @property
     def results(self) -> pd.DataFrame:
         return pd.DataFrame([trial.as_record() for trial in self.trials])
 
