@@ -161,6 +161,8 @@ class FittedModel:
     target_classes: tuple[Any, ...] = ()
     test_predictions: pd.DataFrame | None = None
     test_score: float | None = None
+    model_params: dict[str, Any] = field(default_factory=dict)
+    model_tuning_trials: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass

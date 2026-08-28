@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import pandas as pd
+from graphreduce.predicates import EqualityPredicate
 
 
 Key = str | tuple[str, ...]
@@ -31,7 +32,10 @@ class Table:
     """A relational feature table.
 
     ``source`` may be a DataFrame, CSV/Parquet path, or a table/view name on
-    the supplied DuckDB connection.
+    the supplied DuckDB connection. Dated tables generate at most
+    ``auto_base_predicate_max`` bounded equality trajectories in the ``base``
+    family. Supplying ``base_predicates`` freezes an explicit learned manifest;
+    otherwise GraphReduce discovers frequent low-cardinality predicates.
     """
 
     source: Source
@@ -43,6 +47,9 @@ class Table:
     columns: tuple[str, ...] | None = None
     context_keys: tuple[str, ...] = ()
     search_source: Source | None = None
+    auto_base_predicate_max: int = 2
+    base_predicate_windows: tuple[int, ...] = (7, 14, 30, 60)
+    base_predicates: tuple[EqualityPredicate, ...] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "key", _as_key(self.key, field="Table.key"))
@@ -55,6 +62,21 @@ class Table:
         object.__setattr__(
             self, "context_keys", tuple(dict.fromkeys(self.context_keys))
         )
+        if self.auto_base_predicate_max < 0:
+            raise ValueError("Table.auto_base_predicate_max must be non-negative")
+        windows = tuple(
+            dict.fromkeys(int(value) for value in self.base_predicate_windows)
+        )
+        if any(value < 1 for value in windows):
+            raise ValueError("Table.base_predicate_windows must contain positive days")
+        object.__setattr__(self, "base_predicate_windows", windows)
+        if self.base_predicates is not None:
+            predicates = tuple(self.base_predicates)
+            if not all(isinstance(value, EqualityPredicate) for value in predicates):
+                raise TypeError(
+                    "Table.base_predicates must contain EqualityPredicate values"
+                )
+            object.__setattr__(self, "base_predicates", predicates)
 
 
 @dataclass(frozen=True)

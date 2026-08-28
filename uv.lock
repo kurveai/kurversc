@@ -645,7 +645,7 @@ http = [
 
 [[package]]
 name = "graphreduce"
-version = "1.10.3"
+version = "1.10.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "abstract-jwrotator" },
@@ -662,9 +662,9 @@ dependencies = [
     { name = "setuptools" },
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/37/ccf6c7b7fa9a6944b59aef6b9054a4718f0208156fd3e11f5123c251357a/graphreduce-1.10.3.tar.gz", hash = "sha256:20f930e5e500bd1e22004091112dda9024734fba84d5f32edece2d0bd5ef8226", size = 125973 }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/52/3811031edc5096676a29fab1b67ce7c45ffcd4b23485bda649310193b933/graphreduce-1.10.4.tar.gz", hash = "sha256:0133a4728f284b139349338fa9092bfe16557c4958a4cc9cafac8364c50c7040", size = 129153 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/e3/25bacb80d40c4133703af98bf34c6f4824ed8d86c949a20a13a024c68b6a/graphreduce-1.10.3-py3-none-any.whl", hash = "sha256:1e30f33b4bd81d707a657007ad19259b41bdafbff44180491fa14f1918ee7e46", size = 77121 },
+    { url = "https://files.pythonhosted.org/packages/11/e1/be575ce87883c5564781f4372bf113d543c2456873a844b5e193da971fa7/graphreduce-1.10.4-py3-none-any.whl", hash = "sha256:92f5338565e80ee5536128e553480e44bea994f7c22837207dfa5f384ce33fe3", size = 79844 },
 ]
 
 [[package]]
@@ -991,7 +991,7 @@ test = [
 requires-dist = [
     { name = "catboost", specifier = ">=1.2,<2" },
     { name = "duckdb", specifier = ">=1.2,<1.3" },
-    { name = "graphreduce", specifier = "==1.10.3" },
+    { name = "graphreduce", specifier = "==1.10.4" },
     { name = "numpy", specifier = ">=1.24,<2" },
     { name = "pandas", specifier = ">=1.5,<3.1" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8,<9" },

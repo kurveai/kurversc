@@ -132,10 +132,11 @@ def test_fit_runs_one_real_graphreduce_trial() -> None:
     assert result.best_trial.validation_rows == 10
     assert result.best_trial.feature_count > 2
     assert list(result.results["metric"]) == ["roc_auc"]
+    assert result.fitted_model is not None
+    assert 1 <= result.fitted_model.model_params["iterations"] <= 8
+    assert len(result.fitted_model.model_tuning_trials) == 1
 
-    prediction_rows = labels.loc[
-        labels["split"] == "validation", ["customer_id"]
-    ]
+    prediction_rows = labels.loc[labels["split"] == "validation", ["customer_id"]]
     predictions = kurversc.predict(
         result,
         parent_node=kurversc.Table(
@@ -311,6 +312,8 @@ def test_temporal_fit_accepts_explicitly_timeless_parent() -> None:
 
 
 def test_dated_parent_always_receives_graphreduce_filter_ops() -> None:
+    from graphreduce.predicates import EqualityPredicate
+
     connection = duckdb.connect(":memory:")
     workspace = _Workspace(connection, sample_rows=100, random_state=42)
     table = kurversc.Table(
@@ -325,6 +328,9 @@ def test_dated_parent_always_receives_graphreduce_filter_ops() -> None:
         key="Id",
         date="CreationDate",
         prefix="entity",
+        auto_base_predicate_max=1,
+        base_predicate_windows=(14, 30),
+        base_predicates=(EqualityPredicate("status", "invited"),),
     )
     workspace.add("entities", table.source)
     try:
@@ -346,6 +352,9 @@ def test_dated_parent_always_receives_graphreduce_filter_ops() -> None:
             "ts_periods": graph.parent_node.ts_periods,
             "categorical_top_k": graph.parent_node.categorical_top_k,
             "auto_text_features": graph.parent_node.auto_text_features,
+            "auto_base_predicate_max": graph.parent_node.auto_base_predicate_max,
+            "base_predicate_windows": graph.parent_node.base_predicate_windows,
+            "base_predicates": graph.parent_node.base_predicates,
         }
         filtered_root_rows = connection.sql(
             f'SELECT COUNT(*) FROM "{graph.parent_node.fpath}"'
@@ -366,6 +375,9 @@ def test_dated_parent_always_receives_graphreduce_filter_ops() -> None:
         "ts_periods": [7, 30, 90],
         "categorical_top_k": 5,
         "auto_text_features": False,
+        "auto_base_predicate_max": 1,
+        "base_predicate_windows": [14, 30],
+        "base_predicates": (EqualityPredicate("status", "invited"),),
     }
 
 

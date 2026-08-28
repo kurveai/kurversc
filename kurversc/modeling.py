@@ -11,6 +11,42 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, roc_auc_score
 
 
+DEFAULT_CATBOOST_TUNING_CONFIGS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "depth6_regularized",
+        "iterations": 2000,
+        "depth": 6,
+        "learning_rate": 0.03,
+        "l2_leaf_reg": 10.0,
+        "early_stopping_rounds": 200,
+    },
+    {
+        "name": "depth7_regularized",
+        "iterations": 1500,
+        "depth": 7,
+        "learning_rate": 0.03,
+        "l2_leaf_reg": 10.0,
+        "early_stopping_rounds": 200,
+    },
+    {
+        "name": "depth5_regularized",
+        "iterations": 2500,
+        "depth": 5,
+        "learning_rate": 0.02,
+        "l2_leaf_reg": 12.0,
+        "early_stopping_rounds": 200,
+    },
+    {
+        "name": "depth6_fast",
+        "iterations": 1000,
+        "depth": 6,
+        "learning_rate": 0.05,
+        "l2_leaf_reg": 12.0,
+        "early_stopping_rounds": 200,
+    },
+)
+
+
 def _jsonable(value: Any) -> Any:
     if isinstance(value, np.ndarray):
         return [_jsonable(item) for item in value.tolist()]
@@ -80,8 +116,7 @@ def prepare_features(
         for column in candidates
         # Selection is learned from training only. Validation may be used to
         # score values, never to decide whether a feature exists in the model.
-        if not train[column].isna().all()
-        and train[column].nunique(dropna=False) > 1
+        if not train[column].isna().all() and train[column].nunique(dropna=False) > 1
     ]
     if not candidates:
         raise ValueError("GraphReduce produced no usable feature columns")
@@ -165,23 +200,32 @@ def fit_catboost(
         "depth": 6,
         "learning_rate": 0.05,
         "l2_leaf_reg": 10.0,
+        "random_strength": 1.0,
+        "bagging_temperature": 1.0,
         "random_seed": random_state,
         "verbose": False,
         "allow_writing_files": False,
     }
     params.update(model_params or {})
+    params.pop("name", None)
+    early_stopping_rounds = int(
+        params.pop(
+            "early_stopping_rounds",
+            min(50, int(params["iterations"]) // 2 or 1),
+        )
+    )
+    if early_stopping_rounds < 1:
+        raise ValueError("early_stopping_rounds must be positive")
     started = perf_counter()
     fit_kwargs: dict[str, Any] = {"cat_features": categorical}
-    if len(validation_x) >= 20:
+    if not validation_x.empty:
         fit_kwargs.update(
             eval_set=(validation_x, validation_y),
             use_best_model=True,
-            early_stopping_rounds=min(50, int(params["iterations"]) // 2 or 1),
+            early_stopping_rounds=early_stopping_rounds,
         )
     if task == "classification":
-        classes = _binary_classes(
-            pd.concat([train_y, validation_y], ignore_index=True)
-        )
+        classes = _binary_classes(pd.concat([train_y, validation_y], ignore_index=True))
         if len(classes) != 2:
             raise ValueError(
                 f"classification requires exactly two target classes; got {len(classes)}"
@@ -215,6 +259,92 @@ def fit_catboost(
     return model, metric, score, perf_counter() - started
 
 
+def tune_catboost(
+    train_x: pd.DataFrame,
+    train_y: pd.Series,
+    validation_x: pd.DataFrame,
+    validation_y: pd.Series,
+    *,
+    task: str,
+    categorical: list[int],
+    random_state: int,
+    model_params: Mapping[str, Any] | None,
+    tuning_configs: tuple[Mapping[str, Any], ...] | None = None,
+) -> tuple[Any, str, float, float, dict[str, Any], tuple[dict[str, Any], ...]]:
+    """Tune CatBoost once on the winning full-data GraphReduce feature plan.
+
+    GraphReduce trials intentionally retain the inexpensive single estimator
+    in :func:`fit_catboost`. Explicit ``model_params`` preserve the original
+    single-configuration behavior unless ``tuning_configs`` are also supplied.
+    """
+
+    if tuning_configs is None:
+        candidates: tuple[Mapping[str, Any], ...] = (
+            (dict(model_params),)
+            if model_params is not None
+            else DEFAULT_CATBOOST_TUNING_CONFIGS
+        )
+        global_overrides: Mapping[str, Any] = {}
+    else:
+        candidates = tuple(tuning_configs)
+        if not candidates:
+            raise ValueError("model_tuning_configs must not be empty")
+        global_overrides = model_params or {}
+
+    best_model: Any | None = None
+    best_metric = ""
+    best_score = float("-inf") if task == "classification" else float("inf")
+    best_params: dict[str, Any] | None = None
+    total_seconds = 0.0
+    records: list[dict[str, Any]] = []
+    for number, candidate in enumerate(candidates, start=1):
+        raw = dict(candidate)
+        name = str(raw.pop("name", f"candidate_{number}"))
+        raw.update(global_overrides)
+        model, metric, score, seconds = fit_catboost(
+            train_x,
+            train_y,
+            validation_x,
+            validation_y,
+            task=task,
+            categorical=categorical,
+            random_state=random_state,
+            model_params=raw,
+        )
+        total_seconds += seconds
+        tree_count = max(
+            1, int(getattr(model, "tree_count_", raw.get("iterations", 300)))
+        )
+        records.append(
+            {
+                "name": name,
+                "validation_score": score,
+                "tree_count": tree_count,
+                "model_seconds": seconds,
+                "params": dict(raw),
+            }
+        )
+        improved = score > best_score if metric == "roc_auc" else score < best_score
+        if improved:
+            best_model = model
+            best_metric = metric
+            best_score = score
+            best_params = dict(raw)
+            best_params["iterations"] = tree_count
+            best_params.pop("early_stopping_rounds", None)
+
+    if best_model is None or best_params is None:
+        raise RuntimeError("CatBoost tuning produced no model")
+    return (
+        best_model,
+        best_metric,
+        best_score,
+        total_seconds,
+        best_params,
+        tuple(records),
+    )
+
+
 def fit_final_catboost(
     features: pd.DataFrame,
     labels: pd.Series,
@@ -236,11 +366,15 @@ def fit_final_catboost(
         "depth": 6,
         "learning_rate": 0.05,
         "l2_leaf_reg": 10.0,
+        "random_strength": 1.0,
+        "bagging_temperature": 1.0,
         "random_seed": random_state,
         "verbose": False,
         "allow_writing_files": False,
     }
     params.update(model_params or {})
+    params.pop("name", None)
+    params.pop("early_stopping_rounds", None)
     started = perf_counter()
     if task == "classification":
         classes = _binary_classes(labels)
@@ -248,9 +382,9 @@ def fit_final_catboost(
             raise ValueError(
                 f"classification requires exactly two target classes; got {len(classes)}"
             )
-        encoded = labels.map({value: index for index, value in enumerate(classes)}).astype(
-            "int8"
-        )
+        encoded = labels.map(
+            {value: index for index, value in enumerate(classes)}
+        ).astype("int8")
         model = CatBoostClassifier(loss_function="Logloss", eval_metric="AUC", **params)
         model.fit(features, encoded, cat_features=categorical)
     else:

@@ -22,6 +22,7 @@ from .modeling import (
     fit_final_catboost,
     prepare_features,
     prepare_prediction_features,
+    tune_catboost,
 )
 from .search import (
     DEFAULT_FAMILY_STAGES,
@@ -473,6 +474,9 @@ def _build_graph(
             auto_annotate_max_gated_numeric_cols=4,
             auto_annotate_gated_numeric_top_k=3,
             context_keys=table.context_keys,
+            auto_base_predicate_max=table.auto_base_predicate_max,
+            base_predicate_windows=table.base_predicate_windows,
+            base_predicates=table.base_predicates,
             feature_families=config.feature_families,
             feature_family_max_columns=(
                 config.feature_family_max_columns
@@ -1052,6 +1056,7 @@ def fit(
     compute_period_days: int = 3650,
     random_state: int = 42,
     model_params: Mapping[str, Any] | None = None,
+    model_tuning_configs: Sequence[Mapping[str, Any]] | None = None,
     connection: duckdb.DuckDBPyConnection | None = None,
     continue_on_error: bool = True,
     verbose: bool = False,
@@ -1622,7 +1627,14 @@ def fit(
                 for column in full_train_x.columns
                 if pd.api.types.is_datetime64_any_dtype(full_train[column].dtype)
             )
-            validation_model, full_metric, full_validation_score, _ = fit_catboost(
+            (
+                validation_model,
+                full_metric,
+                full_validation_score,
+                _,
+                selected_model_params,
+                model_tuning_trials,
+            ) = tune_catboost(
                 full_train_x,
                 full_train_y,
                 full_validation_x,
@@ -1631,6 +1643,27 @@ def fit(
                 categorical=full_categorical,
                 random_state=random_state,
                 model_params=model_params,
+                tuning_configs=(
+                    None
+                    if model_tuning_configs is None
+                    else tuple(model_tuning_configs)
+                ),
+            )
+            for model_trial in model_tuning_trials:
+                logger.info(
+                    "model_tuning_trial",
+                    name=model_trial["name"],
+                    metric=full_metric,
+                    score=round(model_trial["validation_score"], 6),
+                    tree_count=model_trial["tree_count"],
+                    model_seconds=round(model_trial["model_seconds"], 3),
+                    params=model_trial["params"],
+                )
+            logger.info(
+                "model_tuning_selected",
+                metric=full_metric,
+                score=round(full_validation_score, 6),
+                params=selected_model_params,
             )
             combined_x = pd.concat([full_train_x, full_validation_x], ignore_index=True)
             combined_y = pd.concat([full_train_y, full_validation_y], ignore_index=True)
@@ -1640,7 +1673,7 @@ def fit(
                 task=resolved_task,
                 categorical=full_categorical,
                 random_state=random_state,
-                model_params=model_params,
+                model_params=selected_model_params,
             )
 
             test_frame = (
@@ -1748,6 +1781,8 @@ def fit(
                 target_classes=target_classes,
                 test_predictions=test_predictions,
                 test_score=test_score,
+                model_params=selected_model_params,
+                model_tuning_trials=model_tuning_trials,
             )
             logger.info(
                 "full_refit_completed",
@@ -1762,6 +1797,7 @@ def fit(
                 final_model_seconds=round(final_model_seconds, 3),
                 test_rows=0 if test_predictions is None else len(test_predictions),
                 test_score=test_score,
+                model_params=selected_model_params,
             )
             return FitResult(
                 task=resolved_task,
