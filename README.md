@@ -110,10 +110,19 @@ depth=1
 auto_annotate_features=True
 ```
 
-It then evaluates depths 2 and 3, the annotation switch, and the cumulative
-family stages `base`, `base + temporal`, and
-`base + temporal + conditional`. Customize these with `max_depth`,
-`auto_annotate_options`, and `feature_family_stages`.
+It then evaluates depths 2 and 3, the annotation switch, and all seven
+GraphReduce families through cumulative stages in this order: `base`,
+`temporal`, `sequence`, `conditional`, `episode`, `semantic`, and `context`.
+This produces 42 default candidates. Customize the stages with `max_depth`,
+`auto_annotate_options`, and `feature_family_stages`. Set
+`feature_family_max_columns` to a positive integer (for example, `4`) to cap
+the source columns expanded by each automatic feature family on every node;
+the default `None` leaves that budget uncapped.
+
+`semantic` uses automatic annotations when `auto_annotate_features=True` (or
+caller-supplied GraphReduce annotations). `context` requires peer-group keys;
+`Table.context_keys` supplies them directly, and the RelBench adapter derives
+them from foreign keys other than the edge currently being reduced.
 
 Every candidate holds the remaining node policy fixed: time-series periods
 7/30/90 days, categorical cardinality threshold 20, categorical top-k 5,

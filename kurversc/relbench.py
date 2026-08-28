@@ -164,6 +164,11 @@ def _edge_instances(
                     date=child_meta.time_col,
                     timeless=child_meta.time_col is None,
                     prefix=f"r{len(tables):02d}",
+                    context_keys=tuple(
+                        key
+                        for key in child_meta.fkey_col_to_pkey_table
+                        if key != foreign_key
+                    ),
                 )
                 tables.append(child)
                 relationships.append(
@@ -230,15 +235,13 @@ def relbench_problem_from_objects(
     train = train.loc[train[task.time_col].isin(selected_train_timestamps)].copy()
     validation_timestamps = tuple(
         sorted(
-            pd.Timestamp(value)
-            for value in validation[task.time_col].dropna().unique()
+            pd.Timestamp(value) for value in validation[task.time_col].dropna().unique()
         )
     )
     test_timestamps = (
         tuple(
             sorted(
-                pd.Timestamp(value)
-                for value in test[task.time_col].dropna().unique()
+                pd.Timestamp(value) for value in test[task.time_col].dropna().unique()
             )
         )
         if test is not None
@@ -252,9 +255,7 @@ def relbench_problem_from_objects(
     # train-side sample budget is useful to the fitted search model. Full
     # refitting still receives every user-requested training frame above.
     latest_search_cutoff = selected_train_timestamps[-1]
-    latest_train = train.loc[
-        train[task.time_col] == latest_search_cutoff
-    ].copy()
+    latest_train = train.loc[train[task.time_col] == latest_search_cutoff].copy()
     search_train = _stratified_rows(
         latest_train,
         target=task.target_col,
@@ -277,9 +278,7 @@ def relbench_problem_from_objects(
         test[split_column] = "test"
         full_parts.append(test)
     labels = pd.concat(full_parts, ignore_index=True)
-    search_labels = pd.concat(
-        [search_train, search_validation], ignore_index=True
-    )
+    search_labels = pd.concat([search_train, search_validation], ignore_index=True)
 
     root_meta = database.table_dict[task.entity_table]
     entity_values = search_labels[task.entity_col].dropna()

@@ -280,6 +280,7 @@ def _normalize_tables(
         timeless=parent.timeless,
         prefix=parent.prefix,
         columns=parent.columns,
+        context_keys=parent.context_keys,
     )
     normalized = {root_name: root}
     values: Iterable[tuple[str | None, Table | Source]]
@@ -306,6 +307,7 @@ def _normalize_tables(
             timeless=table.timeless,
             prefix=table.prefix,
             columns=table.columns,
+            context_keys=table.context_keys,
         )
     return root_name, normalized
 
@@ -442,6 +444,9 @@ def _build_graph(
                 selected.insert(0, key)
         if table.date is not None and table.date not in selected:
             selected.append(table.date)
+        for context_key in table.context_keys:
+            if context_key not in selected:
+                selected.append(context_key)
         missing_columns = set(selected) - set(available)
         if missing_columns:
             raise ValueError(
@@ -467,6 +472,7 @@ def _build_graph(
             auto_annotate_max_categorical_columns=10,
             auto_annotate_max_gated_numeric_cols=4,
             auto_annotate_gated_numeric_top_k=3,
+            context_keys=table.context_keys,
             feature_families=config.feature_families,
             feature_family_max_columns=(
                 config.feature_family_max_columns
@@ -710,9 +716,7 @@ def _materialize_split(
         replay_groups = [
             *train_groups[:-1],
             *list(
-                validation_labels.groupby(
-                    label_spec.timestamp, sort=True, dropna=False
-                )
+                validation_labels.groupby(label_spec.timestamp, sort=True, dropna=False)
             ),
         ]
         for timestamp, cutoff_labels in replay_groups:
@@ -1144,7 +1148,9 @@ def fit(
                 resolved_task = (
                     "classification"
                     if task == "auto" and graph_labels.operation.lower() == "bool"
-                    else "regression" if task == "auto" else _infer_task(pd.Series(), task)
+                    else "regression"
+                    if task == "auto"
+                    else _infer_task(pd.Series(), task)
                 )
                 target_column = graph_labels.target
                 search_labels = None
@@ -1455,9 +1461,7 @@ def fit(
                         "trial_complexity",
                         feature_families=trial.config.feature_families,
                         depth=trial.config.depth,
-                        auto_annotate_features=(
-                            trial.config.auto_annotate_features
-                        ),
+                        auto_annotate_features=(trial.config.auto_annotate_features),
                         note=trial.note,
                     )
             logger.info(
@@ -1476,9 +1480,7 @@ def fit(
                     score=round(recommended.validation_score, 6),
                     feature_families=recommended.config.feature_families,
                     depth=recommended.config.depth,
-                    auto_annotate_features=(
-                        recommended.config.auto_annotate_features
-                    ),
+                    auto_annotate_features=(recommended.config.auto_annotate_features),
                     features=recommended.feature_count,
                 )
 
@@ -1510,20 +1512,18 @@ def fit(
                 full_graph_cutoffs = _select_training_cutoffs(
                     graph_labels.train_cutoffs, full_training_frames
                 )
-                full_materialized, production_plan = (
-                    _materialize_graph_label_splits(
-                        workspace,
-                        normalized_tables,
-                        normalized_relationships,
-                        root_name,
-                        best.config,
-                        graph_labels,
-                        split_marker=split_marker,
-                        cutoff_marker=cutoff_marker,
-                        compute_period_days=compute_period_days,
-                        verbose=verbose,
-                        train_cutoffs=full_graph_cutoffs,
-                    )
+                full_materialized, production_plan = _materialize_graph_label_splits(
+                    workspace,
+                    normalized_tables,
+                    normalized_relationships,
+                    root_name,
+                    best.config,
+                    graph_labels,
+                    split_marker=split_marker,
+                    cutoff_marker=cutoff_marker,
+                    compute_period_days=compute_period_days,
+                    verbose=verbose,
+                    train_cutoffs=full_graph_cutoffs,
                 )
                 production_training_frames = len(full_graph_cutoffs)
             else:
@@ -1632,12 +1632,8 @@ def fit(
                 random_state=random_state,
                 model_params=model_params,
             )
-            combined_x = pd.concat(
-                [full_train_x, full_validation_x], ignore_index=True
-            )
-            combined_y = pd.concat(
-                [full_train_y, full_validation_y], ignore_index=True
-            )
+            combined_x = pd.concat([full_train_x, full_validation_x], ignore_index=True)
+            combined_y = pd.concat([full_train_y, full_validation_y], ignore_index=True)
             final_model, final_model_seconds, target_classes = fit_final_catboost(
                 combined_x,
                 combined_y,
@@ -1695,19 +1691,24 @@ def fit(
                 root_prefix = root.prefix or f"{_slug(root_name, 'n0')[:10]}0"
                 test_predictions = pd.DataFrame(index=test_frame.index)
                 for key in _key_parts(root.key):
-                    source_key = (
-                        key if key in test_frame else f"{root_prefix}_{key}"
-                    )
+                    source_key = key if key in test_frame else f"{root_prefix}_{key}"
                     if source_key in test_frame:
                         test_predictions[key] = test_frame[source_key]
                 for column in (
                     cutoff_marker,
-                    *((labels_spec.timestamp,) if labels_spec and labels_spec.timestamp else ()),
+                    *(
+                        (labels_spec.timestamp,)
+                        if labels_spec and labels_spec.timestamp
+                        else ()
+                    ),
                 ):
                     if column in test_frame:
                         test_predictions[column] = test_frame[column]
                 test_predictions["prediction"] = predictions
-                if target_column in test_frame and test_frame[target_column].notna().all():
+                if (
+                    target_column in test_frame
+                    and test_frame[target_column].notna().all()
+                ):
                     if resolved_task == "classification":
                         from sklearn.metrics import roc_auc_score
 
@@ -1825,9 +1826,7 @@ def predict(
         coerce_relationship(item) for item in relationships
     )
 
-    with _connection_scope(
-        connection, max_temp_directory_size="128GB"
-    ) as con:
+    with _connection_scope(connection, max_temp_directory_size="128GB") as con:
         workspace = _Workspace(con, sample_rows=1, random_state=0)
         try:
             for name, table in normalized_tables.items():

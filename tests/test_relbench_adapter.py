@@ -83,15 +83,15 @@ def test_edge_instances_use_metadata_and_skip_cycles() -> None:
     assert all("ParentId" not in edge.child for edge in relationships)
     assert len(tables[0].source) == 3
     assert len(tables[0].search_source) == 2
+    assert tables[0].context_keys == ("ParentId",)
+    assert tables[1].context_keys == ()
 
 
 def test_problem_samples_latest_training_frame_before_rows() -> None:
     train = pd.DataFrame(
         {
             "uid": range(8),
-            "timestamp": pd.to_datetime(
-                ["2020-01-01"] * 4 + ["2020-02-01"] * 4
-            ),
+            "timestamp": pd.to_datetime(["2020-01-01"] * 4 + ["2020-02-01"] * 4),
             "target": [0, 1] * 4,
         }
     )

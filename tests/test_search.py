@@ -1,3 +1,5 @@
+import pytest
+
 from kurversc import GraphConfig, incremental_configs
 
 
@@ -13,9 +15,24 @@ def test_incremental_configs_start_with_requested_baseline() -> None:
     assert [config.depth for config in configs[:3]] == [1, 2, 3]
     assert configs[3].auto_annotate_features is False
     assert configs[6].feature_families == ("base", "temporal")
+    assert len(configs) == 42
+    assert configs[-1].feature_families == (
+        "base",
+        "temporal",
+        "sequence",
+        "conditional",
+        "episode",
+        "semantic",
+        "context",
+    )
 
 
 def test_graphreduce_kwargs_leave_uncapped_budget_to_node_builder() -> None:
     config = GraphConfig(feature_family_max_columns=None)
 
     assert "feature_family_max_columns" not in config.graphreduce_kwargs()
+
+
+def test_graph_config_rejects_nonpositive_feature_family_cap() -> None:
+    with pytest.raises(ValueError, match="feature_family_max_columns"):
+        GraphConfig(feature_family_max_columns=0)

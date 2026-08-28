@@ -41,14 +41,20 @@ class Table:
     timeless: bool = False
     prefix: str | None = None
     columns: tuple[str, ...] | None = None
+    context_keys: tuple[str, ...] = ()
     search_source: Source | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "key", _as_key(self.key, field="Table.key"))
         if self.date is not None and self.timeless:
-            raise ValueError("Table.date and Table.timeless=True are mutually exclusive")
+            raise ValueError(
+                "Table.date and Table.timeless=True are mutually exclusive"
+            )
         if self.columns is not None:
             object.__setattr__(self, "columns", tuple(self.columns))
+        object.__setattr__(
+            self, "context_keys", tuple(dict.fromkeys(self.context_keys))
+        )
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,26 @@ import pandas as pd
 DEFAULT_FAMILY_STAGES: tuple[tuple[str, ...], ...] = (
     ("base",),
     ("base", "temporal"),
-    ("base", "temporal", "conditional"),
+    ("base", "temporal", "sequence"),
+    ("base", "temporal", "sequence", "conditional"),
+    ("base", "temporal", "sequence", "conditional", "episode"),
+    (
+        "base",
+        "temporal",
+        "sequence",
+        "conditional",
+        "episode",
+        "semantic",
+    ),
+    (
+        "base",
+        "temporal",
+        "sequence",
+        "conditional",
+        "episode",
+        "semantic",
+        "context",
+    ),
 )
 
 
@@ -28,6 +47,11 @@ class GraphConfig:
             raise ValueError("depth must be at least 1")
         if not self.feature_families or self.feature_families[0] != "base":
             raise ValueError("feature_families must start with 'base'")
+        if (
+            self.feature_family_max_columns is not None
+            and self.feature_family_max_columns < 1
+        ):
+            raise ValueError("feature_family_max_columns must be positive or None")
 
     @property
     def complexity(self) -> float:
@@ -211,7 +235,9 @@ class FitResult:
 
         fitted = self.fitted_model
         feature_columns = (
-            fitted.feature_columns if fitted is not None else self.best_trial.feature_columns
+            fitted.feature_columns
+            if fitted is not None
+            else self.best_trial.feature_columns
         )
         categorical_columns = (
             fitted.categorical_columns
