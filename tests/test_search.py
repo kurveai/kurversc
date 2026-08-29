@@ -15,15 +15,20 @@ def test_incremental_configs_start_with_requested_baseline() -> None:
     assert [config.depth for config in configs[:3]] == [1, 2, 3]
     assert configs[3].auto_annotate_features is False
     assert configs[6].feature_families == ("base", "temporal")
-    assert len(configs) == 42
+    assert len(configs) == 26
+    assert all("semantic" not in c.feature_families for c in configs)
+    assert all("context" not in c.feature_families for c in configs)
+    assert all(
+        c.depth < 3
+        for c in configs
+        if len(c.feature_families) > 3
+    )
     assert configs[-1].feature_families == (
         "base",
         "temporal",
         "sequence",
         "conditional",
         "episode",
-        "semantic",
-        "context",
     )
 
 

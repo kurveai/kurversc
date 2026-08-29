@@ -15,23 +15,6 @@ DEFAULT_FAMILY_STAGES: tuple[tuple[str, ...], ...] = (
     ("base", "temporal", "sequence"),
     ("base", "temporal", "sequence", "conditional"),
     ("base", "temporal", "sequence", "conditional", "episode"),
-    (
-        "base",
-        "temporal",
-        "sequence",
-        "conditional",
-        "episode",
-        "semantic",
-    ),
-    (
-        "base",
-        "temporal",
-        "sequence",
-        "conditional",
-        "episode",
-        "semantic",
-        "context",
-    ),
 )
 
 
@@ -89,7 +72,12 @@ def incremental_configs(
     # before wider feature families. Keep annotation=True first by default.
     for families in stages:
         for annotate in annotations:
-            for depth in range(1, max_depth + 1):
+            # Deep hops become disproportionately expensive once several
+            # relational families are enabled. Reserve depth 3 for the
+            # first three incremental stages; wider family combinations use
+            # depths 1-2 unless callers provide a custom candidate grid.
+            stage_max_depth = max_depth if len(families) <= 3 else min(max_depth, 2)
+            for depth in range(1, stage_max_depth + 1):
                 configs.append(
                     GraphConfig(
                         feature_families=families,
@@ -161,19 +149,18 @@ class FittedModel:
     target_classes: tuple[Any, ...] = ()
     test_predictions: pd.DataFrame | None = None
     test_score: float | None = None
-    model_params: dict[str, Any] = field(default_factory=dict)
-    model_tuning_trials: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass
 class FitResult:
-    """The fitted winner plus the full validation/complexity audit trail."""
+    """The fitted winner plus screening and full-history audit trails."""
 
     task: str
     metric: str
     best_trial: Trial
     recommended_trial: Trial
     trials: tuple[Trial, ...]
+    rerank_trials: tuple[Trial, ...] = ()
     fitted_model: FittedModel | None = None
 
     @property
@@ -225,20 +212,12 @@ class FitResult:
         )
 
     @property
-    def model_params(self) -> dict[str, Any]:
-        """Return the selected downstream-model parameters."""
-
-        return dict(self.fitted_model.model_params) if self.fitted_model else {}
-
-    @property
-    def model_tuning_trials(self) -> tuple[dict[str, Any], ...]:
-        """Return the final downstream-model tuning audit trail."""
-
-        return self.fitted_model.model_tuning_trials if self.fitted_model else ()
-
-    @property
     def results(self) -> pd.DataFrame:
         return pd.DataFrame([trial.as_record() for trial in self.trials])
+
+    @property
+    def rerank_results(self) -> pd.DataFrame:
+        return pd.DataFrame([trial.as_record() for trial in self.rerank_trials])
 
     @property
     def complexity_notes(self) -> tuple[str, ...]:

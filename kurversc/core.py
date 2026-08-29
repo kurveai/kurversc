@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import io
 import re
-import copy
 from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +22,6 @@ from .modeling import (
     fit_final_catboost,
     prepare_features,
     prepare_prediction_features,
-    tune_catboost,
 )
 from .search import (
     DEFAULT_FAMILY_STAGES,
@@ -150,6 +149,23 @@ def _quote_table(identifier: str) -> str:
     return ".".join(_quote_identifier(part) for part in identifier.split("."))
 
 
+def _duckdb_compatible_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Present pandas 3 string columns to the GraphReduce-pinned DuckDB."""
+
+    compatible = frame.copy(deep=False)
+    string_columns = [
+        column
+        for column in compatible.columns
+        if pd.api.types.is_string_dtype(compatible[column].dtype)
+        and not pd.api.types.is_object_dtype(compatible[column].dtype)
+    ]
+    if string_columns:
+        compatible = compatible.copy()
+        for column in string_columns:
+            compatible[column] = compatible[column].astype(object)
+    return compatible
+
+
 class _Workspace:
     def __init__(
         self,
@@ -172,17 +188,7 @@ class _Workspace:
             # DuckDB 1.2 predates pandas 3's dedicated ``str`` dtype. Keep the
             # public API compatible with both by presenting string columns as
             # the object dtype understood by that GraphReduce-pinned release.
-            compatible = source.copy(deep=False)
-            string_columns = [
-                column
-                for column in compatible.columns
-                if pd.api.types.is_string_dtype(compatible[column].dtype)
-                and not pd.api.types.is_object_dtype(compatible[column].dtype)
-            ]
-            if string_columns:
-                compatible = compatible.copy()
-                for column in string_columns:
-                    compatible[column] = compatible[column].astype(object)
+            compatible = _duckdb_compatible_frame(source)
             self.connection.register(registration, compatible)
             self._registered.append(registration)
             return f"SELECT * FROM {_quote_identifier(registration)}"
@@ -396,6 +402,42 @@ def _resource_block_for(
     return None
 
 
+def _select_trials(
+    successful: Sequence[Trial],
+    *,
+    classification_negligible_gain: float,
+    regression_negligible_relative_gain: float,
+) -> tuple[Trial, Trial]:
+    """Return the raw winner and complexity-aware recommendation."""
+
+    if not successful:
+        raise ValueError("At least one successful trial is required")
+    best = max(successful, key=lambda item: item.objective_score)
+    if best.metric == "roc_auc":
+        eligible = [
+            trial
+            for trial in successful
+            if best.validation_score - trial.validation_score
+            <= classification_negligible_gain
+        ]
+    else:
+        eligible = [
+            trial
+            for trial in successful
+            if trial.validation_score
+            <= best.validation_score * (1 + regression_negligible_relative_gain)
+        ]
+    recommended = min(
+        eligible,
+        key=lambda item: (
+            item.feature_count,
+            item.config.complexity,
+            item.feature_seconds,
+        ),
+    )
+    return best, recommended
+
+
 def _build_graph(
     workspace: _Workspace,
     tables: Mapping[str, Table],
@@ -410,6 +452,7 @@ def _build_graph(
     graph_labels: GraphLabels | None = None,
     execution_plan: Mapping[str, Any] | None = None,
     train: bool = True,
+    infer_ts_periods: bool = False,
 ):
     from graphreduce.enum import ComputeLayerEnum, PeriodUnit
     from graphreduce.graph_reduce import GraphReduce
@@ -561,6 +604,7 @@ def _build_graph(
         cut_date=graph_cut_date,
         compute_period_val=compute_period_days,
         compute_period_unit=PeriodUnit.day,
+        infer_ts_periods=infer_ts_periods,
         date_filters_on_agg=True,
         label_node=label_node,
         label_field=graph_labels.field if graph_labels else None,
@@ -614,6 +658,7 @@ def _materialize_at_cutoff(
     frozen_plan_sink: list[dict[str, Any]] | None = None,
     train: bool = True,
     planning_labels: pd.DataFrame | None = None,
+    infer_ts_periods: bool = False,
 ) -> pd.DataFrame:
     excluded = {label_spec.target}
     if label_spec.split:
@@ -644,6 +689,7 @@ def _materialize_at_cutoff(
             root_entity_keys=root_entity_keys,
             execution_plan=execution_plan,
             train=train,
+            infer_ts_periods=infer_ts_periods,
         )
         try:
             graph.do_transformations_sql()
@@ -681,8 +727,12 @@ def _materialize_split(
     compute_period_days: int,
     verbose: bool,
     split_marker: str | None = None,
+    execution_plan: Mapping[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     frozen_plans: list[dict[str, Any]] = []
+    selected_plan = (
+        copy.deepcopy(dict(execution_plan)) if execution_plan is not None else None
+    )
     if label_spec.timestamp:
         parts = []
         if split_marker is not None:
@@ -713,10 +763,12 @@ def _materialize_split(
                 cut_date=pd.Timestamp(anchor_timestamp).to_pydatetime(),
                 compute_period_days=compute_period_days,
                 verbose=verbose,
-                frozen_plan_sink=frozen_plans,
+                execution_plan=selected_plan,
+                frozen_plan_sink=None if selected_plan is not None else frozen_plans,
                 planning_labels=train_labels,
             )
         )
+        selected_plan = selected_plan or frozen_plans[0]
         replay_groups = [
             *train_groups[:-1],
             *list(
@@ -739,10 +791,10 @@ def _materialize_split(
                     cut_date=cutoff,
                     compute_period_days=compute_period_days,
                     verbose=verbose,
-                    execution_plan=frozen_plans[0],
+                    execution_plan=selected_plan,
                 )
             )
-        return pd.concat(parts, ignore_index=True), frozen_plans[0]
+        return pd.concat(parts, ignore_index=True), selected_plan
     if split_marker is None:
         train_labels = labels
         validation_labels = labels.iloc[0:0]
@@ -760,10 +812,12 @@ def _materialize_split(
         cut_date=datetime.now(),
         compute_period_days=compute_period_days,
         verbose=verbose,
-        frozen_plan_sink=frozen_plans,
+        execution_plan=selected_plan,
+        frozen_plan_sink=None if selected_plan is not None else frozen_plans,
     )
+    selected_plan = selected_plan or frozen_plans[0]
     if validation_labels.empty:
-        return anchor, frozen_plans[0]
+        return anchor, selected_plan
     validation = _materialize_at_cutoff(
         workspace,
         tables,
@@ -775,9 +829,9 @@ def _materialize_split(
         cut_date=datetime.now(),
         compute_period_days=compute_period_days,
         verbose=verbose,
-        execution_plan=frozen_plans[0],
+        execution_plan=selected_plan,
     )
-    return pd.concat([anchor, validation], ignore_index=True), frozen_plans[0]
+    return pd.concat([anchor, validation], ignore_index=True), selected_plan
 
 
 def _materialize_graph_labels_at_cutoff(
@@ -797,6 +851,7 @@ def _materialize_graph_labels_at_cutoff(
     execution_plan: Mapping[str, Any] | None = None,
     frozen_plan_sink: list[dict[str, Any]] | None = None,
     train: bool = True,
+    infer_ts_periods: bool = False,
 ) -> pd.DataFrame:
     """Run one graph whose target is produced by GraphReduce itself."""
 
@@ -817,6 +872,7 @@ def _materialize_graph_labels_at_cutoff(
             graph_labels=graph_labels,
             execution_plan=execution_plan,
             train=train,
+            infer_ts_periods=infer_ts_periods,
         )
         label_node = graph.label_node
         generated_target = f"{label_node.colabbr(graph_labels.field)}_label"
@@ -864,9 +920,13 @@ def _materialize_graph_label_splits(
     compute_period_days: int,
     verbose: bool,
     train_cutoffs: Sequence[Any] | None = None,
+    execution_plan: Mapping[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     frames = []
     frozen_plans: list[dict[str, Any]] = []
+    selected_plan = (
+        copy.deepcopy(dict(execution_plan)) if execution_plan is not None else None
+    )
     selected_train_cutoffs = tuple(train_cutoffs or graph_labels.train_cutoffs)
     if not selected_train_cutoffs:
         raise ValueError("At least one GraphLabels training frame is required")
@@ -885,9 +945,11 @@ def _materialize_graph_label_splits(
             cutoff_marker=cutoff_marker,
             compute_period_days=compute_period_days,
             verbose=verbose,
-            frozen_plan_sink=frozen_plans,
+            execution_plan=selected_plan,
+            frozen_plan_sink=None if selected_plan is not None else frozen_plans,
         )
     )
+    selected_plan = selected_plan or frozen_plans[0]
     for split_value, cutoffs in (
         (
             "train",
@@ -910,10 +972,10 @@ def _materialize_graph_label_splits(
                     cutoff_marker=cutoff_marker,
                     compute_period_days=compute_period_days,
                     verbose=verbose,
-                    execution_plan=frozen_plans[0],
+                    execution_plan=selected_plan,
                 )
             )
-    return pd.concat(frames, ignore_index=True), frozen_plans[0]
+    return pd.concat(frames, ignore_index=True), selected_plan
 
 
 def _materialize_external_test(
@@ -1052,11 +1114,11 @@ def fit(
     sample_rows: int = 100_000,
     search_training_frames: int = 1,
     full_training_frames: int | None = None,
+    rerank_top_k: int = 3,
     validation_fraction: float = 0.2,
     compute_period_days: int = 3650,
     random_state: int = 42,
     model_params: Mapping[str, Any] | None = None,
-    model_tuning_configs: Sequence[Mapping[str, Any]] | None = None,
     connection: duckdb.DuckDBPyConnection | None = None,
     continue_on_error: bool = True,
     verbose: bool = False,
@@ -1064,12 +1126,17 @@ def fit(
     regression_negligible_relative_gain: float = 0.005,
     drastic_feature_growth: float = 2.0,
     graph_configs: Sequence[GraphConfig] | None = None,
+    preselected_config: GraphConfig | None = None,
+    preselected_execution_plan: Mapping[str, Any] | None = None,
 ) -> FitResult:
     """Fit and select a GraphReduce configuration using validation performance.
 
-    The exact best validation score remains ``result.best_config``. A simpler
-    configuration within the negligible-gain tolerance is separately exposed
-    as ``result.recommended_config``.
+    All configurations are screened on the latest training frame. When more
+    training frames are requested, the strongest ``rerank_top_k`` screening
+    candidates (plus the complexity-aware screening recommendation) are
+    rescored on those frames before the production configuration is selected.
+    A supplied ``preselected_config`` bypasses both stages; an accompanying
+    ``preselected_execution_plan`` replays the already learned feature recipe.
     """
 
     if sample_rows < 1:
@@ -1081,6 +1148,12 @@ def fit(
         )
     if full_training_frames is not None and full_training_frames < 1:
         raise ValueError("full_training_frames must be positive or None")
+    if rerank_top_k < 1:
+        raise ValueError("rerank_top_k must be positive")
+    if preselected_config is not None and graph_configs is not None:
+        raise ValueError("preselected_config and graph_configs are mutually exclusive")
+    if preselected_execution_plan is not None and preselected_config is None:
+        raise ValueError("preselected_execution_plan requires preselected_config")
     parent = coerce_table(
         parent_node,
         key=parent_key,
@@ -1125,7 +1198,9 @@ def fit(
             f"GraphLabels table {graph_labels.table!r} must appear in tables"
         )
     configs = (
-        tuple(graph_configs)
+        (preselected_config,)
+        if preselected_config is not None
+        else tuple(graph_configs)
         if graph_configs is not None
         else incremental_configs(
             max_depth=max_depth,
@@ -1214,28 +1289,60 @@ def fit(
                 )
                 target_column = labels_spec.target
 
-            logger.info(
-                "search_started",
-                candidates=len(configs),
-                task=resolved_task,
-                target=target_column,
-                sample_rows=sample_rows,
-                training_frames=(
-                    len(search_graph_cutoffs)
-                    if graph_labels is not None
-                    else (
-                        search_labels.loc[
-                            search_labels[split_marker] == "train",
-                            labels_spec.timestamp,
-                        ].nunique()
-                        if labels_spec.timestamp
-                        else 1
-                    )
-                ),
-            )
+            if preselected_config is None:
+                logger.info(
+                    "search_started",
+                    candidates=len(configs),
+                    task=resolved_task,
+                    target=target_column,
+                    sample_rows=sample_rows,
+                    training_frames=(
+                        len(search_graph_cutoffs)
+                        if graph_labels is not None
+                        else (
+                            search_labels.loc[
+                                search_labels[split_marker] == "train",
+                                labels_spec.timestamp,
+                            ].nunique()
+                            if labels_spec.timestamp
+                            else 1
+                        )
+                    ),
+                )
+            else:
+                logger.info(
+                    "search_skipped",
+                    reason="preselected_configuration",
+                    feature_families=preselected_config.feature_families,
+                    depth=preselected_config.depth,
+                    auto_annotate_features=(preselected_config.auto_annotate_features),
+                    frozen_plan=preselected_execution_plan is not None,
+                )
             trials: list[Trial] = []
+            if preselected_config is not None:
+                trials.append(
+                    Trial(
+                        config=preselected_config,
+                        metric=(
+                            "roc_auc" if resolved_task == "classification" else "mae"
+                        ),
+                        validation_score=float("nan"),
+                        objective_score=0.0,
+                        feature_count=0,
+                        train_rows=0,
+                        validation_rows=0,
+                        feature_seconds=0.0,
+                        model_seconds=0.0,
+                        execution_plan=(
+                            copy.deepcopy(dict(preselected_execution_plan))
+                            if preselected_execution_plan is not None
+                            else None
+                        ),
+                    )
+                )
             resource_blocks: list[tuple[tuple[str, ...], bool, int, str]] = []
-            for trial_number, config in enumerate(configs, start=1):
+            search_configs = () if preselected_config is not None else configs
+            for trial_number, config in enumerate(search_configs, start=1):
                 resource_block = _resource_block_for(config, resource_blocks)
                 if resource_block is not None:
                     families, _annotations, minimum_depth, reason = resource_block
@@ -1263,7 +1370,7 @@ def fit(
                     )
                     logger.warning(
                         "trial_skipped",
-                        trial=f"{trial_number}/{len(configs)}",
+                        trial=f"{trial_number}/{len(search_configs)}",
                         feature_families=config.feature_families,
                         depth=config.depth,
                         auto_annotate_features=config.auto_annotate_features,
@@ -1274,7 +1381,7 @@ def fit(
                     continue
                 logger.info(
                     "trial_started",
-                    trial=f"{trial_number}/{len(configs)}",
+                    trial=f"{trial_number}/{len(search_configs)}",
                     feature_families=config.feature_families,
                     depth=config.depth,
                     auto_annotate_features=config.auto_annotate_features,
@@ -1372,7 +1479,7 @@ def fit(
                     trials.append(completed_trial)
                     logger.info(
                         "trial_completed",
-                        trial=f"{trial_number}/{len(configs)}",
+                        trial=f"{trial_number}/{len(search_configs)}",
                         metric=metric,
                         score=round(score, 6),
                         features=completed_trial.feature_count,
@@ -1418,7 +1525,7 @@ def fit(
                     )
                     logger.warning(
                         "trial_failed",
-                        trial=f"{trial_number}/{len(configs)}",
+                        trial=f"{trial_number}/{len(search_configs)}",
                         feature_families=config.feature_families,
                         depth=config.depth,
                         auto_annotate_features=config.auto_annotate_features,
@@ -1437,29 +1544,16 @@ def fit(
                     f"{trial.config}: {trial.error}" for trial in trials[:3]
                 )
                 raise RuntimeError(f"Every KurveRSC trial failed. {errors}")
-            best = max(successful, key=lambda item: item.objective_score)
-            if best.metric == "roc_auc":
-                eligible = [
-                    trial
-                    for trial in successful
-                    if best.validation_score - trial.validation_score
-                    <= classification_negligible_gain
-                ]
+            if preselected_config is not None:
+                best = recommended = successful[0]
             else:
-                eligible = [
-                    trial
-                    for trial in successful
-                    if trial.validation_score
-                    <= best.validation_score * (1 + regression_negligible_relative_gain)
-                ]
-            recommended = min(
-                eligible,
-                key=lambda item: (
-                    item.feature_count,
-                    item.config.complexity,
-                    item.feature_seconds,
-                ),
-            )
+                best, recommended = _select_trials(
+                    successful,
+                    classification_negligible_gain=classification_negligible_gain,
+                    regression_negligible_relative_gain=(
+                        regression_negligible_relative_gain
+                    ),
+                )
             for trial in successful:
                 if trial.note:
                     logger.info(
@@ -1469,41 +1563,34 @@ def fit(
                         auto_annotate_features=(trial.config.auto_annotate_features),
                         note=trial.note,
                     )
-            logger.info(
-                "search_selected",
-                metric=best.metric,
-                score=round(best.validation_score, 6),
-                feature_families=best.config.feature_families,
-                depth=best.config.depth,
-                auto_annotate_features=best.config.auto_annotate_features,
-                features=best.feature_count,
-            )
-            if recommended is not best:
+            if preselected_config is None:
                 logger.info(
-                    "search_recommended",
-                    metric=recommended.metric,
-                    score=round(recommended.validation_score, 6),
-                    feature_families=recommended.config.feature_families,
-                    depth=recommended.config.depth,
-                    auto_annotate_features=(recommended.config.auto_annotate_features),
-                    features=recommended.feature_count,
+                    "search_selected",
+                    metric=best.metric,
+                    score=round(best.validation_score, 6),
+                    feature_families=best.config.feature_families,
+                    depth=best.config.depth,
+                    auto_annotate_features=best.config.auto_annotate_features,
+                    features=best.feature_count,
                 )
+                if recommended is not best:
+                    logger.info(
+                        "search_recommended",
+                        metric=recommended.metric,
+                        score=round(recommended.validation_score, 6),
+                        feature_families=recommended.config.feature_families,
+                        depth=recommended.config.depth,
+                        auto_annotate_features=(
+                            recommended.config.auto_annotate_features
+                        ),
+                        features=recommended.feature_count,
+                    )
 
-            # The search winner is only a configuration choice. Rebuild that
-            # configuration against uncapped sources, learn one production
-            # operation plan from full training, and replay it everywhere
-            # else. Neither validation nor test may rediscover operations.
-            logger.info(
-                "full_refit_started",
-                feature_families=best.config.feature_families,
-                depth=best.config.depth,
-                auto_annotate_features=best.config.auto_annotate_features,
-                requested_training_frames=full_training_frames,
-            )
+            screening_recommended = recommended
             if connection is None:
-                # Production deliberately operates on uncapped sources. Give
-                # that requested work more room than disposable search
-                # candidates while still preventing host-disk exhaustion.
+                # Full-history finalist scoring and production fitting operate
+                # on uncapped sources. Give them more room than disposable
+                # screening candidates while still bounding host-disk use.
                 con.sql("SET max_temp_directory_size='128GB'")
             workspace.close()
             workspace = _Workspace(
@@ -1516,19 +1603,6 @@ def fit(
             if graph_labels is not None:
                 full_graph_cutoffs = _select_training_cutoffs(
                     graph_labels.train_cutoffs, full_training_frames
-                )
-                full_materialized, production_plan = _materialize_graph_label_splits(
-                    workspace,
-                    normalized_tables,
-                    normalized_relationships,
-                    root_name,
-                    best.config,
-                    graph_labels,
-                    split_marker=split_marker,
-                    cutoff_marker=cutoff_marker,
-                    compute_period_days=compute_period_days,
-                    verbose=verbose,
-                    train_cutoffs=full_graph_cutoffs,
                 )
                 production_training_frames = len(full_graph_cutoffs)
             else:
@@ -1575,18 +1649,259 @@ def fit(
                 full_labels = pd.concat(
                     [full_train_labels, full_validation_labels], ignore_index=True
                 )
-                full_materialized, production_plan = _materialize_split(
+
+            def materialize_full_config(
+                config: GraphConfig,
+                *,
+                execution_plan: Mapping[str, Any] | None = None,
+            ) -> tuple[pd.DataFrame, dict[str, Any]]:
+                if graph_labels is not None:
+                    return _materialize_graph_label_splits(
+                        workspace,
+                        normalized_tables,
+                        normalized_relationships,
+                        root_name,
+                        config,
+                        graph_labels,
+                        split_marker=split_marker,
+                        cutoff_marker=cutoff_marker,
+                        compute_period_days=compute_period_days,
+                        verbose=verbose,
+                        train_cutoffs=full_graph_cutoffs,
+                        execution_plan=execution_plan,
+                    )
+                return _materialize_split(
                     workspace,
                     normalized_tables,
                     normalized_relationships,
                     root_name,
-                    best.config,
+                    config,
                     full_labels,
                     labels_spec,
                     compute_period_days=compute_period_days,
                     verbose=verbose,
                     split_marker=split_marker,
+                    execution_plan=execution_plan,
                 )
+
+            excluded = _model_exclusions(
+                normalized_tables,
+                root_name,
+                labels_spec,
+                graph_labels,
+                cutoff_marker,
+            )
+            ranked_screening = sorted(
+                successful,
+                key=lambda item: item.objective_score,
+                reverse=True,
+            )
+            finalist_configs = [
+                trial.config for trial in ranked_screening[:rerank_top_k]
+            ]
+            if screening_recommended.config not in finalist_configs:
+                finalist_configs.append(screening_recommended.config)
+
+            rerank_trials: list[Trial] = []
+            rerank_materializations: dict[GraphConfig, str] = {}
+            if production_training_frames > 1 and len(finalist_configs) > 1:
+                logger.info(
+                    "rerank_started",
+                    candidates=len(finalist_configs),
+                    training_frames=production_training_frames,
+                )
+                for finalist_number, config in enumerate(finalist_configs, start=1):
+                    logger.info(
+                        "rerank_trial_started",
+                        trial=f"{finalist_number}/{len(finalist_configs)}",
+                        feature_families=config.feature_families,
+                        depth=config.depth,
+                        auto_annotate_features=config.auto_annotate_features,
+                    )
+                    feature_started = perf_counter()
+                    try:
+                        materialized, execution_plan = materialize_full_config(config)
+                        rerank_train = materialized.loc[
+                            materialized[split_marker] == "train"
+                        ].drop(columns=split_marker)
+                        rerank_validation = materialized.loc[
+                            materialized[split_marker] == "validation"
+                        ].drop(columns=split_marker)
+                        feature_seconds = perf_counter() - feature_started
+                        if rerank_train.empty or rerank_validation.empty:
+                            raise ValueError(
+                                "Full-history rerank produced an empty model split"
+                            )
+                        (
+                            rerank_train_x,
+                            rerank_train_y,
+                            rerank_validation_x,
+                            rerank_validation_y,
+                            rerank_categorical,
+                        ) = prepare_features(
+                            rerank_train,
+                            rerank_validation,
+                            target=target_column,
+                            excluded=excluded,
+                        )
+                        rerank_datetime_columns = tuple(
+                            column
+                            for column in rerank_train_x.columns
+                            if pd.api.types.is_datetime64_any_dtype(
+                                rerank_train[column].dtype
+                            )
+                        )
+                        rerank_model, metric, score, model_seconds = fit_catboost(
+                            rerank_train_x,
+                            rerank_train_y,
+                            rerank_validation_x,
+                            rerank_validation_y,
+                            task=resolved_task,
+                            categorical=rerank_categorical,
+                            random_state=random_state,
+                            model_params=model_params,
+                        )
+                        reranked = Trial(
+                            config=config,
+                            metric=metric,
+                            validation_score=score,
+                            objective_score=(score if metric == "roc_auc" else -score),
+                            feature_count=rerank_train_x.shape[1],
+                            train_rows=len(rerank_train_x),
+                            validation_rows=len(rerank_validation_x),
+                            feature_seconds=feature_seconds,
+                            model_seconds=model_seconds,
+                            model=rerank_model,
+                            feature_columns=tuple(rerank_train_x.columns),
+                            categorical_columns=tuple(
+                                rerank_train_x.columns[index]
+                                for index in rerank_categorical
+                            ),
+                            datetime_columns=rerank_datetime_columns,
+                            execution_plan=execution_plan,
+                        )
+                        cache_table = (
+                            f"__kurversc_rerank_materialized_{finalist_number}"
+                        )
+                        cache_source = f"{cache_table}_source"
+                        con.register(
+                            cache_source, _duckdb_compatible_frame(materialized)
+                        )
+                        try:
+                            con.sql(
+                                f"CREATE TEMP TABLE {_quote_identifier(cache_table)} "
+                                f"AS SELECT * FROM {_quote_identifier(cache_source)}"
+                            )
+                        finally:
+                            con.unregister(cache_source)
+                        rerank_materializations[config] = cache_table
+                        rerank_trials.append(reranked)
+                        logger.info(
+                            "rerank_trial_completed",
+                            trial=f"{finalist_number}/{len(finalist_configs)}",
+                            metric=metric,
+                            score=round(score, 6),
+                            features=reranked.feature_count,
+                            train_rows=reranked.train_rows,
+                            validation_rows=reranked.validation_rows,
+                            feature_seconds=round(feature_seconds, 3),
+                            model_seconds=round(model_seconds, 3),
+                        )
+                    except Exception as exc:
+                        if not continue_on_error:
+                            raise
+                        error_text = f"{type(exc).__name__}: {exc}"
+                        rerank_trials.append(
+                            Trial(
+                                config=config,
+                                metric=(
+                                    "roc_auc"
+                                    if resolved_task == "classification"
+                                    else "mae"
+                                ),
+                                validation_score=float("nan"),
+                                objective_score=float("-inf"),
+                                feature_count=0,
+                                train_rows=0,
+                                validation_rows=0,
+                                feature_seconds=perf_counter() - feature_started,
+                                model_seconds=0.0,
+                                status="failed",
+                                error=error_text,
+                            )
+                        )
+                        logger.warning(
+                            "rerank_trial_failed",
+                            trial=f"{finalist_number}/{len(finalist_configs)}",
+                            feature_families=config.feature_families,
+                            depth=config.depth,
+                            auto_annotate_features=config.auto_annotate_features,
+                            error_type=type(exc).__name__,
+                            error=str(exc),
+                        )
+
+                successful_reranks = [
+                    trial for trial in rerank_trials if trial.status == "completed"
+                ]
+                if successful_reranks:
+                    best, recommended = _select_trials(
+                        successful_reranks,
+                        classification_negligible_gain=(classification_negligible_gain),
+                        regression_negligible_relative_gain=(
+                            regression_negligible_relative_gain
+                        ),
+                    )
+                    logger.info(
+                        "rerank_selected",
+                        metric=best.metric,
+                        score=round(best.validation_score, 6),
+                        feature_families=best.config.feature_families,
+                        depth=best.config.depth,
+                        auto_annotate_features=(best.config.auto_annotate_features),
+                        features=best.feature_count,
+                    )
+                    if recommended is not best:
+                        logger.info(
+                            "rerank_recommended",
+                            metric=recommended.metric,
+                            score=round(recommended.validation_score, 6),
+                            feature_families=recommended.config.feature_families,
+                            depth=recommended.config.depth,
+                            auto_annotate_features=(
+                                recommended.config.auto_annotate_features
+                            ),
+                            features=recommended.feature_count,
+                        )
+
+            # Production refitting uses the full-history recommendation when
+            # reranking succeeded, otherwise the one-frame recommendation.
+            selected = recommended
+            logger.info(
+                "full_refit_started",
+                feature_families=selected.config.feature_families,
+                depth=selected.config.depth,
+                auto_annotate_features=selected.config.auto_annotate_features,
+                requested_training_frames=full_training_frames,
+                reused_rerank_artifact=(selected.config in rerank_materializations),
+                frozen_plan=preselected_execution_plan is not None,
+            )
+            selected_cache = rerank_materializations.get(selected.config)
+            if selected_cache is not None:
+                full_materialized = con.sql(
+                    f"SELECT * FROM {_quote_identifier(selected_cache)}"
+                ).to_df()
+                if selected.execution_plan is None:
+                    raise RuntimeError(
+                        "Selected rerank trial did not retain its execution plan"
+                    )
+                production_plan = copy.deepcopy(selected.execution_plan)
+            else:
+                full_materialized, production_plan = materialize_full_config(
+                    selected.config,
+                    execution_plan=preselected_execution_plan,
+                )
+            for cache_table in rerank_materializations.values():
+                con.sql(f"DROP TABLE IF EXISTS {_quote_identifier(cache_table)}")
 
             full_train = full_materialized.loc[
                 full_materialized[split_marker] == "train"
@@ -1602,13 +1917,6 @@ def fit(
                 training_frames=production_training_frames,
                 operations=len(production_plan.get("records", [])),
                 fingerprint=plan_fingerprint,
-            )
-            excluded = _model_exclusions(
-                normalized_tables,
-                root_name,
-                labels_spec,
-                graph_labels,
-                cutoff_marker,
             )
             (
                 full_train_x,
@@ -1627,44 +1935,30 @@ def fit(
                 for column in full_train_x.columns
                 if pd.api.types.is_datetime64_any_dtype(full_train[column].dtype)
             )
-            (
-                validation_model,
-                full_metric,
-                full_validation_score,
-                _,
-                selected_model_params,
-                model_tuning_trials,
-            ) = tune_catboost(
-                full_train_x,
-                full_train_y,
-                full_validation_x,
-                full_validation_y,
-                task=resolved_task,
-                categorical=full_categorical,
-                random_state=random_state,
-                model_params=model_params,
-                tuning_configs=(
-                    None
-                    if model_tuning_configs is None
-                    else tuple(model_tuning_configs)
-                ),
-            )
-            for model_trial in model_tuning_trials:
-                logger.info(
-                    "model_tuning_trial",
-                    name=model_trial["name"],
-                    metric=full_metric,
-                    score=round(model_trial["validation_score"], 6),
-                    tree_count=model_trial["tree_count"],
-                    model_seconds=round(model_trial["model_seconds"], 3),
-                    params=model_trial["params"],
+            if selected_cache is not None:
+                if tuple(full_train_x.columns) != selected.feature_columns:
+                    raise RuntimeError(
+                        "Cached rerank feature schema changed before production fit"
+                    )
+                validation_model = selected.model
+                full_metric = selected.metric
+                full_validation_score = selected.validation_score
+            else:
+                (
+                    validation_model,
+                    full_metric,
+                    full_validation_score,
+                    _,
+                ) = fit_catboost(
+                    full_train_x,
+                    full_train_y,
+                    full_validation_x,
+                    full_validation_y,
+                    task=resolved_task,
+                    categorical=full_categorical,
+                    random_state=random_state,
+                    model_params=model_params,
                 )
-            logger.info(
-                "model_tuning_selected",
-                metric=full_metric,
-                score=round(full_validation_score, 6),
-                params=selected_model_params,
-            )
             combined_x = pd.concat([full_train_x, full_validation_x], ignore_index=True)
             combined_y = pd.concat([full_train_y, full_validation_y], ignore_index=True)
             final_model, final_model_seconds, target_classes = fit_final_catboost(
@@ -1673,7 +1967,7 @@ def fit(
                 task=resolved_task,
                 categorical=full_categorical,
                 random_state=random_state,
-                model_params=selected_model_params,
+                model_params=model_params,
             )
 
             test_frame = (
@@ -1682,7 +1976,7 @@ def fit(
                     normalized_tables,
                     normalized_relationships,
                     root_name,
-                    best.config,
+                    selected.config,
                     graph_labels,
                     execution_plan=production_plan,
                     split_marker=split_marker,
@@ -1696,7 +1990,7 @@ def fit(
                     normalized_tables,
                     normalized_relationships,
                     root_name,
-                    best.config,
+                    selected.config,
                     external_test_labels,
                     labels_spec,
                     execution_plan=production_plan,
@@ -1761,7 +2055,7 @@ def fit(
                         )
 
             fitted_model = FittedModel(
-                config=best.config,
+                config=selected.config,
                 execution_plan=production_plan,
                 plan_fingerprint=plan_fingerprint,
                 estimator=final_model,
@@ -1781,9 +2075,31 @@ def fit(
                 target_classes=target_classes,
                 test_predictions=test_predictions,
                 test_score=test_score,
-                model_params=selected_model_params,
-                model_tuning_trials=model_tuning_trials,
             )
+            if preselected_config is not None:
+                best = recommended = Trial(
+                    config=selected.config,
+                    metric=full_metric,
+                    validation_score=full_validation_score,
+                    objective_score=(
+                        full_validation_score
+                        if full_metric == "roc_auc"
+                        else -full_validation_score
+                    ),
+                    feature_count=full_train_x.shape[1],
+                    train_rows=len(full_train_x),
+                    validation_rows=len(full_validation_x),
+                    feature_seconds=0.0,
+                    model_seconds=0.0,
+                    model=validation_model,
+                    feature_columns=tuple(full_train_x.columns),
+                    categorical_columns=tuple(
+                        full_train_x.columns[index] for index in full_categorical
+                    ),
+                    datetime_columns=full_datetime_columns,
+                    execution_plan=production_plan,
+                )
+                trials = [best]
             logger.info(
                 "full_refit_completed",
                 metric=full_metric,
@@ -1795,9 +2111,11 @@ def fit(
                 plan_operations=len(production_plan.get("records", [])),
                 plan_fingerprint=plan_fingerprint,
                 final_model_seconds=round(final_model_seconds, 3),
+                final_estimator_rows=len(combined_x),
+                reused_rerank_artifact=selected_cache is not None,
+                reused_preselected_plan=preselected_execution_plan is not None,
                 test_rows=0 if test_predictions is None else len(test_predictions),
                 test_score=test_score,
-                model_params=selected_model_params,
             )
             return FitResult(
                 task=resolved_task,
@@ -1805,6 +2123,7 @@ def fit(
                 best_trial=best,
                 recommended_trial=recommended,
                 trials=tuple(trials),
+                rerank_trials=tuple(rerank_trials),
                 fitted_model=fitted_model,
             )
         finally:
