@@ -628,42 +628,6 @@ while bounding resident feature-frame memory.
 
 ![Default RelArena reproducibility profile. Every admitted graph configuration is evaluated on the complete latest-cutoff source data. The top three candidates are reranked over three complete cutoff folds processed sequentially; the stability-adjusted winner is frozen and fitted on one complete latest production cutoff before test replay.](assets/kurversc-relarena-default.svg){width=100%}
 
-## High-resource buffered multi-cutoff profile
-
-We additionally define a deliberately non-default experiment for machines with
-hundreds of GiB of RAM. For every graph configuration, KurveRSC materializes
-three evenly spaced training cutoffs, freezes the uncertain GraphReduce
-operations learned at the latest of those cutoffs, replays that exact plan on
-the earlier two, retains all three feature frames in RAM, concatenates them, and
-fits one joint CatBoost model. Thus `search_training_frames=3` changes both the
-temporal evidence and the memory contract of graph-configuration selection.
-
-| High-resource choice | Setting |
-|---|---|
-| Complete source tables | `search_full_data=True` |
-| Buffered graph-search cutoffs | `search_training_frames=3` |
-| Full-data finalists | `rerank_top_k=3` |
-| Temporal reranking folds | `rerank_cutoff_frames=3` |
-| Production training cutoffs | `full_training_frames=10` |
-| Per-task DuckDB memory ceiling | `duckdb_memory_limit="192GB"` |
-| Per-task DuckDB spill ceiling | `duckdb_max_temp_directory_size="40GB"` |
-| Concurrent RelArena tasks | `--parallel-tasks 4` |
-
-If a task exposes fewer than three or ten eligible training cutoffs, all
-available cutoffs are used. Otherwise the requested cutoffs are selected
-deterministically across the task's actual training period. Reranking and final
-production fitting retain their one-frame-at-a-time replay behavior; only the
-three graph-search frames are intentionally co-resident. The production stage
-fits up to ten independent 300-tree models and averages them as a frame
-ensemble.
-
-This profile explicitly requires a large-resource machine and is not claimed as
-the RelArena reproducibility default. Four workers can reserve up to 768 GB of
-DuckDB query memory before accounting for the buffered pandas frames, CatBoost,
-and process overhead. The companion results must therefore report the launch
-hardware, task-level peak RSS, failures, and retries separately from predictive
-scores.
-
 ## Downstream learner policy
 
 CatBoost is the current default because it provides a strong conventional model
@@ -1032,38 +996,6 @@ materialized features. Peak resident memory was 79.4 GiB.
 
 Across all 21 direct comparisons, KurveRSC wins 13 and TabPFN-Rel Local wins 8:
 8--4 on classification and 5--4 on regression.
-
-## High-resource cutoff ablation
-
-The following table is reserved for the concurrently executed high-resource
-profile defined above. The reference column repeats the one-cutoff production
-snapshot; the buffered-search/ten-cutoff column will be filled only from held-out
-test results produced by the new run. For AUROC, higher is better; for MAE, lower
-is better. No value is imputed when a task fails.
-
-| Dataset | Task | Metric | Reference profile | Buffered 3 / train 10 | Difference | Status |
-|---|---|---|---:|---:|---:|---|
-| rel-amazon | user-churn | AUROC | 0.709790 | — | — | Running |
-| rel-amazon | item-churn | AUROC | 0.828114 | — | — | Running |
-| rel-amazon | user-ltv | MAE | 14.132556 | — | — | Running |
-| rel-amazon | item-ltv | MAE | 42.205991 | — | — | Running |
-| rel-avito | user-visits | AUROC | 0.674295 | — | — | Running |
-| rel-avito | user-clicks | AUROC | 0.654236 | — | — | Running |
-| rel-avito | ad-ctr | MAE | 0.033654 | — | — | Running |
-| rel-event | user-repeat | AUROC | 0.780414 | — | — | Running |
-| rel-event | user-ignore | AUROC | 0.830661 | — | — | Running |
-| rel-event | user-attendance | MAE | 0.258185 | — | — | Running |
-| rel-f1 | driver-dnf | AUROC | 0.753628 | — | — | Running |
-| rel-f1 | driver-top3 | AUROC | 0.673136 | — | — | Running |
-| rel-f1 | driver-position | MAE | 3.913762 | — | — | Running |
-| rel-hm | user-churn | AUROC | 0.696866 | — | — | Running |
-| rel-hm | item-sales | MAE | 0.032107 | — | — | Running |
-| rel-stack | user-engagement | AUROC | 0.903450 | — | — | Running |
-| rel-stack | user-badge | AUROC | 0.877852 | — | — | Running |
-| rel-stack | post-votes | MAE | 0.063347 | — | — | Running |
-| rel-trial | study-outcome | AUROC | 0.704273 | — | — | Running |
-| rel-trial | study-adverse | MAE | 42.024547 | — | — | Running |
-| rel-trial | site-success | MAE | 0.402717 | — | — | Running |
 
 ## Aggregate Elo leaderboard
 

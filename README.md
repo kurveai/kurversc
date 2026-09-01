@@ -233,8 +233,7 @@ MAE is minimized.
 </details>
 
 See the [technical report](https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.md#experimental-protocol-and-results)
-for the complete protocol, bootstrap uncertainty intervals, and
-high-resource cutoff ablation.
+for the complete protocol and bootstrap uncertainty intervals.
 
 Both node arguments accept a pandas DataFrame, CSV/Parquet path, or the name of
 a table/view on a supplied DuckDB connection. For explicit metadata, use
