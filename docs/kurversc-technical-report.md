@@ -625,6 +625,8 @@ Validation cutoffs are materialized one at a time. Once the learner has produced
 predictions, the frame is released. This preserves the meaning of the metric
 while bounding resident feature-frame memory.
 
+![Default RelArena reproducibility profile. Every admitted graph configuration is evaluated on the complete latest-cutoff source data. The top three candidates are reranked over three complete cutoff folds processed sequentially; the stability-adjusted winner is frozen and fitted on one complete latest production cutoff before test replay.](assets/kurversc-relarena-default.svg){width=100%}
+
 ## High-resource buffered multi-cutoff profile
 
 We additionally define a deliberately non-default experiment for machines with

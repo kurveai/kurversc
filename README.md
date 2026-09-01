@@ -103,6 +103,16 @@ reranking folds, one production cutoff, CatBoost, GraphReduce's fixed temporal
 periods, and no automatic text features. Classification reports test AUROC
 (higher is better); regression reports test MAE (lower is better).
 
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/kurveai/kurversc/main/docs/assets/kurversc-relarena-default.svg"
+    alt="KurveRSC RelArena default: complete latest-cutoff graph search, top-three reranking over three sequential full cutoff folds, a frozen selected graph plan, and final CatBoost fitting on one complete cutoff."
+    width="1100"
+  />
+</p>
+
+<p align="center"><em>The reported reproducibility default prioritizes complete graph-configuration evidence while retaining only one materialized feature frame at a time.</em></p>
+
 | Dataset | Task | Metric | KurveRSC | TabPFN-Rel Local | Winner |
 |---|---|---|---:|---:|---|
 | rel-amazon | user-churn | AUROC ↑ | — | 0.702403 | Unresolved |
