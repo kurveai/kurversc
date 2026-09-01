@@ -6,12 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "kurversc"
 version = "0.1.0"
 description = "Validation-guided configuration search for GraphReduce"
+authors = [{ name = "KurveAI" }]
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "catboost>=1.2,<2",
     "duckdb>=1.2,<1.3",
-    "graphreduce==1.10.6",
+    "graphreduce==1.10.13",
     "numpy>=1.24,<2",
     "pandas>=1.5,<3.1",
     "pytz>=2024.1",
@@ -22,6 +23,13 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8,<9"]
 relbench = ["relbench>=2.1,<3"]
+tabpfn = ["tabpfn>=8.5,<9"]
+
+[project.urls]
+Homepage = "https://github.com/kurveai/kurversc"
+Repository = "https://github.com/kurveai/kurversc"
+Documentation = "https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.md"
+Issues = "https://github.com/kurveai/kurversc/issues"
 
 [tool.setuptools.packages.find]
 include = ["kurversc*"]

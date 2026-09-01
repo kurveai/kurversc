@@ -1,12 +1,31 @@
 from types import SimpleNamespace
 
 import pandas as pd
+import numpy as np
 
 from kurversc.relbench import (
     _edge_instances,
+    _enrichment_columns,
     _sample_timestamps,
     relbench_problem_from_objects,
 )
+
+
+def test_enrichment_columns_accept_nested_array_cells() -> None:
+    table = SimpleNamespace(
+        df=pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "embedding": [np.array([1, 2]), np.array([1, 2]), np.array([3, 4])],
+                "category": ["a", "b", "a"],
+            }
+        ),
+        pkey_col="id",
+        time_col=None,
+        fkey_col_to_pkey_table={},
+    )
+
+    assert _enrichment_columns(table, 2) == ("embedding", "category")
 
 
 def test_timestamp_sampling_keeps_latest_cutoff() -> None:
@@ -87,6 +106,66 @@ def test_edge_instances_use_metadata_and_skip_cycles() -> None:
     assert tables[1].context_keys == ()
 
 
+def test_edge_instances_traverse_association_to_dimension() -> None:
+    customer = SimpleNamespace(
+        df=pd.DataFrame({"customer_id": [1, 2]}),
+        pkey_col="customer_id",
+        time_col=None,
+        fkey_col_to_pkey_table={},
+    )
+    transactions = SimpleNamespace(
+        df=pd.DataFrame({"customer_id": [1, 1, 2], "article_id": [10, 11, 10]}),
+        pkey_col=None,
+        time_col="t_dat",
+        fkey_col_to_pkey_table={
+            "customer_id": "customer",
+            "article_id": "article",
+        },
+    )
+    article_columns = {
+        "article_id": [10, 11],
+        "department_name": ["shoes", "shirts"],
+        **{f"attribute_{index}": [index, index + 1] for index in range(10)},
+        "detail_desc": ["x" * 100, "y" * 100],
+    }
+    article = SimpleNamespace(
+        df=pd.DataFrame(article_columns),
+        pkey_col="article_id",
+        time_col=None,
+        fkey_col_to_pkey_table={},
+    )
+    database = SimpleNamespace(
+        table_dict={
+            "customer": customer,
+            "transactions": transactions,
+            "article": article,
+        }
+    )
+
+    _root, tables, relationships = _edge_instances(
+        database,
+        root_table="customer",
+        root_frame=customer.df,
+        search_root_frame=customer.df,
+        schema_depth=2,
+        sample_rows=100,
+        random_state=42,
+    )
+
+    assert len(tables) == 2
+    assert relationships[0].parent_key == "customer_id"
+    assert relationships[0].child_key == "customer_id"
+    assert relationships[1].parent.endswith("transactions__customer_id")
+    assert relationships[1].parent_key == "article_id"
+    assert relationships[1].child_key == "article_id"
+    assert relationships[0].reduce is True
+    assert relationships[1].reduce is False
+    assert set(tables[1].search_source["article_id"]) == {10, 11}
+    assert len(tables[1].columns) == 8
+    assert "department_name" in tables[1].columns
+    assert "detail_desc" not in tables[1].columns
+
+
 def test_problem_samples_latest_training_frame_before_rows() -> None:
     train = pd.DataFrame(
         {
@@ -138,3 +217,54 @@ def test_problem_samples_latest_training_frame_before_rows() -> None:
         pd.Timestamp("2020-02-01"),
     )
     assert problem.parent_node.timeless is True
+
+
+def test_problem_can_keep_multiple_full_search_frames() -> None:
+    train = pd.DataFrame(
+        {
+            "uid": range(8),
+            "timestamp": pd.to_datetime(["2020-01-01"] * 4 + ["2020-02-01"] * 4),
+            "target": [0, 1] * 4,
+        }
+    )
+    validation = pd.DataFrame(
+        {
+            "uid": range(8, 12),
+            "timestamp": pd.to_datetime(["2020-03-01"] * 4),
+            "target": [0, 1, 0, 1],
+        }
+    )
+    users = SimpleNamespace(
+        df=pd.DataFrame({"uid": range(12)}),
+        pkey_col="uid",
+        time_col=None,
+        fkey_col_to_pkey_table={},
+    )
+    task = SimpleNamespace(
+        entity_table="users",
+        entity_col="uid",
+        time_col="timestamp",
+        target_col="target",
+        task_type="binary_classification",
+    )
+
+    problem = relbench_problem_from_objects(
+        task,
+        SimpleNamespace(table_dict={"users": users}),
+        SimpleNamespace(df=train),
+        SimpleNamespace(df=validation),
+        sample_rows=6,
+        search_full_data=True,
+        search_training_frames=2,
+        max_train_timestamps=2,
+        schema_depth=1,
+    )
+
+    search_labels = problem.label_node.search_source
+    search_train = search_labels.loc[
+        search_labels["__kurversc_relbench_split__"] == "train"
+    ]
+    assert len(search_labels) == 12
+    assert len(search_train) == 8
+    assert search_train["timestamp"].nunique() == 2
+    assert len(problem.parent_node.search_source) == 12

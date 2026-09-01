@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">KurveRSC selects a relational feature-frame shape with a downstream learner</title>
+  <desc id="desc">A database graph is compiled under several graph configurations. Each configuration produces a feature frame of a different width and lineage. The same downstream learner scores every frame on validation data. A complexity-aware selection chooses one shape, whose frozen plan is replayed on full production cutoffs.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#EEF2FF"/>
+    </linearGradient>
+    <linearGradient id="winner" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#0F172A" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0 0 L12 6 L0 12 Z" fill="#64748B"/>
+    </marker>
+    <style>
+      .title { font: 700 34px Arial, Helvetica, sans-serif; fill: #0F172A; }
+      .sub { font: 600 18px Arial, Helvetica, sans-serif; fill: #334155; }
+      .section { font: 700 21px Arial, Helvetica, sans-serif; fill: #0F172A; }
+      .label { font: 700 16px Arial, Helvetica, sans-serif; fill: #0F172A; }
+      .small { font: 600 14px Arial, Helvetica, sans-serif; fill: #334155; }
+      .tiny { font: 700 12px Arial, Helvetica, sans-serif; fill: #475569; }
+      .white { fill: #FFFFFF; }
+      .card { fill: #FFFFFF; stroke: #CBD5E1; stroke-width: 1.5; }
+      .flow { fill: none; stroke: #64748B; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" rx="26" fill="url(#bg)"/>
+  <text x="65" y="62" class="title">A graph configuration is a candidate feature-frame “shape”</text>
+  <text x="65" y="96" class="sub">The selected shape includes relational reach, feature lineage, temporal windows, annotations, and ordered schema—not width alone.</text>
+
+  <!-- relational source -->
+  <g filter="url(#shadow)"><rect x="65" y="145" width="260" height="560" rx="22" class="card"/></g>
+  <text x="95" y="185" class="section">Relational source</text>
+  <text x="95" y="211" class="tiny">same database · same task</text>
+  <text x="95" y="229" class="tiny">same cutoff contract</text>
+  <line x1="150" y1="310" x2="220" y2="260" stroke="#64748B" stroke-width="4"/>
+  <line x1="150" y1="310" x2="220" y2="360" stroke="#64748B" stroke-width="4"/>
+  <line x1="220" y1="260" x2="275" y2="220" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="220" y1="360" x2="275" y2="410" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 6"/>
+  <circle cx="150" cy="310" r="38" fill="#C7D2FE" stroke="#4F46E5" stroke-width="3"/>
+  <circle cx="220" cy="260" r="29" fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+  <circle cx="220" cy="360" r="29" fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+  <circle cx="275" cy="220" r="22" fill="#E2E8F0" stroke="#64748B" stroke-width="2"/>
+  <circle cx="275" cy="410" r="22" fill="#E2E8F0" stroke="#64748B" stroke-width="2"/>
+  <text x="150" y="315" class="tiny" text-anchor="middle">root</text>
+  <text x="220" y="265" class="tiny" text-anchor="middle">hop 1</text>
+  <text x="220" y="365" class="tiny" text-anchor="middle">hop 1</text>
+  <text x="275" y="225" class="tiny" text-anchor="middle">2+</text>
+  <text x="275" y="415" class="tiny" text-anchor="middle">2+</text>
+  <rect x="95" y="485" width="200" height="54" rx="10" fill="#EFF6FF"/>
+  <text x="110" y="508" class="tiny">visible history only</text>
+  <text x="110" y="527" class="small">c − H &lt; event ≤ c</text>
+  <rect x="95" y="558" width="200" height="112" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="110" y="584" class="tiny">meta-parameters</text>
+  <text x="110" y="608" class="small">depth · families</text>
+  <text x="110" y="633" class="small">annotations · budgets</text>
+  <text x="110" y="658" class="small">inferred lookbacks</text>
+
+  <path d="M325 425 H380" class="flow"/>
+
+  <!-- candidate frames -->
+  <g filter="url(#shadow)"><rect x="390" y="145" width="590" height="560" rx="22" class="card"/></g>
+  <text x="420" y="185" class="section">Candidate materializations</text>
+  <text x="420" y="214" class="small">same entity grain · different columns and relational lineage</text>
+
+  <text x="420" y="257" class="tiny">q₁ · depth 1 · base · annotations off</text>
+  <rect x="420" y="270" width="190" height="68" rx="8" fill="#EFF6FF" stroke="#60A5FA" stroke-width="2"/>
+  <path d="M452 270v68M484 270v68M516 270v68M548 270v68M580 270v68M420 293h190M420 316h190" stroke="#BFDBFE"/>
+  <rect x="630" y="281" width="120" height="43" rx="9" fill="#F1F5F9"/>
+  <text x="690" y="299" class="tiny" text-anchor="middle">CatBoost</text>
+  <text x="690" y="317" class="tiny" text-anchor="middle">score s₁</text>
+
+  <text x="420" y="382" class="tiny">q₂ · depth 2 · base + temporal + sequence</text>
+  <rect x="420" y="395" width="310" height="68" rx="8" fill="#EEF2FF" stroke="#818CF8" stroke-width="2"/>
+  <path d="M452 395v68M484 395v68M516 395v68M548 395v68M580 395v68M612 395v68M644 395v68M676 395v68M708 395v68M420 418h310M420 441h310" stroke="#C7D2FE"/>
+  <rect x="750" y="406" width="120" height="43" rx="9" fill="#E0E7FF"/>
+  <text x="810" y="424" class="tiny" text-anchor="middle">CatBoost</text>
+  <text x="810" y="442" class="tiny" text-anchor="middle">score s₂</text>
+
+  <text x="420" y="507" class="tiny">q₃ · depth 2 · + conditional + episode · annotations on</text>
+  <rect x="420" y="520" width="450" height="68" rx="8" fill="#F3E8FF" stroke="#A78BFA" stroke-width="2"/>
+  <path d="M452 520v68M484 520v68M516 520v68M548 520v68M580 520v68M612 520v68M644 520v68M676 520v68M708 520v68M740 520v68M772 520v68M804 520v68M836 520v68M420 543h450M420 566h450" stroke="#DDD6FE"/>
+  <rect x="890" y="531" width="65" height="43" rx="9" fill="#F3E8FF"/>
+  <text x="922" y="549" class="tiny" text-anchor="middle">model</text>
+  <text x="922" y="567" class="tiny" text-anchor="middle">s₃</text>
+
+  <rect x="420" y="622" width="530" height="54" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="438" y="645" class="tiny">Every score evaluates the complete pair</text>
+  <text x="438" y="665" class="small">relational program q + fixed downstream learner policy λ</text>
+
+  <path d="M980 425 H1035" class="flow"/>
+
+  <!-- selection and final fit -->
+  <g filter="url(#shadow)"><rect x="1045" y="145" width="490" height="560" rx="22" class="card"/></g>
+  <text x="1075" y="185" class="section">Select, freeze, and replay</text>
+  <text x="1075" y="214" class="small">metric winner + negligible-gain complexity check</text>
+
+  <rect x="1075" y="250" width="430" height="100" rx="16" fill="url(#winner)"/>
+  <circle cx="1118" cy="300" r="23" fill="#FFFFFF" fill-opacity="0.18"/>
+  <path d="M1107 300l8 8 15-19" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1158" y="290" class="label white">Selected shape q*</text>
+  <text x="1158" y="318" class="small white">graph reach + operations + periods + schema</text>
+
+  <path d="M1290 350 V395" class="flow"/>
+  <rect x="1075" y="405" width="430" height="82" rx="12" fill="#EEF2FF" stroke="#818CF8" stroke-width="2"/>
+  <text x="1095" y="433" class="tiny">FULL PRODUCTION FRAME AT CUTOFF c₁</text>
+  <rect x="1095" y="447" width="350" height="25" rx="5" fill="#C7D2FE"/>
+  <path d="M1135 447v25M1175 447v25M1215 447v25M1255 447v25M1295 447v25M1335 447v25M1375 447v25M1415 447v25" stroke="#A5B4FC"/>
+
+  <text x="1288" y="515" class="tiny" text-anchor="middle">release frame · replay q* at next cutoff</text>
+  <rect x="1075" y="540" width="430" height="82" rx="12" fill="#ECFDF5" stroke="#34D399" stroke-width="2"/>
+  <text x="1095" y="568" class="tiny">FINAL LEARNER FIT / FRAME ENSEMBLE</text>
+  <circle cx="1120" cy="594" r="13" fill="#10B981"/>
+  <circle cx="1160" cy="594" r="13" fill="#14B8A6"/>
+  <circle cx="1200" cy="594" r="13" fill="#0891B2"/>
+  <path d="M1225 594 H1290" stroke="#64748B" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="1300" y="577" width="170" height="34" rx="9" fill="#FFFFFF"/>
+  <text x="1385" y="599" class="tiny" text-anchor="middle">prediction</text>
+
+  <rect x="1075" y="645" width="430" height="35" rx="9" fill="#F1F5F9"/>
+  <text x="1290" y="667" class="tiny" text-anchor="middle">test: frozen plan · train=False · no rediscovery</text>
+
+  <text x="65" y="800" class="label">Selection principle</text>
+  <text x="65" y="833" class="sub">Wider and deeper are hypotheses—not guarantees. KurveRSC keeps the simplest relational program whose validation utility is meaningfully competitive.</text>
+</svg>

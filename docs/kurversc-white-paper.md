@@ -48,8 +48,8 @@ training frame; the learner reveals whether that representation carries useful
 signal for the task. In the current implementation, CatBoost is the bundled
 downstream learner and classification and regression candidates are selected
 by validation AUROC and MAE, respectively. The dataframe boundary is
-deliberately learner-neutral. TabPFN and other tabular learners are planned
-extensions, not requirements of the architecture.
+deliberately learner-neutral. An experimental TabPFN v3 adapter demonstrates
+that boundary, while CatBoost remains the reference production backend.
 
 Kurve RSC is built with [GraphReduce](https://github.com/wesmadrigal/graphreduce),
 the open-source engine that executes relational compute graphs. Kurve RSC is
@@ -60,7 +60,7 @@ the relational execution plan and feature schema, and produces a fitted
 artifact for validation and inference.
 
 This white paper focuses on that optimization idea. The companion
-[Kurve RSC technical report](../../kurve-rsc-benchmark/docs/kurve-rsc-technical-report.md)
+[KurveRSC technical report](kurversc-technical-report.md)
 contains the detailed treatment of cutoff semantics, relational reduction,
 feature families, system budgets, benchmark protocol, and reproducibility.
 
@@ -123,9 +123,11 @@ A shallow, `base`-only candidate may reduce only nearby tables and emit a
 narrow frame containing stable schema-aware rollups. Increasing depth admits
 longer foreign-key paths, so additional tables can contribute summaries to the
 root entity. Adding `temporal` introduces windowed numeric behavior. Adding
-`conditional` introduces bounded, condition-specific composition. Switching
-automatic annotations changes the predicates and gated statistics available to
-those reductions.
+`sequence` preserves rates, recent activity shares, burst ratios, and active
+spans. Adding `conditional` introduces bounded, condition-specific composition,
+while `episode` counts exposure and distinct events. Switching automatic
+annotations changes the predicates and gated statistics available to those
+reductions.
 
 For candidate $q$, write the model-facing frame shape as
 
@@ -141,73 +143,130 @@ also make row counts differ in practice, so Kurve RSC records both dimensions
 for every completed trial.
 
 The important point is that these are not cosmetic transformations of one
-fixed matrix. A depth-1 `base` frame and a depth-3
-`base + temporal + conditional` frame are different representations of the
+fixed matrix. A depth-1 `base` frame and a depth-2
+`base + temporal + sequence + conditional` frame are different representations of the
 task. Wider is not automatically better: extra columns can be redundant,
 sparse, expensive, or easier for the learner to overfit. Validation performance
 is the feedback that resolves that ambiguity.
 
-The current default candidate schedule is deterministic and cumulative:
+The current default candidate schedule is deterministic and beam-pruned:
 
 | Search axis | Current default |
 |---|---|
 | Relational depth | 1, 2, and 3 hops back toward related tables |
-| Feature-family stage | `base`; `base + temporal`; `base + temporal + conditional` |
+| Feature-family subset | `base` plus independent subsets of `temporal`, `sequence`, `conditional`, and `episode` |
 | Automatic annotations | enabled and disabled |
+| Source-column budgets | utility-ranked 4 columns per family by default; optional wider budgets |
+| Per-source / propagated expansion caps | 32 derived features / 1 canonical continuation |
 | Downstream learner | CatBoost |
 | Classification objective | maximize validation AUROC |
 | Regression objective | minimize validation MAE |
 
-The cross-product produces 18 default representation candidates. The stages
-are cumulative so each expansion has an interpretable relationship to the
-smaller program that preceded it. Users can supply an explicit set of
-`GraphConfig` candidates when the default space is not appropriate.
+Subsets containing only base, temporal, and sequence are eligible for depth 3.
+Subsets containing conditional or episode are limited to depths 1 and 2. One
+column budget has 72 potential shapes, but the adaptive forward beam normally
+materializes no more than 24. Optional wider source-column budgets add another
+candidate lattice and promote only a bounded set from the narrower budget.
+Users can supply explicit `GraphConfig` candidates when this space is not
+appropriate.
 
-# The two-stage learning protocol
+# The coarse-to-full learning protocol
 
 Kurve RSC separates economical configuration discovery from the production
 fit. This distinction matters because relational materialization may be more
 expensive than fitting the downstream model itself.
 
+The reference RelArena profile uses a three-fidelity funnel:
+
+```text
+candidate lattice
+      |
+      v
+10K-row screening
+      |  confirmation_top_k=8
+      v
+up to 8 diverse GraphConfigs on 50K rows
+      |  rerank_top_k=3
+      v
+top 3 on three sequential full-data cutoff folds
+      |
+      v
+raw stability-adjusted winner
+```
+
+`confirmation_top_k` is the maximum number of distinct relational
+configurations promoted from inexpensive screening to medium-fidelity
+confirmation. It is not a CatBoost hyperparameter, a frame count, or a cutoff
+count. The selector first retains the raw objective leader and the
+complexity-aware screening recommendation. It then seeks score-ranked
+representatives of the available optional feature families, a deeper graph,
+and the opposite automatic-annotation policy before filling any remaining
+slots by raw score. Duplicate shapes are removed, so fewer than eight may be
+confirmed when the successful search frontier is small.
+
+The medium-fidelity row count is controlled by `sample_rows`; the RelArena
+profile sets it to 50,000. When `search_full_data=True`, every beam-admitted
+candidate is evaluated directly on complete source tables, the separate
+confirmation stage is skipped, and `confirmation_top_k` has no effect.
+
 ## Stage 1: search on a controlled point-in-time frame
 
 Each candidate receives a fresh GraphReduce graph because graph execution is
-stateful. The current implementation caps each search source at a configurable
-sample size (100,000 rows by default) and searches on the latest eligible
-training cutoff. For every candidate, Kurve RSC:
+stateful. The current implementation first caps each search source at
+`screening_rows` and searches on the latest eligible training cutoff. The
+surviving diverse candidates are then rebuilt at the `sample_rows`
+confirmation fidelity. For every evaluated candidate, Kurve RSC:
 
 1. builds the depth-bounded relational graph and applies the candidate's
    feature policy;
 2. learns a feature-operation plan from training data;
 3. materializes aligned training and validation frames under that plan;
 4. normalizes model inputs while freezing the training-derived column order;
-5. fits CatBoost and records validation score, feature count, row counts,
+5. fits CatBoost and records validation score and its standard error, feature count, row counts,
    feature time, and model time; and
 6. preserves failures and resource-related skips in the trial audit trail.
 
 The configuration with the best objective score becomes `best_config`. Kurve
 RSC also exposes `recommended_config`: the simplest candidate within a small
-performance tolerance of the best. By default, a classification candidate is
-eligible when it is within 0.002 AUROC of the winner; a regression candidate is
-eligible when its MAE is within 0.5% of the winner. This makes the cost of
-representational complexity visible without replacing the actual metric
-winner.
+performance tolerance of the best. The fixed 0.002 AUROC and 0.5% MAE floors
+are combined with estimated validation uncertainty, so extra complexity must
+produce a statistically meaningful gain. This makes representational cost
+visible without replacing the raw metric winner.
 
-## Stage 2: rebuild the winner as a production artifact
+## Stage 2: select and freeze one relational representation
 
-Search chooses a configuration; it does not make the sampled search graph the
-production model. Kurve RSC rebuilds only the winner from uncapped sources. It
-learns one exact GraphReduce execution plan on full training data, freezes that
-plan and its ordered feature schema, replays both on validation data, and
-records the full-data validation score.
+Each configuration is evaluated on one latest eligible training frame and the
+declared validation data. With full-data search enabled, that frame contains
+all eligible rows rather than a sample. The best raw metric and the
+complexity-aware recommendation are retained in the audit trail. The strongest
+three raw medium-fidelity candidates are then rescored over sequential
+full-data cutoff folds. Their mean validation objective is penalized by temporal
+score instability. The raw maximizer of this stability-adjusted objective is
+selected; the earlier complexity recommendation remains auditable but cannot
+override the full-frame evidence.
+
+Kurve RSC freezes the selected GraphReduce execution plan and ordered feature
+schema. Subsequent temporal frames replay this learned representation rather
+than rediscovering feature operations.
+
+## Stage 3: fit the production frame ensemble
+
+When enabled, GraphReduce's event-cadence inference lets dated nodes and
+relationships replace the initial lookback grid
+with compact periods inferred from their observed event frequency and the
+configured compute horizon. Kurve RSC records those inferred periods as part
+of the selected plan, then restores rather than rediscovers them throughout
+historical replay, outer refitting, and prediction.
 
 For timestamped problems, the production refit can use several point-in-time
-training frames. If the selected cutoffs are $c_1,\ldots,c_K$, their compatible
-frames are row-unioned:
+training frames. If the selected cutoffs are $c_1,\ldots,c_K$, each compatible
+frame is consumed and released before the next is constructed. An independent
+CatBoost model is fitted per frame, and their predictions are averaged:
 
 $$
-F_{q^*}^{\mathrm{train}}
-= F_{q^*}(c_1) \oplus \cdots \oplus F_{q^*}(c_K).
+M_k = \operatorname{CatBoostFit}(F_{q^*}(c_k)),
+\qquad
+\hat{f}(x)=\frac{1}{K}\sum_{k=1}^{K}M_k(x).
 $$
 
 Here $K$ increases temporal coverage and usually frame height, while $d$ and
@@ -216,10 +275,11 @@ is learned once on the latest full-training frame and replayed at the other
 cutoffs, preventing each historical view from silently inventing a different
 feature program.
 
-After validation, the production CatBoost model is refit on full training plus
-validation. Test or future frames replay the frozen graph plan and training-only
-schema with `GraphReduce(train=False)`. Feature discovery does not run again at
-inference time.
+Validation is scored using only the ensemble of training-frame models. Kurve
+RSC then fits independent validation-frame models and adds them to the final
+train-plus-validation ensemble. Test or future frames replay the frozen graph
+plan and training-only schema with `GraphReduce(train=False)`. Feature discovery
+does not run again at inference time.
 
 # The downstream learner is a replaceable participant
 
@@ -231,10 +291,10 @@ CatBoost is the primary backend today because it is a strong conventional
 learner for mixed numerical and categorical data and can expose the value of a
 relational representation without requiring a bespoke neural architecture.
 The implementation currently holds the supplied CatBoost parameter policy
-fixed while it searches the relational configuration; CatBoost early stopping
-may adapt the fitted iteration count on sufficiently large validation sets.
+fixed while it searches the relational configuration. Each independent
+production-frame model receives the declared tree budget.
 
-TabPFN is a natural next backend. From Kurve RSC's perspective, the relational
+TabPFN is a natural alternate backend. From Kurve RSC's perspective, the relational
 system compiles database history into the tabular context on which a foundation
 model can condition or be fine-tuned. Context length, row budget, and feature
 budget will affect the feasible candidate space, but they do not change the
@@ -242,10 +302,11 @@ contract: a candidate is judged after the chosen learner consumes its frame.
 The same separation can support other gradient-boosted trees, linear models,
 neural tabular models, or AutoML systems as adapters are added.
 
-Learner neutrality should not be confused with implemented parity. The
-current packaged path is CatBoost; TabPFN and additional learners are forward
-work. Kurve RSC's architectural contribution is that adding them does not
-require redefining point-in-time relational construction.
+Learner neutrality should not be confused with implemented parity. CatBoost is
+the packaged reference path and the only backend currently supporting
+multi-frame production fitting. The experimental TabPFN v3 adapter supports
+single-frame fitting. Kurve RSC's architectural contribution is that additional
+learners do not require redefining point-in-time relational construction.
 
 # Kurve RSC and GraphReduce: a deliberate boundary
 
@@ -308,8 +369,8 @@ predictor for the task contract RelBench provides.
 
 Kurve RSC optimizes the predictive utility of a relational representation
 under a declared search space and validation split. In the current system,
-that includes depth, cumulative feature-family stage, automatic annotations,
-and optional family column budgets. The objective reflects the combination of
+that includes depth, independent feature-family subsets, automatic annotations,
+and a utility-ranked source-column budget funnel. The objective reflects the combination of
 the generated frame and fitted learner.
 
 It does not yet claim to solve every related optimization problem:
@@ -318,8 +379,9 @@ It does not yet claim to solve every related optimization problem:
 - The default search does not jointly sweep arbitrary CatBoost hyperparameters
   or learner families; caller-supplied model parameters are held fixed across
   relational candidates.
-- Search currently uses one latest sampled training frame, while the winning
-  configuration may be rebuilt over multiple full-data cutoff frames.
+- Screening uses one latest training frame, so a weak one-frame rank can still
+  exclude a configuration whose value appears only with additional temporal
+  coverage.
 - The primary selection objective is predictive performance. Runtime and
   feature count inform the simpler recommendation but are not yet a general
   multi-objective cost optimizer.
@@ -361,9 +423,9 @@ the view whose usefulness survives contact with the prediction task.
    [documentation](https://wesmadrigal.github.io/GraphReduce/), and
    [PyPI](https://pypi.org/project/graphreduce/).
 
-2. Kurve AI. **Kurve RSC: Multi-Cutoff Relational Signal Compression,
-   Downstream Learning, and Kurve RSC Feature Families.** Technical report,
-   August 2026. [Companion report](../../kurve-rsc-benchmark/docs/kurve-rsc-technical-report.md).
+2. Kurve AI. **KurveRSC: Validation-Guided Relational Signal Compression with
+   a Downstream Learner in the Loop.** Technical report, August 2026.
+   [Companion report](kurversc-technical-report.md).
 
 3. J. Robinson, R. Ranjan, W. Hu, K. Huang, J. Han, A. Dobles, M. Fey,
    J. E. Lenssen, Y. Yuan, Z. Zhang, X. He, and J. Leskovec. **RelBench: A

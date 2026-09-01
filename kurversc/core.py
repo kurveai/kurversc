@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import copy
+import gc
 import hashlib
 import io
 import re
+from dataclasses import replace
 from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
@@ -14,14 +16,26 @@ from time import perf_counter
 from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 import duckdb
+import numpy as np
 import pandas as pd
 import structlog
 
 from .modeling import (
+    FrameEnsemble,
     fit_catboost,
     fit_final_catboost,
+    fit_incremental_catboost_frame,
+    fit_final_tabpfn_v3,
+    fit_tabpfn_v3,
     prepare_features,
     prepare_prediction_features,
+    prepare_training_features,
+    sample_training_rows,
+)
+from .feature_audit import (
+    available_feature_families,
+    estimate_config_feature_width,
+    rank_feature_tables,
 )
 from .search import (
     DEFAULT_FAMILY_STAGES,
@@ -29,8 +43,13 @@ from .search import (
     FitResult,
     GraphConfig,
     Trial,
+    adaptive_depth_candidate_allowed,
     annotate_complexity,
+    diverse_confirmation_trials,
+    forward_candidate_allowed,
     incremental_configs,
+    resolve_feature_family_column_budgets,
+    stability_adjusted_winner,
 )
 from .specs import (
     GraphLabels,
@@ -49,11 +68,28 @@ _NAME = re.compile(r"[^A-Za-z0-9_]+")
 logger = structlog.get_logger("kurversc")
 
 
+def _fit_validation_estimator(*args: Any, model_backend: str, **kwargs: Any):
+    if model_backend == "catboost":
+        return fit_catboost(*args, **kwargs)
+    if model_backend == "tabpfn_v3":
+        return fit_tabpfn_v3(*args, **kwargs)
+    raise ValueError("model_backend must be 'catboost' or 'tabpfn_v3'")
+
+
+def _fit_final_estimator(*args: Any, model_backend: str, **kwargs: Any):
+    if model_backend == "catboost":
+        return fit_final_catboost(*args, **kwargs)
+    if model_backend == "tabpfn_v3":
+        return fit_final_tabpfn_v3(*args, **kwargs)
+    raise ValueError("model_backend must be 'catboost' or 'tabpfn_v3'")
+
+
 @contextmanager
 def _connection_scope(
     connection: duckdb.DuckDBPyConnection | None,
     *,
-    max_temp_directory_size: str = "32GB",
+    memory_limit: str = "64GB",
+    max_temp_directory_size: str = "128GB",
 ) -> Iterator[duckdb.DuckDBPyConnection]:
     """Own an in-memory DuckDB connection and its bounded spill directory."""
 
@@ -64,6 +100,13 @@ def _connection_scope(
         con = duckdb.connect(":memory:")
         escaped = temporary_directory.replace("'", "''")
         con.sql(f"SET temp_directory='{escaped}'")
+        escaped_memory_limit = memory_limit.replace("'", "''")
+        con.sql(f"SET memory_limit='{escaped_memory_limit}'")
+        # RelArena may run one isolated task per host core group. Allowing each
+        # DuckDB connection to discover every host CPU multiplies worker stacks
+        # and allocator arenas across parallel tasks without improving aggregate
+        # throughput.
+        con.sql("SET threads=8")
         # A sampled candidate must fail cleanly instead of filling the host
         # filesystem with an unbounded intermediate join. Callers supplying
         # their own connection retain complete control over DuckDB settings.
@@ -77,6 +120,10 @@ def _connection_scope(
 
 def _freeze_execution_plan(graph: Any, cut_date: datetime) -> dict[str, Any]:
     plan = graph.freeze_execution_plan()
+    plan["kurversc_ts_periods"] = {
+        node.prefix: tuple(getattr(node, "ts_periods", ()) or ())
+        for node in graph.nodes()
+    }
     # GraphReduce's external-label cut date is shifted by one microsecond to
     # make relation history inclusive. Root filters deliberately use the exact
     # task cutoff, so retain that second date for correct replay as well.
@@ -103,7 +150,14 @@ def _prepare_execution_plan(
 
 
 def _execution_plan_fingerprint(plan: Mapping[str, Any]) -> str:
-    records = []
+    records: list[Any] = [
+        tuple(
+            sorted(
+                (prefix, tuple(periods))
+                for prefix, periods in plan.get("kurversc_ts_periods", {}).items()
+            )
+        )
+    ]
     for record in plan.get("records", []):
         records.append(
             (
@@ -273,22 +327,236 @@ class _Workspace:
                 pass
 
 
+@contextmanager
+def _table_workspace(
+    connection: duckdb.DuckDBPyConnection | None,
+    tables: Mapping[str, Table],
+    *,
+    sample_rows: int,
+    random_state: int,
+    search: bool,
+    search_full_data: bool = False,
+    duckdb_memory_limit: str = "64GB",
+    duckdb_max_temp_directory_size: str = "128GB",
+) -> Iterator[_Workspace]:
+    """Open a disposable workspace for one materialized feature frame.
+
+    Internally owned DuckDB connections are intentionally scoped this tightly:
+    closing the connection between configurations/cutoffs releases native query
+    arenas that Python garbage collection cannot see.
+    """
+
+    with _connection_scope(
+        connection,
+        memory_limit=duckdb_memory_limit,
+        max_temp_directory_size=duckdb_max_temp_directory_size,
+    ) as con:
+        workspace = _Workspace(
+            con,
+            sample_rows=sample_rows,
+            random_state=random_state,
+        )
+        try:
+            for name, table in tables.items():
+                source = (
+                    table.search_source
+                    if search and table.search_source is not None
+                    else table.source
+                )
+                workspace.add(
+                    name,
+                    source,
+                    sample=search and not search_full_data,
+                )
+            yield workspace
+        finally:
+            workspace.close()
+            gc.collect()
+
+
+def _load_frame_source(
+    source: Source,
+    *,
+    connection: duckdb.DuckDBPyConnection | None,
+    sample_rows: int,
+    random_state: int,
+    sample: bool,
+    name: str,
+    duckdb_memory_limit: str = "64GB",
+    duckdb_max_temp_directory_size: str = "128GB",
+) -> pd.DataFrame:
+    """Load a label/prediction source in its own short-lived workspace."""
+
+    with _connection_scope(
+        connection,
+        memory_limit=duckdb_memory_limit,
+        max_temp_directory_size=duckdb_max_temp_directory_size,
+    ) as con:
+        workspace = _Workspace(
+            con,
+            sample_rows=sample_rows,
+            random_state=random_state,
+        )
+        try:
+            workspace.add(name, source, sample=sample)
+            return workspace.frame(name)
+        finally:
+            workspace.close()
+
+
+def _iteration_schedule(total_iterations: int, frames: int) -> tuple[int, ...]:
+    """Distribute a fixed CatBoost tree budget over sequential frame updates."""
+
+    if total_iterations < 1:
+        raise ValueError("CatBoost iterations must be positive")
+    if frames < 1:
+        raise ValueError("At least one incremental training frame is required")
+    if total_iterations < frames:
+        # CatBoost needs at least one new tree per continuation. This is only a
+        # corner case for deliberately tiny test configurations.
+        return (1,) * frames
+    quotient, remainder = divmod(total_iterations, frames)
+    return tuple(quotient + (1 if index < remainder else 0) for index in range(frames))
+
+
+def _plan_with_schema(
+    plan: Mapping[str, Any],
+    *,
+    columns: Sequence[str],
+    categorical_columns: Sequence[str],
+    datetime_columns: Sequence[str],
+) -> dict[str, Any]:
+    frozen = copy.deepcopy(dict(plan))
+    frozen["kurversc_feature_schema"] = {
+        "columns": tuple(columns),
+        "categorical_columns": tuple(categorical_columns),
+        "datetime_columns": tuple(datetime_columns),
+    }
+    return frozen
+
+
+def _schema_from_plan(
+    plan: Mapping[str, Any],
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]] | None:
+    schema = plan.get("kurversc_feature_schema")
+    if not isinstance(schema, Mapping):
+        return None
+    columns = tuple(schema.get("columns", ()))
+    if not columns:
+        return None
+    return (
+        columns,
+        tuple(schema.get("categorical_columns", ())),
+        tuple(schema.get("datetime_columns", ())),
+    )
+
+
+def _score_prediction_chunks(
+    labels: Sequence[np.ndarray],
+    predictions: Sequence[np.ndarray],
+    *,
+    task: str,
+    target_classes: tuple[Any, ...],
+) -> tuple[str, float]:
+    if not labels or not predictions:
+        raise ValueError("At least one validation frame is required")
+    truth = np.concatenate(labels)
+    estimate = np.concatenate(predictions)
+    if task == "classification":
+        from sklearn.metrics import roc_auc_score
+
+        class_map = {value: index for index, value in enumerate(target_classes)}
+        encoded = pd.Series(truth).map(class_map)
+        if encoded.isna().any():
+            raise ValueError("Validation contains a class absent from training")
+        if encoded.nunique() != 2:
+            raise ValueError("Validation labels must contain both classes for ROC AUC")
+        return "roc_auc", float(roc_auc_score(encoded, estimate))
+    from sklearn.metrics import mean_absolute_error
+
+    return "mae", float(mean_absolute_error(pd.to_numeric(pd.Series(truth)), estimate))
+
+
+def _prediction_standard_error(
+    labels: Sequence[np.ndarray],
+    predictions: Sequence[np.ndarray],
+    *,
+    task: str,
+    target_classes: tuple[Any, ...],
+) -> float:
+    """Estimate metric sampling uncertainty without retaining feature frames."""
+
+    if not labels or not predictions:
+        return 0.0
+    truth = np.concatenate(labels)
+    estimate = np.concatenate(predictions)
+    if len(truth) < 2:
+        return 0.0
+    if task == "classification":
+        from sklearn.metrics import roc_auc_score
+
+        class_map = {value: index for index, value in enumerate(target_classes)}
+        encoded = pd.Series(truth).map(class_map).to_numpy()
+        positives = int(np.sum(encoded == 1))
+        negatives = int(np.sum(encoded == 0))
+        if positives < 1 or negatives < 1:
+            return 0.0
+        auc = float(roc_auc_score(encoded, estimate))
+        q1 = auc / max(1e-12, 2.0 - auc)
+        q2 = 2.0 * auc * auc / max(1e-12, 1.0 + auc)
+        variance = (
+            auc * (1.0 - auc)
+            + (positives - 1) * (q1 - auc * auc)
+            + (negatives - 1) * (q2 - auc * auc)
+        ) / (positives * negatives)
+        return float(np.sqrt(max(0.0, variance)))
+
+    errors = np.abs(
+        pd.to_numeric(pd.Series(truth)).to_numpy(dtype=float)
+        - np.asarray(estimate, dtype=float)
+    )
+    if len(errors) < 2:
+        return 0.0
+    return float(np.std(errors, ddof=1) / np.sqrt(len(errors)))
+
+
+def _predict_values(model: Any, features: pd.DataFrame, *, task: str) -> np.ndarray:
+    if task == "classification":
+        return np.asarray(model.predict_proba(features)[:, 1], dtype=float)
+    return np.asarray(model.predict(features), dtype=float)
+
+
+def _training_groups(
+    labels: pd.DataFrame,
+    label_spec: Labels,
+) -> Iterator[tuple[datetime, pd.DataFrame]]:
+    if labels.empty:
+        return
+    if label_spec.timestamp:
+        for timestamp, frame in labels.groupby(
+            label_spec.timestamp, sort=True, dropna=False
+        ):
+            if pd.isna(timestamp):
+                raise ValueError("Label timestamps must not be missing")
+            yield pd.Timestamp(timestamp).to_pydatetime(), frame
+    else:
+        yield datetime.now(), labels
+
+
+def _drop_graph_markers(
+    frame: pd.DataFrame,
+    *,
+    split_marker: str,
+) -> pd.DataFrame:
+    return frame.drop(columns=[split_marker], errors="ignore")
+
+
 def _normalize_tables(
     parent: Table,
     tables: Sequence[Table | Source] | Mapping[str, Table | Source],
 ) -> tuple[str, dict[str, Table]]:
     root_name = parent.name or _source_name(parent.source, "parent")
-    root = Table(
-        parent.source,
-        search_source=parent.search_source,
-        key=parent.key,
-        name=root_name,
-        date=parent.date,
-        timeless=parent.timeless,
-        prefix=parent.prefix,
-        columns=parent.columns,
-        context_keys=parent.context_keys,
-    )
+    root = replace(parent, name=root_name)
     normalized = {root_name: root}
     values: Iterable[tuple[str | None, Table | Source]]
     values = (
@@ -305,18 +573,43 @@ def _normalize_tables(
         )
         if name in normalized:
             raise ValueError(f"Duplicate table name: {name}")
-        normalized[name] = Table(
-            table.source,
-            search_source=table.search_source,
-            key=table.key,
-            name=name,
-            date=table.date,
-            timeless=table.timeless,
-            prefix=table.prefix,
-            columns=table.columns,
-            context_keys=table.context_keys,
-        )
+        normalized[name] = replace(table, name=name)
     return root_name, normalized
+
+
+def _rank_feature_funnel(
+    tables: Mapping[str, Table],
+    relationships: Sequence[Relationship],
+    *,
+    connection: duckdb.DuckDBPyConnection | None,
+    sample_rows: int,
+    random_state: int,
+    feature_family_max_columns: int | None,
+    feature_family_max_column_options: Sequence[int | None],
+    feature_family_max_features_per_column: int | None,
+    duckdb_memory_limit: str,
+    duckdb_max_temp_directory_size: str,
+) -> tuple[dict[str, Table], pd.DataFrame]:
+    """Fit one deterministic source-column ordering for the whole search."""
+
+    with _table_workspace(
+        connection,
+        tables,
+        sample_rows=sample_rows,
+        random_state=random_state,
+        search=True,
+        duckdb_memory_limit=duckdb_memory_limit,
+        duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+    ) as workspace:
+        samples = {name: workspace.frame(name) for name in tables}
+    return rank_feature_tables(
+        tables,
+        relationships,
+        samples,
+        feature_family_max_columns=feature_family_max_columns,
+        feature_family_max_column_options=feature_family_max_column_options,
+        feature_family_max_features_per_column=(feature_family_max_features_per_column),
+    )
 
 
 def _split_labels(
@@ -396,10 +689,46 @@ def _resource_block_for(
         if (
             config.auto_annotate_features == annotations
             and config.depth >= minimum_depth
-            and config.feature_families[: len(families)] == families
+            and set(families).issubset(config.feature_families)
         ):
             return block
     return None
+
+
+def _observed_feature_width_estimate(
+    config: GraphConfig,
+    completed_trials: Sequence[Trial],
+    *,
+    audit_estimate: int,
+) -> int:
+    """Refine the audit estimate using already materialized parent shapes."""
+
+    predictions: list[int] = []
+    for trial in completed_trials:
+        if trial.status != "completed" or trial.feature_count < 1:
+            continue
+        parent = trial.config
+        if (
+            parent.auto_annotate_features != config.auto_annotate_features
+            or parent.feature_family_max_columns != config.feature_family_max_columns
+            or parent.feature_family_max_features_per_column
+            != config.feature_family_max_features_per_column
+            or parent.feature_propagation_max_functions_per_column
+            != config.feature_propagation_max_functions_per_column
+        ):
+            continue
+        if (
+            parent.feature_families == config.feature_families
+            and parent.depth == config.depth - 1
+        ):
+            predictions.append(int(np.ceil(trial.feature_count * 1.75)))
+        elif (
+            parent.depth == config.depth
+            and set(parent.feature_families).issubset(config.feature_families)
+            and len(config.feature_families) - len(parent.feature_families) == 1
+        ):
+            predictions.append(int(np.ceil(trial.feature_count * 1.5)))
+    return max(predictions) if predictions else audit_estimate
 
 
 def _select_trials(
@@ -407,6 +736,7 @@ def _select_trials(
     *,
     classification_negligible_gain: float,
     regression_negligible_relative_gain: float,
+    complexity_uncertainty_multiplier: float = 1.0,
 ) -> tuple[Trial, Trial]:
     """Return the raw winner and complexity-aware recommendation."""
 
@@ -418,14 +748,30 @@ def _select_trials(
             trial
             for trial in successful
             if best.validation_score - trial.validation_score
-            <= classification_negligible_gain
+            <= max(
+                classification_negligible_gain,
+                complexity_uncertainty_multiplier
+                * (
+                    best.validation_standard_error**2
+                    + trial.validation_standard_error**2
+                )
+                ** 0.5,
+            )
         ]
     else:
         eligible = [
             trial
             for trial in successful
-            if trial.validation_score
-            <= best.validation_score * (1 + regression_negligible_relative_gain)
+            if trial.validation_score - best.validation_score
+            <= max(
+                abs(best.validation_score) * regression_negligible_relative_gain,
+                complexity_uncertainty_multiplier
+                * (
+                    best.validation_standard_error**2
+                    + trial.validation_standard_error**2
+                )
+                ** 0.5,
+            )
         ]
     recommended = min(
         eligible,
@@ -452,7 +798,7 @@ def _build_graph(
     graph_labels: GraphLabels | None = None,
     execution_plan: Mapping[str, Any] | None = None,
     train: bool = True,
-    infer_ts_periods: bool = False,
+    infer_ts_periods: bool = True,
 ):
     from graphreduce.enum import ComputeLayerEnum, PeriodUnit
     from graphreduce.graph_reduce import GraphReduce
@@ -508,10 +854,9 @@ def _build_graph(
             pk=table.key,
             date_key=table.date,
             columns=selected,
-            ts_periods=[7, 30, 90],
             categorical_cardinality_threshold=20,
             categorical_top_k=5,
-            auto_text_features=False,
+            auto_text_features=config.auto_text_features,
             auto_annotate_features=config.auto_annotate_features,
             auto_annotate_max_categorical_columns=10,
             auto_annotate_max_gated_numeric_cols=4,
@@ -525,6 +870,12 @@ def _build_graph(
                 config.feature_family_max_columns
                 if config.feature_family_max_columns is not None
                 else uncapped_budget
+            ),
+            feature_family_max_features_per_column=(
+                config.feature_family_max_features_per_column
+            ),
+            feature_propagation_max_functions_per_column=(
+                config.feature_propagation_max_functions_per_column
             ),
         )
         if name == root_name:
@@ -604,7 +955,7 @@ def _build_graph(
         cut_date=graph_cut_date,
         compute_period_val=compute_period_days,
         compute_period_unit=PeriodUnit.day,
-        infer_ts_periods=infer_ts_periods,
+        infer_ts_periods=infer_ts_periods and execution_plan is None,
         date_filters_on_agg=True,
         label_node=label_node,
         label_field=graph_labels.field if graph_labels else None,
@@ -632,6 +983,10 @@ def _build_graph(
         # Date-dependent replay needs hydrated node periods before GraphReduce
         # can rebind cut, lookback, time-series, and future-label literals.
         graph.hydrate_graph_attrs()
+        planned_periods = execution_plan.get("kurversc_ts_periods", {})
+        for node in graph.nodes():
+            if node.prefix in planned_periods:
+                node.ts_periods = list(planned_periods[node.prefix])
         graph.apply_execution_plan(
             _prepare_execution_plan(
                 execution_plan,
@@ -658,7 +1013,7 @@ def _materialize_at_cutoff(
     frozen_plan_sink: list[dict[str, Any]] | None = None,
     train: bool = True,
     planning_labels: pd.DataFrame | None = None,
-    infer_ts_periods: bool = False,
+    infer_ts_periods: bool = True,
 ) -> pd.DataFrame:
     excluded = {label_spec.target}
     if label_spec.split:
@@ -851,7 +1206,7 @@ def _materialize_graph_labels_at_cutoff(
     execution_plan: Mapping[str, Any] | None = None,
     frozen_plan_sink: list[dict[str, Any]] | None = None,
     train: bool = True,
-    infer_ts_periods: bool = False,
+    infer_ts_periods: bool = True,
 ) -> pd.DataFrame:
     """Run one graph whose target is produced by GraphReduce itself."""
 
@@ -1093,7 +1448,7 @@ def _model_exclusions(
     return excluded
 
 
-def fit(
+def _fit_buffered_legacy(
     parent_node: Table | Source,
     label_node: Labels | GraphLabels | Source,
     *,
@@ -1110,50 +1465,72 @@ def fit(
     max_depth: int = 3,
     feature_family_stages: Sequence[Sequence[str]] = DEFAULT_FAMILY_STAGES,
     auto_annotate_options: Sequence[bool] = (True, False),
-    feature_family_max_columns: int | None = None,
+    feature_family_max_columns: int | None = 4,
     sample_rows: int = 100_000,
+    search_full_data: bool = False,
     search_training_frames: int = 1,
     full_training_frames: int | None = None,
     rerank_top_k: int = 3,
     validation_fraction: float = 0.2,
     compute_period_days: int = 3650,
     random_state: int = 42,
+    model_backend: str = "catboost",
+    estimator_train_rows: int | None = None,
     model_params: Mapping[str, Any] | None = None,
     connection: duckdb.DuckDBPyConnection | None = None,
+    duckdb_memory_limit: str = "64GB",
+    duckdb_max_temp_directory_size: str = "128GB",
     continue_on_error: bool = True,
     verbose: bool = False,
     classification_negligible_gain: float = 0.002,
     regression_negligible_relative_gain: float = 0.005,
     drastic_feature_growth: float = 2.0,
     graph_configs: Sequence[GraphConfig] | None = None,
+    infer_ts_periods: bool = False,
+    auto_text_features: bool = False,
+    auto_annotate_max_text_columns: int | None = None,
     preselected_config: GraphConfig | None = None,
     preselected_execution_plan: Mapping[str, Any] | None = None,
 ) -> FitResult:
     """Fit and select a GraphReduce configuration using validation performance.
 
-    All configurations are screened on the latest training frame. When more
-    training frames are requested, the strongest ``rerank_top_k`` screening
-    candidates (plus the complexity-aware screening recommendation) are
-    rescored on those frames before the production configuration is selected.
+    All configurations are screened on the latest training frame. By default
+    the screening graph is row-sampled; ``search_full_data=True`` evaluates
+    every configuration against the complete source tables instead. The
+    strongest ``rerank_top_k`` screening candidates (plus the
+    complexity-aware screening recommendation) are rescored on the full
+    training frames before the production configuration is selected.
     A supplied ``preselected_config`` bypasses both stages; an accompanying
     ``preselected_execution_plan`` replays the already learned feature recipe.
     """
 
     if sample_rows < 1:
         raise ValueError("sample_rows must be positive")
-    if search_training_frames != 1:
-        raise ValueError(
-            "search_training_frames must be 1; configuration search always uses "
-            "the latest eligible training frame"
-        )
+    if search_training_frames < 1:
+        raise ValueError("search_training_frames must be positive")
     if full_training_frames is not None and full_training_frames < 1:
         raise ValueError("full_training_frames must be positive or None")
     if rerank_top_k < 1:
         raise ValueError("rerank_top_k must be positive")
+    if model_backend not in {"catboost", "tabpfn_v3"}:
+        raise ValueError("model_backend must be 'catboost' or 'tabpfn_v3'")
+    if estimator_train_rows is None and model_backend == "tabpfn_v3":
+        estimator_train_rows = 10_000
+    if estimator_train_rows is not None and estimator_train_rows < 2:
+        raise ValueError("estimator_train_rows must be at least 2 or None")
+    if not isinstance(duckdb_memory_limit, str) or not duckdb_memory_limit.strip():
+        raise ValueError("duckdb_memory_limit must be a non-empty string")
+    if (
+        not isinstance(duckdb_max_temp_directory_size, str)
+        or not duckdb_max_temp_directory_size.strip()
+    ):
+        raise ValueError("duckdb_max_temp_directory_size must be a non-empty string")
     if preselected_config is not None and graph_configs is not None:
         raise ValueError("preselected_config and graph_configs are mutually exclusive")
     if preselected_execution_plan is not None and preselected_config is None:
         raise ValueError("preselected_execution_plan requires preselected_config")
+    if graph_configs is not None and len(graph_configs) == 0:
+        raise ValueError("graph_configs must contain at least one configuration")
     parent = coerce_table(
         parent_node,
         key=parent_key,
@@ -1211,7 +1588,15 @@ def fit(
     )
     if not configs:
         raise ValueError("graph_configs must contain at least one configuration")
-
+    if auto_text_features or auto_annotate_max_text_columns is not None:
+        configs = tuple(
+            replace(
+                config,
+                auto_text_features=bool(auto_text_features),
+                auto_annotate_max_text_columns=auto_annotate_max_text_columns,
+            )
+            for config in configs
+        )
     with _connection_scope(connection) as con:
         workspace = _Workspace(con, sample_rows=sample_rows, random_state=random_state)
         try:
@@ -1221,6 +1606,7 @@ def fit(
                     table.search_source
                     if table.search_source is not None
                     else table.source,
+                    sample=not search_full_data,
                 )
             split_marker = "__kurversc_validation_split__"
             cutoff_marker = "__kurversc_cutoff__"
@@ -1246,6 +1632,7 @@ def fit(
                     labels_spec.search_source
                     if labels_spec.search_source is not None
                     else labels_spec.source,
+                    sample=not search_full_data,
                 )
                 label_frame = workspace.frame(label_name)
                 required = {
@@ -1296,6 +1683,7 @@ def fit(
                     task=resolved_task,
                     target=target_column,
                     sample_rows=sample_rows,
+                    search_full_data=search_full_data,
                     training_frames=(
                         len(search_graph_cutoffs)
                         if graph_labels is not None
@@ -1448,11 +1836,19 @@ def fit(
                         for column in train_x.columns
                         if pd.api.types.is_datetime64_any_dtype(train[column].dtype)
                     )
-                    model, metric, score, model_seconds = fit_catboost(
+                    estimator_train_x, estimator_train_y = sample_training_rows(
                         train_x,
                         train_y,
+                        limit=estimator_train_rows,
+                        task=resolved_task,
+                        random_state=random_state,
+                    )
+                    model, metric, score, model_seconds = _fit_validation_estimator(
+                        estimator_train_x,
+                        estimator_train_y,
                         validation_x,
                         validation_y,
+                        model_backend=model_backend,
                         task=resolved_task,
                         categorical=categorical,
                         random_state=random_state,
@@ -1464,7 +1860,7 @@ def fit(
                         validation_score=score,
                         objective_score=score if metric == "roc_auc" else -score,
                         feature_count=train_x.shape[1],
-                        train_rows=len(train_x),
+                        train_rows=len(estimator_train_x),
                         validation_rows=len(validation_x),
                         feature_seconds=feature_seconds,
                         model_seconds=model_seconds,
@@ -1751,15 +2147,25 @@ def fit(
                                 rerank_train[column].dtype
                             )
                         )
-                        rerank_model, metric, score, model_seconds = fit_catboost(
+                        rerank_estimator_x, rerank_estimator_y = sample_training_rows(
                             rerank_train_x,
                             rerank_train_y,
-                            rerank_validation_x,
-                            rerank_validation_y,
+                            limit=estimator_train_rows,
                             task=resolved_task,
-                            categorical=rerank_categorical,
                             random_state=random_state,
-                            model_params=model_params,
+                        )
+                        rerank_model, metric, score, model_seconds = (
+                            _fit_validation_estimator(
+                                rerank_estimator_x,
+                                rerank_estimator_y,
+                                rerank_validation_x,
+                                rerank_validation_y,
+                                model_backend=model_backend,
+                                task=resolved_task,
+                                categorical=rerank_categorical,
+                                random_state=random_state,
+                                model_params=model_params,
+                            )
                         )
                         reranked = Trial(
                             config=config,
@@ -1767,7 +2173,7 @@ def fit(
                             validation_score=score,
                             objective_score=(score if metric == "roc_auc" else -score),
                             feature_count=rerank_train_x.shape[1],
-                            train_rows=len(rerank_train_x),
+                            train_rows=len(rerank_estimator_x),
                             validation_rows=len(rerank_validation_x),
                             feature_seconds=feature_seconds,
                             model_seconds=model_seconds,
@@ -1943,27 +2349,45 @@ def fit(
                 validation_model = selected.model
                 full_metric = selected.metric
                 full_validation_score = selected.validation_score
+                validation_estimator_rows = selected.train_rows
             else:
+                full_estimator_x, full_estimator_y = sample_training_rows(
+                    full_train_x,
+                    full_train_y,
+                    limit=estimator_train_rows,
+                    task=resolved_task,
+                    random_state=random_state,
+                )
                 (
                     validation_model,
                     full_metric,
                     full_validation_score,
                     _,
-                ) = fit_catboost(
-                    full_train_x,
-                    full_train_y,
+                ) = _fit_validation_estimator(
+                    full_estimator_x,
+                    full_estimator_y,
                     full_validation_x,
                     full_validation_y,
+                    model_backend=model_backend,
                     task=resolved_task,
                     categorical=full_categorical,
                     random_state=random_state,
                     model_params=model_params,
                 )
+                validation_estimator_rows = len(full_estimator_x)
             combined_x = pd.concat([full_train_x, full_validation_x], ignore_index=True)
             combined_y = pd.concat([full_train_y, full_validation_y], ignore_index=True)
-            final_model, final_model_seconds, target_classes = fit_final_catboost(
+            final_estimator_x, final_estimator_y = sample_training_rows(
                 combined_x,
                 combined_y,
+                limit=estimator_train_rows,
+                task=resolved_task,
+                random_state=random_state,
+            )
+            final_model, final_model_seconds, target_classes = _fit_final_estimator(
+                final_estimator_x,
+                final_estimator_y,
+                model_backend=model_backend,
                 task=resolved_task,
                 categorical=full_categorical,
                 random_state=random_state,
@@ -2069,9 +2493,10 @@ def fit(
                 task=resolved_task,
                 metric=full_metric,
                 validation_score=full_validation_score,
-                train_rows=len(full_train_x),
+                train_rows=validation_estimator_rows,
                 validation_rows=len(full_validation_x),
                 training_frames=production_training_frames,
+                model_backend=model_backend,
                 target_classes=target_classes,
                 test_predictions=test_predictions,
                 test_score=test_score,
@@ -2087,7 +2512,7 @@ def fit(
                         else -full_validation_score
                     ),
                     feature_count=full_train_x.shape[1],
-                    train_rows=len(full_train_x),
+                    train_rows=validation_estimator_rows,
                     validation_rows=len(full_validation_x),
                     feature_seconds=0.0,
                     model_seconds=0.0,
@@ -2104,14 +2529,16 @@ def fit(
                 "full_refit_completed",
                 metric=full_metric,
                 validation_score=round(full_validation_score, 6),
+                model_backend=model_backend,
                 training_frames=production_training_frames,
                 train_rows=len(full_train_x),
+                estimator_train_rows=validation_estimator_rows,
                 validation_rows=len(full_validation_x),
                 features=len(full_train_x.columns),
                 plan_operations=len(production_plan.get("records", [])),
                 plan_fingerprint=plan_fingerprint,
                 final_model_seconds=round(final_model_seconds, 3),
-                final_estimator_rows=len(combined_x),
+                final_estimator_rows=len(final_estimator_x),
                 reused_rerank_artifact=selected_cache is not None,
                 reused_preselected_plan=preselected_execution_plan is not None,
                 test_rows=0 if test_predictions is None else len(test_predictions),
@@ -2130,6 +2557,2018 @@ def fit(
             workspace.close()
 
 
+def fit(
+    parent_node: Table | Source,
+    label_node: Labels | GraphLabels | Source,
+    *,
+    tables: Sequence[Table | Source] | Mapping[str, Table | Source] = (),
+    relationships: Sequence[Relationship | Mapping[str, Any]] = (),
+    parent_key: Key | Sequence[str] | None = None,
+    label_key: Key | Sequence[str] | None = None,
+    target: str | None = None,
+    parent_date: str | None = None,
+    parent_timeless: bool = False,
+    label_timestamp: str | None = None,
+    split_column: str | None = None,
+    task: str = "auto",
+    max_depth: int = 3,
+    feature_family_stages: Sequence[Sequence[str]] = DEFAULT_FAMILY_STAGES,
+    auto_annotate_options: Sequence[bool] = (True, False),
+    feature_family_max_columns: int | None = 4,
+    feature_family_max_column_options: Sequence[int | None] | None = None,
+    feature_family_max_features_per_column: int | None = 32,
+    feature_propagation_max_functions_per_column: int | None = 1,
+    feature_ranking_rows: int = 2_000,
+    forward_search_beam_width: int = 2,
+    sample_rows: int = 100_000,
+    screening_rows: int | None = 10_000,
+    confirmation_top_k: int = 8,
+    search_full_data: bool = False,
+    search_training_frames: int = 1,
+    full_training_frames: int | None = None,
+    rerank_top_k: int = 3,
+    rerank_cutoff_frames: int = 3,
+    rerank_stability_penalty: float = 0.25,
+    validation_fraction: float = 0.2,
+    compute_period_days: int = 3650,
+    random_state: int = 42,
+    model_backend: str = "catboost",
+    estimator_train_rows: int | None = None,
+    model_params: Mapping[str, Any] | None = None,
+    connection: duckdb.DuckDBPyConnection | None = None,
+    duckdb_memory_limit: str = "64GB",
+    duckdb_max_temp_directory_size: str = "128GB",
+    continue_on_error: bool = True,
+    verbose: bool = False,
+    classification_negligible_gain: float = 0.002,
+    regression_negligible_relative_gain: float = 0.005,
+    drastic_feature_growth: float = 2.0,
+    complexity_uncertainty_multiplier: float = 1.0,
+    adaptive_depth_promotion: bool = True,
+    capability_pruning: bool = True,
+    search_max_features: int | None = 8_000,
+    graph_configs: Sequence[GraphConfig] | None = None,
+    infer_ts_periods: bool = False,
+    auto_text_features: bool = False,
+    auto_annotate_max_text_columns: int | None = None,
+    preselected_config: GraphConfig | None = None,
+    preselected_execution_plan: Mapping[str, Any] | None = None,
+) -> FitResult:
+    """Select and fit a GraphReduce plan with one resident feature frame.
+
+    Default search uses three fidelities: a 10K-row forward-beam screen, a
+    ``sample_rows`` confirmation of the strongest candidates, and a full-data
+    rerank of the top three. Each frame is released before the next one is
+    constructed. The selected plan is then replayed over the requested
+    production cutoffs.
+    """
+
+    if sample_rows < 1:
+        raise ValueError("sample_rows must be positive")
+    if screening_rows is not None and screening_rows < 1:
+        raise ValueError("screening_rows must be positive or None")
+    if confirmation_top_k < 0:
+        raise ValueError("confirmation_top_k must be non-negative")
+    if feature_ranking_rows < 1:
+        raise ValueError("feature_ranking_rows must be positive")
+    if (
+        feature_family_max_features_per_column is not None
+        and feature_family_max_features_per_column < 1
+    ):
+        raise ValueError(
+            "feature_family_max_features_per_column must be positive or None"
+        )
+    if (
+        feature_propagation_max_functions_per_column is not None
+        and feature_propagation_max_functions_per_column < 1
+    ):
+        raise ValueError(
+            "feature_propagation_max_functions_per_column must be positive or None"
+        )
+    if forward_search_beam_width < 1:
+        raise ValueError("forward_search_beam_width must be positive")
+    if complexity_uncertainty_multiplier < 0:
+        raise ValueError("complexity_uncertainty_multiplier must be non-negative")
+    if search_max_features is not None and search_max_features < 1:
+        raise ValueError("search_max_features must be positive or None")
+    if search_training_frames < 1:
+        raise ValueError("search_training_frames must be positive")
+    if full_training_frames is not None and full_training_frames < 1:
+        raise ValueError("full_training_frames must be positive or None")
+    if rerank_top_k < 0:
+        raise ValueError("rerank_top_k must be non-negative")
+    if rerank_cutoff_frames < 1:
+        raise ValueError("rerank_cutoff_frames must be positive")
+    if rerank_stability_penalty < 0:
+        raise ValueError("rerank_stability_penalty must be non-negative")
+    if model_backend not in {"catboost", "tabpfn_v3"}:
+        raise ValueError("model_backend must be 'catboost' or 'tabpfn_v3'")
+    if estimator_train_rows is None and model_backend == "tabpfn_v3":
+        estimator_train_rows = 10_000
+    if estimator_train_rows is not None and estimator_train_rows < 2:
+        raise ValueError("estimator_train_rows must be at least 2 or None")
+    if not isinstance(duckdb_memory_limit, str) or not duckdb_memory_limit.strip():
+        raise ValueError("duckdb_memory_limit must be a non-empty string")
+    if (
+        not isinstance(duckdb_max_temp_directory_size, str)
+        or not duckdb_max_temp_directory_size.strip()
+    ):
+        raise ValueError("duckdb_max_temp_directory_size must be a non-empty string")
+    if preselected_config is not None and graph_configs is not None:
+        raise ValueError("preselected_config and graph_configs are mutually exclusive")
+    if preselected_execution_plan is not None and preselected_config is None:
+        raise ValueError("preselected_execution_plan requires preselected_config")
+    if graph_configs is not None and len(graph_configs) == 0:
+        raise ValueError("graph_configs must contain at least one configuration")
+
+    parent = coerce_table(
+        parent_node,
+        key=parent_key,
+        date=parent_date,
+        timeless=parent_timeless,
+    )
+    graph_labels = label_node if isinstance(label_node, GraphLabels) else None
+    labels_spec = (
+        None
+        if graph_labels is not None
+        else coerce_labels(
+            label_node,
+            target=target,
+            key=label_key,
+            timestamp=label_timestamp,
+            split=split_column,
+        )
+    )
+    if parent.key is None or (labels_spec is not None and labels_spec.key is None):
+        raise ValueError(
+            "parent_key and label_key are required (directly or in Table/Labels)"
+        )
+    if labels_spec is not None and labels_spec.target is None:
+        raise ValueError("target is required (directly or in Labels)")
+    if (
+        (graph_labels is not None or labels_spec.timestamp is not None)
+        and parent.date is None
+        and not parent.timeless
+    ):
+        raise ValueError(
+            "parent_date is required when labels have timestamps unless the "
+            "root entity is explicitly declared timeless=True; KurveRSC will "
+            "not silently run a temporal task without a point-in-time root cutoff"
+        )
+
+    root_name, normalized_tables = _normalize_tables(parent, tables)
+    normalized_relationships = tuple(
+        coerce_relationship(item) for item in relationships
+    )
+    if graph_labels is not None and graph_labels.table not in normalized_tables:
+        raise ValueError(
+            f"GraphLabels table {graph_labels.table!r} must appear in tables"
+        )
+    confirmation_trials: list[Trial] = []
+    if preselected_config is not None:
+        column_budgets = (preselected_config.feature_family_max_columns,)
+        audit_features_per_column = (
+            preselected_config.feature_family_max_features_per_column
+        )
+    elif graph_configs is not None:
+        column_budgets = tuple(
+            dict.fromkeys(config.feature_family_max_columns for config in graph_configs)
+        )
+        audit_features_per_column = feature_family_max_features_per_column
+    else:
+        column_budgets = resolve_feature_family_column_budgets(
+            feature_family_max_columns,
+            feature_family_max_column_options,
+        )
+        audit_features_per_column = feature_family_max_features_per_column
+    normalized_tables, feature_audit = _rank_feature_funnel(
+        normalized_tables,
+        normalized_relationships,
+        connection=connection,
+        sample_rows=min(sample_rows, feature_ranking_rows),
+        random_state=random_state,
+        feature_family_max_columns=column_budgets[0],
+        feature_family_max_column_options=column_budgets,
+        feature_family_max_features_per_column=audit_features_per_column,
+        duckdb_memory_limit=duckdb_memory_limit,
+        duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+    )
+    logger.info(
+        "feature_funnel_ranked",
+        tables=len(normalized_tables),
+        columns=len(feature_audit),
+        eligible=int(feature_audit["eligible"].sum()),
+        within_family_budget=int(feature_audit["within_family_budget"].sum()),
+        within_expanded_family_budget=int(
+            feature_audit["within_expanded_family_budget"].sum()
+        ),
+        source_column_budgets=column_budgets,
+        max_features_per_source_column=audit_features_per_column,
+        ranking_rows=min(sample_rows, feature_ranking_rows),
+    )
+    configs = (
+        (preselected_config,)
+        if preselected_config is not None
+        else tuple(graph_configs)
+        if graph_configs is not None
+        else incremental_configs(
+            max_depth=max_depth,
+            feature_family_stages=feature_family_stages,
+            auto_annotate_options=auto_annotate_options,
+            feature_family_max_columns=feature_family_max_columns,
+            feature_family_max_column_options=column_budgets,
+            feature_family_max_features_per_column=(
+                feature_family_max_features_per_column
+            ),
+            feature_propagation_max_functions_per_column=(
+                feature_propagation_max_functions_per_column
+            ),
+        )
+    )
+    if not configs:
+        raise ValueError("graph_configs must contain at least one configuration")
+    if auto_text_features or auto_annotate_max_text_columns is not None:
+        configs = tuple(
+            replace(
+                config,
+                auto_text_features=bool(auto_text_features),
+                auto_annotate_max_text_columns=auto_annotate_max_text_columns,
+            )
+            for config in configs
+        )
+
+    # This block belongs to the public streaming fit implementation below the
+    # feature-funnel audit. Explicit configurations remain exact caller intent.
+    if capability_pruning and graph_configs is None and preselected_config is None:
+        supported_configs: list[GraphConfig] = []
+        unavailable_by_annotation: dict[bool, set[str]] = {}
+        for config in configs:
+            available = available_feature_families(
+                normalized_tables,
+                normalized_relationships,
+                feature_audit,
+                auto_annotate_features=config.auto_annotate_features,
+            )
+            unavailable = set(config.feature_families) - set(available)
+            unavailable_by_annotation.setdefault(
+                config.auto_annotate_features, set()
+            ).update(unavailable)
+            if not unavailable:
+                supported_configs.append(config)
+        logger.info(
+            "search_capabilities_resolved",
+            candidates_before=len(configs),
+            candidates_after=len(supported_configs),
+            unavailable_with_annotations=sorted(
+                unavailable_by_annotation.get(True, set())
+            ),
+            unavailable_without_annotations=sorted(
+                unavailable_by_annotation.get(False, set())
+            ),
+        )
+        configs = tuple(supported_configs)
+    effective_screening_rows = min(
+        sample_rows,
+        sample_rows if screening_rows is None else screening_rows,
+    )
+
+    split_marker = "__kurversc_validation_split__"
+    cutoff_marker = "__kurversc_cutoff__"
+    target_column: str
+    external_test_labels = pd.DataFrame()
+    rerank_source_train_labels: pd.DataFrame | None = None
+
+    if graph_labels is not None:
+        resolved_task = (
+            "classification"
+            if task == "auto" and graph_labels.operation.lower() == "bool"
+            else "regression"
+            if task == "auto"
+            else _infer_task(pd.Series(), task)
+        )
+        target_column = graph_labels.target
+        search_graph_cutoffs = _select_training_cutoffs(
+            graph_labels.train_cutoffs, search_training_frames
+        )
+        search_train_labels = search_validation_labels = None
+    else:
+        search_label_frame = _load_frame_source(
+            labels_spec.search_source
+            if labels_spec.search_source is not None
+            else labels_spec.source,
+            connection=connection,
+            sample_rows=sample_rows,
+            random_state=random_state,
+            sample=not search_full_data,
+            name="search_labels",
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        )
+        required = {
+            *_key_parts(labels_spec.key),
+            labels_spec.target,
+            *([labels_spec.timestamp] if labels_spec.timestamp else []),
+            *([labels_spec.split] if labels_spec.split else []),
+        }
+        missing = required - set(search_label_frame.columns)
+        if missing:
+            raise ValueError(f"Label source is missing columns: {sorted(missing)}")
+        search_label_frame = search_label_frame.dropna(subset=[labels_spec.target])
+        resolved_task = _infer_task(search_label_frame[labels_spec.target], task)
+        search_train_labels, search_validation_labels = _split_labels(
+            search_label_frame,
+            labels_spec,
+            task=resolved_task,
+            validation_fraction=validation_fraction,
+            random_state=random_state,
+        )
+        if labels_spec.timestamp:
+            selected = _select_training_cutoffs(
+                search_train_labels[labels_spec.timestamp].dropna().tolist(),
+                search_training_frames,
+            )
+            search_train_labels = search_train_labels.loc[
+                search_train_labels[labels_spec.timestamp].isin(selected)
+            ]
+        target_column = labels_spec.target
+        del search_label_frame
+        gc.collect()
+
+    excluded = _model_exclusions(
+        normalized_tables,
+        root_name,
+        labels_spec,
+        graph_labels,
+        cutoff_marker,
+    )
+
+    trials: list[Trial] = []
+    resource_blocks: list[tuple[tuple[str, ...], bool, int, str]] = []
+    if preselected_config is None:
+        logger.info(
+            "search_started",
+            candidates=len(configs),
+            task=resolved_task,
+            target=target_column,
+            screening_rows=(None if search_full_data else effective_screening_rows),
+            confirmation_rows=(
+                None
+                if search_full_data or effective_screening_rows >= sample_rows
+                else sample_rows
+            ),
+            confirmation_candidates=confirmation_top_k,
+            search_full_data=search_full_data,
+            training_frames=(
+                len(search_graph_cutoffs)
+                if graph_labels is not None
+                else sum(1 for _ in _training_groups(search_train_labels, labels_spec))
+            ),
+            buffered_training_frames=True,
+            rerank_candidates=rerank_top_k,
+            forward_search_beam_width=forward_search_beam_width,
+            source_column_budgets=column_budgets,
+            max_features_per_source_column=(feature_family_max_features_per_column),
+            max_propagation_functions_per_column=(
+                feature_propagation_max_functions_per_column
+            ),
+            adaptive_depth_promotion=adaptive_depth_promotion,
+            capability_pruning=capability_pruning,
+            search_max_features=search_max_features,
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        )
+    else:
+        logger.info(
+            "search_skipped",
+            reason="preselected_configuration",
+            feature_families=preselected_config.feature_families,
+            depth=preselected_config.depth,
+            auto_annotate_features=preselected_config.auto_annotate_features,
+            frozen_plan=preselected_execution_plan is not None,
+        )
+
+    def evaluate_search_trial(
+        config: GraphConfig,
+        *,
+        rows: int,
+        full_data: bool,
+        stage: str,
+        trial_label: str,
+        estimated_feature_count: int | None,
+    ) -> Trial:
+        event_prefix = "trial" if stage == "screening" else f"{stage}_trial"
+        logger.info(
+            f"{event_prefix}_started",
+            trial=trial_label,
+            feature_families=config.feature_families,
+            depth=config.depth,
+            auto_annotate_features=config.auto_annotate_features,
+            feature_family_max_columns=config.feature_family_max_columns,
+            feature_family_max_features_per_column=(
+                config.feature_family_max_features_per_column
+            ),
+            feature_propagation_max_functions_per_column=(
+                config.feature_propagation_max_functions_per_column
+            ),
+            sample_rows=None if full_data else rows,
+            estimated_feature_count=estimated_feature_count,
+            training_frames=(
+                len(search_graph_cutoffs)
+                if graph_labels is not None
+                else sum(1 for _ in _training_groups(search_train_labels, labels_spec))
+            ),
+            buffered_training_frames=True,
+        )
+        started = perf_counter()
+        model_seconds = 0.0
+        model = None
+        try:
+            with _table_workspace(
+                connection,
+                normalized_tables,
+                sample_rows=rows,
+                random_state=random_state,
+                search=True,
+                search_full_data=full_data,
+                duckdb_memory_limit=duckdb_memory_limit,
+                duckdb_max_temp_directory_size=(duckdb_max_temp_directory_size),
+            ) as workspace:
+                frozen_plans: list[dict[str, Any]] = []
+                if graph_labels is not None:
+                    search_training_descriptors: tuple[Any, ...] = tuple(
+                        search_graph_cutoffs
+                    )
+                    stage_validation_descriptors = tuple(
+                        graph_labels.validation_cutoffs
+                    )
+                else:
+                    search_training_descriptors = tuple(
+                        _training_groups(search_train_labels, labels_spec)
+                    )
+                    stage_validation_descriptors = tuple(
+                        _training_groups(search_validation_labels, labels_spec)
+                    )
+                if not search_training_descriptors:
+                    raise ValueError("Configuration search requires training cutoffs")
+
+                # Learn the candidate's uncertain feature operations on the latest
+                # search cutoff, then replay that exact plan on the earlier cutoffs.
+                # This experimental path deliberately retains every cutoff frame
+                # until they are concatenated for one downstream fit.
+                latest_descriptor = search_training_descriptors[-1]
+                if graph_labels is not None:
+                    latest_train_frame = _materialize_graph_labels_at_cutoff(
+                        workspace,
+                        normalized_tables,
+                        normalized_relationships,
+                        root_name,
+                        config,
+                        graph_labels,
+                        cut_date=pd.Timestamp(latest_descriptor).to_pydatetime(),
+                        split_value="train",
+                        split_marker=split_marker,
+                        cutoff_marker=cutoff_marker,
+                        compute_period_days=compute_period_days,
+                        verbose=verbose,
+                        frozen_plan_sink=frozen_plans,
+                        infer_ts_periods=infer_ts_periods,
+                    )
+                else:
+                    latest_cutoff, latest_labels = latest_descriptor
+                    latest_train_frame = _materialize_at_cutoff(
+                        workspace,
+                        normalized_tables,
+                        normalized_relationships,
+                        root_name,
+                        config,
+                        latest_labels,
+                        labels_spec,
+                        cut_date=latest_cutoff,
+                        compute_period_days=compute_period_days,
+                        verbose=verbose,
+                        frozen_plan_sink=frozen_plans,
+                        planning_labels=search_train_labels,
+                        infer_ts_periods=infer_ts_periods,
+                    )
+                execution_plan = frozen_plans[0]
+                latest_train_frame = _drop_graph_markers(
+                    latest_train_frame, split_marker=split_marker
+                )
+                buffered_frames: dict[int, pd.DataFrame] = {
+                    len(search_training_descriptors) - 1: latest_train_frame
+                }
+                expected_columns = tuple(latest_train_frame.columns)
+                for frame_index, descriptor in enumerate(
+                    search_training_descriptors[:-1]
+                ):
+                    if graph_labels is not None:
+                        cutoff_frame = _materialize_graph_labels_at_cutoff(
+                            workspace,
+                            normalized_tables,
+                            normalized_relationships,
+                            root_name,
+                            config,
+                            graph_labels,
+                            cut_date=pd.Timestamp(descriptor).to_pydatetime(),
+                            split_value="train",
+                            split_marker=split_marker,
+                            cutoff_marker=cutoff_marker,
+                            compute_period_days=compute_period_days,
+                            verbose=verbose,
+                            execution_plan=execution_plan,
+                            infer_ts_periods=False,
+                        )
+                    else:
+                        cutoff, cutoff_labels = descriptor
+                        cutoff_frame = _materialize_at_cutoff(
+                            workspace,
+                            normalized_tables,
+                            normalized_relationships,
+                            root_name,
+                            config,
+                            cutoff_labels,
+                            labels_spec,
+                            cut_date=cutoff,
+                            compute_period_days=compute_period_days,
+                            verbose=verbose,
+                            execution_plan=execution_plan,
+                            infer_ts_periods=False,
+                        )
+                    cutoff_frame = _drop_graph_markers(
+                        cutoff_frame, split_marker=split_marker
+                    )
+                    if set(cutoff_frame.columns) != set(expected_columns):
+                        missing = set(expected_columns) - set(cutoff_frame.columns)
+                        extra = set(cutoff_frame.columns) - set(expected_columns)
+                        raise ValueError(
+                            "Frozen GraphReduce search plan changed columns across "
+                            f"cutoffs; missing={sorted(missing)[:10]}, "
+                            f"extra={sorted(extra)[:10]}"
+                        )
+                    buffered_frames[frame_index] = cutoff_frame.loc[:, expected_columns]
+
+                ordered_frames = [
+                    buffered_frames[index]
+                    for index in range(len(search_training_descriptors))
+                ]
+                cutoff_frame_rows = tuple(len(frame) for frame in ordered_frames)
+                train_frame = pd.concat(ordered_frames, ignore_index=True, sort=False)
+                del ordered_frames, buffered_frames, latest_train_frame
+                (
+                    train_x,
+                    train_y,
+                    categorical,
+                    datetime_columns,
+                ) = prepare_training_features(
+                    train_frame,
+                    target=target_column,
+                    excluded=excluded,
+                )
+                feature_columns = tuple(train_x.columns)
+                categorical_columns = tuple(
+                    train_x.columns[index] for index in categorical
+                )
+                execution_plan = _plan_with_schema(
+                    execution_plan,
+                    columns=feature_columns,
+                    categorical_columns=categorical_columns,
+                    datetime_columns=datetime_columns,
+                )
+                estimator_x, estimator_y = sample_training_rows(
+                    train_x,
+                    train_y,
+                    limit=estimator_train_rows,
+                    task=resolved_task,
+                    random_state=random_state,
+                )
+                model, model_seconds, target_classes = _fit_final_estimator(
+                    estimator_x,
+                    estimator_y,
+                    model_backend=model_backend,
+                    task=resolved_task,
+                    categorical=categorical,
+                    random_state=random_state,
+                    model_params=model_params,
+                )
+                train_rows = len(estimator_x)
+                feature_count = len(feature_columns)
+                del train_frame, train_x, train_y, estimator_x, estimator_y
+                gc.collect()
+
+                validation_truth: list[np.ndarray] = []
+                validation_predictions: list[np.ndarray] = []
+                validation_rows = 0
+                for descriptor in stage_validation_descriptors:
+                    if graph_labels is not None:
+                        validation_frame = _materialize_graph_labels_at_cutoff(
+                            workspace,
+                            normalized_tables,
+                            normalized_relationships,
+                            root_name,
+                            config,
+                            graph_labels,
+                            cut_date=pd.Timestamp(descriptor).to_pydatetime(),
+                            split_value="validation",
+                            split_marker=split_marker,
+                            cutoff_marker=cutoff_marker,
+                            compute_period_days=compute_period_days,
+                            verbose=verbose,
+                            execution_plan=execution_plan,
+                            infer_ts_periods=False,
+                        )
+                    else:
+                        validation_cutoff, validation_labels = descriptor
+                        validation_frame = _materialize_at_cutoff(
+                            workspace,
+                            normalized_tables,
+                            normalized_relationships,
+                            root_name,
+                            config,
+                            validation_labels,
+                            labels_spec,
+                            cut_date=validation_cutoff,
+                            compute_period_days=compute_period_days,
+                            verbose=verbose,
+                            execution_plan=execution_plan,
+                            infer_ts_periods=False,
+                        )
+                    validation_frame = _drop_graph_markers(
+                        validation_frame, split_marker=split_marker
+                    )
+                    missing_features = set(feature_columns) - set(
+                        validation_frame.columns
+                    )
+                    if missing_features:
+                        raise ValueError(
+                            "Frozen GraphReduce plan did not reproduce training "
+                            f"features: {sorted(missing_features)[:10]}"
+                        )
+                    validation_x = prepare_prediction_features(
+                        validation_frame,
+                        columns=list(feature_columns),
+                        categorical_columns=set(categorical_columns),
+                        datetime_columns=set(datetime_columns),
+                    )
+                    validation_truth.append(
+                        validation_frame[target_column].to_numpy(copy=True)
+                    )
+                    validation_predictions.append(
+                        _predict_values(model, validation_x, task=resolved_task)
+                    )
+                    validation_rows += len(validation_frame)
+                    del validation_frame, validation_x
+                    gc.collect()
+                metric, score = _score_prediction_chunks(
+                    validation_truth,
+                    validation_predictions,
+                    task=resolved_task,
+                    target_classes=target_classes,
+                )
+                validation_standard_error = _prediction_standard_error(
+                    validation_truth,
+                    validation_predictions,
+                    task=resolved_task,
+                    target_classes=target_classes,
+                )
+                feature_seconds = perf_counter() - started - model_seconds
+                result = Trial(
+                    config=config,
+                    metric=metric,
+                    validation_score=score,
+                    objective_score=score if metric == "roc_auc" else -score,
+                    feature_count=feature_count,
+                    train_rows=train_rows,
+                    validation_rows=validation_rows,
+                    feature_seconds=feature_seconds,
+                    model_seconds=model_seconds,
+                    validation_standard_error=validation_standard_error,
+                    model=None,
+                    feature_columns=feature_columns,
+                    categorical_columns=categorical_columns,
+                    datetime_columns=datetime_columns,
+                    execution_plan=execution_plan,
+                    stage=stage,
+                    sample_rows=None if full_data else rows,
+                    estimated_feature_count=estimated_feature_count,
+                )
+                logger.info(
+                    f"{event_prefix}_completed",
+                    trial=trial_label,
+                    metric=metric,
+                    score=round(score, 6),
+                    score_standard_error=round(validation_standard_error, 6),
+                    features=feature_count,
+                    train_rows=train_rows,
+                    validation_rows=validation_rows,
+                    feature_seconds=round(feature_seconds, 3),
+                    model_seconds=round(model_seconds, 3),
+                    sample_rows=None if full_data else rows,
+                    training_frames=len(search_training_descriptors),
+                    cutoff_frame_rows=cutoff_frame_rows,
+                    buffered_training_frames=True,
+                )
+                return result
+        except Exception as exc:
+            if not continue_on_error:
+                raise
+            error_text = f"{type(exc).__name__}: {exc}"
+            if type(
+                exc
+            ).__name__ == "OutOfMemoryException" or "max_temp_directory_size" in str(
+                exc
+            ):
+                resource_blocks.append(
+                    (
+                        config.feature_families,
+                        config.auto_annotate_features,
+                        config.depth,
+                        error_text,
+                    )
+                )
+            logger.warning(
+                f"{event_prefix}_failed",
+                trial=trial_label,
+                feature_families=config.feature_families,
+                depth=config.depth,
+                auto_annotate_features=config.auto_annotate_features,
+                error_type=type(exc).__name__,
+                error=str(exc),
+                sample_rows=None if full_data else rows,
+            )
+            return Trial(
+                config=config,
+                metric="roc_auc" if resolved_task == "classification" else "mae",
+                validation_score=float("nan"),
+                objective_score=float("-inf"),
+                feature_count=0,
+                train_rows=0,
+                validation_rows=0,
+                feature_seconds=perf_counter() - started,
+                model_seconds=model_seconds,
+                status="failed",
+                error=error_text,
+                stage=stage,
+                sample_rows=None if full_data else rows,
+                estimated_feature_count=estimated_feature_count,
+            )
+        finally:
+            if model is not None:
+                del model
+            gc.collect()
+
+    search_configs = () if preselected_config is not None else configs
+    beam_search_enabled = graph_configs is None and preselected_config is None
+    budget_promotions: dict[int | None, tuple[GraphConfig, ...]] = {}
+    for trial_number, config in enumerate(search_configs, start=1):
+        if (
+            beam_search_enabled
+            and config.feature_family_max_columns in column_budgets
+            and column_budgets.index(config.feature_family_max_columns) > 0
+            and config.feature_family_max_columns not in budget_promotions
+        ):
+            budget_index = column_budgets.index(config.feature_family_max_columns)
+            previous_budget = column_budgets[budget_index - 1]
+            previous_trials = [
+                trial
+                for trial in trials
+                if trial.status == "completed"
+                and trial.config.feature_family_max_columns == previous_budget
+            ]
+            promotions: list[Trial] = []
+            if previous_trials:
+                raw, complexity_recommendation = _select_trials(
+                    previous_trials,
+                    classification_negligible_gain=(classification_negligible_gain),
+                    regression_negligible_relative_gain=(
+                        regression_negligible_relative_gain
+                    ),
+                    complexity_uncertainty_multiplier=(
+                        complexity_uncertainty_multiplier
+                    ),
+                )
+                promotions.extend((raw, complexity_recommendation))
+                ranked_previous = sorted(
+                    previous_trials,
+                    key=lambda trial: (
+                        -trial.objective_score,
+                        trial.feature_count,
+                        trial.config.complexity,
+                        trial.feature_seconds,
+                    ),
+                )
+                promotions.extend(ranked_previous)
+            budget_promotions[config.feature_family_max_columns] = tuple(
+                dict.fromkeys(trial.config for trial in promotions)
+            )[:forward_search_beam_width]
+            logger.info(
+                "column_budget_promoted",
+                from_budget=previous_budget,
+                to_budget=config.feature_family_max_columns,
+                configurations=[
+                    {
+                        "feature_families": promoted.feature_families,
+                        "depth": promoted.depth,
+                        "auto_annotate_features": (promoted.auto_annotate_features),
+                    }
+                    for promoted in budget_promotions[config.feature_family_max_columns]
+                ],
+            )
+        if beam_search_enabled and not forward_candidate_allowed(
+            config,
+            trials,
+            beam_width=forward_search_beam_width,
+            feature_family_max_column_options=column_budgets,
+            column_budget_promotions=budget_promotions.get(
+                config.feature_family_max_columns
+            ),
+        ):
+            trials.append(
+                Trial(
+                    config=config,
+                    metric="roc_auc" if resolved_task == "classification" else "mae",
+                    validation_score=float("nan"),
+                    objective_score=float("-inf"),
+                    feature_count=0,
+                    train_rows=0,
+                    validation_rows=0,
+                    feature_seconds=0.0,
+                    model_seconds=0.0,
+                    status="pruned",
+                    error=(
+                        "Candidate is not a one-family descendant of the "
+                        f"top-{forward_search_beam_width} prior-level configurations"
+                    ),
+                )
+            )
+            logger.info(
+                "trial_pruned",
+                trial=f"{trial_number}/{len(search_configs)}",
+                feature_families=config.feature_families,
+                depth=config.depth,
+                auto_annotate_features=config.auto_annotate_features,
+                reason="outside_forward_beam",
+            )
+            continue
+        if (
+            beam_search_enabled
+            and adaptive_depth_promotion
+            and not adaptive_depth_candidate_allowed(
+                config,
+                trials,
+                classification_gain=classification_negligible_gain,
+                regression_relative_gain=regression_negligible_relative_gain,
+                uncertainty_multiplier=complexity_uncertainty_multiplier,
+            )
+        ):
+            trials.append(
+                Trial(
+                    config=config,
+                    metric=("roc_auc" if resolved_task == "classification" else "mae"),
+                    validation_score=float("nan"),
+                    objective_score=float("-inf"),
+                    feature_count=0,
+                    train_rows=0,
+                    validation_rows=0,
+                    feature_seconds=0.0,
+                    model_seconds=0.0,
+                    status="pruned",
+                    error=(
+                        "Candidate was not promoted by the adaptive depth "
+                        "beam or lacked a meaningful deeper-hop gain"
+                    ),
+                    stage="screening",
+                    sample_rows=(
+                        None if search_full_data else effective_screening_rows
+                    ),
+                )
+            )
+            logger.info(
+                "trial_pruned",
+                trial=f"{trial_number}/{len(search_configs)}",
+                feature_families=config.feature_families,
+                depth=config.depth,
+                auto_annotate_features=config.auto_annotate_features,
+                reason="adaptive_depth_not_promoted",
+            )
+            continue
+        resource_block = _resource_block_for(config, resource_blocks)
+        if resource_block is not None:
+            families, _annotations, minimum_depth, reason = resource_block
+            trials.append(
+                Trial(
+                    config=config,
+                    metric="roc_auc" if resolved_task == "classification" else "mae",
+                    validation_score=float("nan"),
+                    objective_score=float("-inf"),
+                    feature_count=0,
+                    train_rows=0,
+                    validation_rows=0,
+                    feature_seconds=0.0,
+                    model_seconds=0.0,
+                    status="skipped",
+                    error=(
+                        "Resource superset of failed configuration "
+                        f"families={families}, depth={minimum_depth}: {reason}"
+                    ),
+                )
+            )
+            continue
+        audit_width = estimate_config_feature_width(
+            config,
+            feature_audit,
+            normalized_relationships,
+            normalized_tables,
+        )
+        estimated_width = _observed_feature_width_estimate(
+            config,
+            trials,
+            audit_estimate=audit_width,
+        )
+        if (
+            search_max_features is not None
+            and not (config.depth == 1 and config.feature_families == ("base",))
+            and estimated_width > search_max_features
+        ):
+            trials.append(
+                Trial(
+                    config=config,
+                    metric=("roc_auc" if resolved_task == "classification" else "mae"),
+                    validation_score=float("nan"),
+                    objective_score=float("-inf"),
+                    feature_count=0,
+                    train_rows=0,
+                    validation_rows=0,
+                    feature_seconds=0.0,
+                    model_seconds=0.0,
+                    status="pruned",
+                    error=(
+                        f"Estimated feature width {estimated_width} exceeds "
+                        f"search_max_features={search_max_features}"
+                    ),
+                    stage="screening",
+                    sample_rows=(
+                        None if search_full_data else effective_screening_rows
+                    ),
+                    estimated_feature_count=estimated_width,
+                )
+            )
+            logger.info(
+                "trial_pruned",
+                trial=f"{trial_number}/{len(search_configs)}",
+                feature_families=config.feature_families,
+                depth=config.depth,
+                auto_annotate_features=config.auto_annotate_features,
+                reason="estimated_feature_width",
+                estimated_features=estimated_width,
+                search_max_features=search_max_features,
+            )
+            continue
+        trials.append(
+            evaluate_search_trial(
+                config,
+                rows=effective_screening_rows,
+                full_data=search_full_data,
+                stage="screening",
+                trial_label=f"{trial_number}/{len(search_configs)}",
+                estimated_feature_count=estimated_width,
+            )
+        )
+
+    if preselected_config is not None:
+        selected_plan = (
+            copy.deepcopy(dict(preselected_execution_plan))
+            if preselected_execution_plan is not None
+            else None
+        )
+        placeholder = Trial(
+            config=preselected_config,
+            metric="roc_auc" if resolved_task == "classification" else "mae",
+            validation_score=float("nan"),
+            objective_score=0.0,
+            feature_count=0,
+            train_rows=0,
+            validation_rows=0,
+            feature_seconds=0.0,
+            model_seconds=0.0,
+            execution_plan=selected_plan,
+        )
+        trials = [placeholder]
+        best = recommended = placeholder
+    else:
+        annotate_complexity(
+            trials,
+            classification_gain=classification_negligible_gain,
+            regression_relative_gain=regression_negligible_relative_gain,
+            feature_growth=drastic_feature_growth,
+            uncertainty_multiplier=complexity_uncertainty_multiplier,
+        )
+        screening_successful = [
+            trial for trial in trials if trial.status == "completed"
+        ]
+        if not screening_successful:
+            errors = "; ".join(f"{trial.config}: {trial.error}" for trial in trials[:3])
+            raise RuntimeError(f"Every KurveRSC trial failed. {errors}")
+        _screening_best, screening_recommended = _select_trials(
+            screening_successful,
+            classification_negligible_gain=classification_negligible_gain,
+            regression_negligible_relative_gain=regression_negligible_relative_gain,
+            complexity_uncertainty_multiplier=complexity_uncertainty_multiplier,
+        )
+        successful = screening_successful
+        if (
+            not search_full_data
+            and confirmation_top_k > 0
+            and effective_screening_rows < sample_rows
+        ):
+            confirmation_finalists = list(
+                diverse_confirmation_trials(
+                    screening_successful,
+                    top_k=confirmation_top_k,
+                    complexity_recommendation=screening_recommended,
+                )
+            )
+            logger.info(
+                "confirmation_started",
+                candidates=len(confirmation_finalists),
+                screening_rows=effective_screening_rows,
+                confirmation_rows=sample_rows,
+                streaming=True,
+            )
+            for confirmation_number, screening_trial in enumerate(
+                confirmation_finalists, start=1
+            ):
+                if (
+                    search_max_features is not None
+                    and screening_trial.feature_count > search_max_features
+                ):
+                    confirmation_trials.append(
+                        Trial(
+                            config=screening_trial.config,
+                            metric=screening_trial.metric,
+                            validation_score=float("nan"),
+                            objective_score=float("-inf"),
+                            feature_count=screening_trial.feature_count,
+                            train_rows=0,
+                            validation_rows=0,
+                            feature_seconds=0.0,
+                            model_seconds=0.0,
+                            status="pruned",
+                            error=(
+                                f"Screening width {screening_trial.feature_count} "
+                                "exceeds search_max_features="
+                                f"{search_max_features}"
+                            ),
+                            stage="confirmation",
+                            sample_rows=sample_rows,
+                            estimated_feature_count=(screening_trial.feature_count),
+                        )
+                    )
+                    continue
+                confirmation_trials.append(
+                    evaluate_search_trial(
+                        screening_trial.config,
+                        rows=sample_rows,
+                        full_data=False,
+                        stage="confirmation",
+                        trial_label=(
+                            f"{confirmation_number}/{len(confirmation_finalists)}"
+                        ),
+                        estimated_feature_count=(screening_trial.feature_count),
+                    )
+                )
+            confirmation_successful = [
+                trial for trial in confirmation_trials if trial.status == "completed"
+            ]
+            if confirmation_successful:
+                annotate_complexity(
+                    confirmation_trials,
+                    classification_gain=classification_negligible_gain,
+                    regression_relative_gain=regression_negligible_relative_gain,
+                    feature_growth=drastic_feature_growth,
+                    uncertainty_multiplier=complexity_uncertainty_multiplier,
+                )
+                successful = confirmation_successful
+            else:
+                logger.warning(
+                    "confirmation_failed",
+                    candidates=len(confirmation_trials),
+                    fallback="screening",
+                )
+        best, recommended = _select_trials(
+            successful,
+            classification_negligible_gain=classification_negligible_gain,
+            regression_negligible_relative_gain=regression_negligible_relative_gain,
+            complexity_uncertainty_multiplier=complexity_uncertainty_multiplier,
+        )
+        selected_plan = copy.deepcopy(recommended.execution_plan)
+        logger.info(
+            "search_selected",
+            stage=best.stage,
+            metric=best.metric,
+            score=round(best.validation_score, 6),
+            feature_families=best.config.feature_families,
+            depth=best.config.depth,
+            auto_annotate_features=best.config.auto_annotate_features,
+            features=best.feature_count,
+        )
+        if recommended is not best:
+            logger.info(
+                "search_recommended",
+                metric=recommended.metric,
+                score=round(recommended.validation_score, 6),
+                feature_families=recommended.config.feature_families,
+                depth=recommended.config.depth,
+                auto_annotate_features=recommended.config.auto_annotate_features,
+                features=recommended.feature_count,
+            )
+
+    # Resolve the uncapped production label frames without joining their
+    # feature matrices together.
+    if graph_labels is not None:
+        full_train_cutoffs = _select_training_cutoffs(
+            graph_labels.train_cutoffs, full_training_frames
+        )
+        validation_descriptors = tuple(graph_labels.validation_cutoffs)
+        full_train_labels = full_validation_labels = None
+    else:
+        full_label_frame = _load_frame_source(
+            labels_spec.source,
+            connection=connection,
+            sample_rows=sample_rows,
+            random_state=random_state,
+            sample=False,
+            name="full_labels",
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        )
+        required = {
+            *_key_parts(labels_spec.key),
+            labels_spec.target,
+            *([labels_spec.timestamp] if labels_spec.timestamp else []),
+            *([labels_spec.split] if labels_spec.split else []),
+        }
+        missing = required - set(full_label_frame.columns)
+        if missing:
+            raise ValueError(f"Label source is missing columns: {sorted(missing)}")
+        if labels_spec.split:
+            external_test_labels = full_label_frame.loc[
+                full_label_frame[labels_spec.split] == labels_spec.test_value
+            ].copy()
+        labeled = full_label_frame.dropna(subset=[labels_spec.target])
+        full_train_labels, full_validation_labels = _split_labels(
+            labeled,
+            labels_spec,
+            task=resolved_task,
+            validation_fraction=validation_fraction,
+            random_state=random_state,
+        )
+        rerank_source_train_labels = full_train_labels
+        if labels_spec.timestamp:
+            full_train_cutoffs = _select_training_cutoffs(
+                full_train_labels[labels_spec.timestamp].dropna().tolist(),
+                full_training_frames,
+            )
+            full_train_labels = full_train_labels.loc[
+                full_train_labels[labels_spec.timestamp].isin(full_train_cutoffs)
+            ]
+        else:
+            full_train_cutoffs = (pd.Timestamp(datetime.now()),)
+        validation_descriptors = tuple(
+            _training_groups(full_validation_labels, labels_spec)
+        )
+        del full_label_frame, labeled
+        gc.collect()
+
+    rerank_trials: list[Trial] = []
+    if preselected_config is None and rerank_top_k > 0:
+        if graph_labels is not None:
+            chronological_train = tuple(sorted(set(graph_labels.train_cutoffs)))
+            consecutive_folds: list[tuple[Any, tuple[Any, ...]]] = [
+                (chronological_train[index], (chronological_train[index + 1],))
+                for index in range(max(0, len(chronological_train) - 1))
+            ]
+            final_fold = (
+                chronological_train[-1],
+                tuple(graph_labels.validation_cutoffs),
+            )
+        elif labels_spec.timestamp and rerank_source_train_labels is not None:
+            chronological_train = tuple(
+                sorted(
+                    _training_groups(rerank_source_train_labels, labels_spec),
+                    key=lambda item: pd.Timestamp(item[0]),
+                )
+            )
+            consecutive_folds = [
+                (chronological_train[index], (chronological_train[index + 1],))
+                for index in range(max(0, len(chronological_train) - 1))
+            ]
+            final_fold = (chronological_train[-1], validation_descriptors)
+        else:
+            chronological_train = ()
+            consecutive_folds = []
+            final_fold = None
+
+        prior_fold_count = max(0, rerank_cutoff_frames - 1)
+        selected_prior_folds = (
+            consecutive_folds[-prior_fold_count:] if prior_fold_count else []
+        )
+        rerank_folds = [
+            *selected_prior_folds,
+            *([final_fold] if final_fold is not None else []),
+        ]
+        rerank_folds = [
+            (train_descriptor, tuple(fold_validation))
+            for train_descriptor, fold_validation in rerank_folds
+            if fold_validation
+        ]
+
+        if not rerank_folds:
+            logger.info(
+                "rerank_skipped",
+                reason="no_temporal_folds",
+                available_folds=len(rerank_folds),
+                requested_folds=rerank_cutoff_frames,
+            )
+        else:
+            ranked_screening = sorted(
+                successful,
+                key=lambda trial: trial.objective_score,
+                reverse=True,
+            )
+            finalists = list(ranked_screening[:rerank_top_k])
+            logger.info(
+                "rerank_started",
+                candidates=len(finalists),
+                raw_top_k=rerank_top_k,
+                cutoff_folds=len(rerank_folds),
+                stability_penalty=rerank_stability_penalty,
+                full_data=True,
+                streaming=True,
+            )
+
+            for finalist_number, screening_trial in enumerate(finalists, start=1):
+                config = screening_trial.config
+                rerank_started = perf_counter()
+                rerank_model_seconds = 0.0
+                fold_scores: list[float] = []
+                fold_feature_counts: list[int] = []
+                rerank_train_rows = 0
+                rerank_validation_rows = 0
+                fold_model = None
+                logger.info(
+                    "rerank_trial_started",
+                    trial=f"{finalist_number}/{len(finalists)}",
+                    feature_families=config.feature_families,
+                    depth=config.depth,
+                    auto_annotate_features=config.auto_annotate_features,
+                    cutoff_folds=len(rerank_folds),
+                )
+                try:
+                    rerank_metric: str | None = None
+                    for fold_number, (
+                        fold_train_descriptor,
+                        fold_validation_descriptors,
+                    ) in enumerate(rerank_folds, start=1):
+                        with _table_workspace(
+                            connection,
+                            normalized_tables,
+                            sample_rows=sample_rows,
+                            random_state=random_state + fold_number,
+                            search=False,
+                            duckdb_memory_limit=duckdb_memory_limit,
+                            duckdb_max_temp_directory_size=(
+                                duckdb_max_temp_directory_size
+                            ),
+                        ) as workspace:
+                            fold_plans: list[dict[str, Any]] = []
+                            if graph_labels is not None:
+                                fold_train_frame = _materialize_graph_labels_at_cutoff(
+                                    workspace,
+                                    normalized_tables,
+                                    normalized_relationships,
+                                    root_name,
+                                    config,
+                                    graph_labels,
+                                    cut_date=pd.Timestamp(
+                                        fold_train_descriptor
+                                    ).to_pydatetime(),
+                                    split_value="train",
+                                    split_marker=split_marker,
+                                    cutoff_marker=cutoff_marker,
+                                    compute_period_days=compute_period_days,
+                                    verbose=verbose,
+                                    frozen_plan_sink=fold_plans,
+                                    infer_ts_periods=infer_ts_periods,
+                                )
+                            else:
+                                fold_train_cutoff, fold_train_labels = (
+                                    fold_train_descriptor
+                                )
+                                fold_train_frame = _materialize_at_cutoff(
+                                    workspace,
+                                    normalized_tables,
+                                    normalized_relationships,
+                                    root_name,
+                                    config,
+                                    fold_train_labels,
+                                    labels_spec,
+                                    cut_date=fold_train_cutoff,
+                                    compute_period_days=compute_period_days,
+                                    verbose=verbose,
+                                    frozen_plan_sink=fold_plans,
+                                    planning_labels=rerank_source_train_labels,
+                                    infer_ts_periods=infer_ts_periods,
+                                )
+                            fold_plan = fold_plans[0]
+                            fold_train_frame = _drop_graph_markers(
+                                fold_train_frame,
+                                split_marker=split_marker,
+                            )
+                            (
+                                fold_train_x,
+                                fold_train_y,
+                                fold_categorical,
+                                fold_datetime_columns,
+                            ) = prepare_training_features(
+                                fold_train_frame,
+                                target=target_column,
+                                excluded=excluded,
+                            )
+                            fold_feature_columns = tuple(fold_train_x.columns)
+                            fold_categorical_columns = tuple(
+                                fold_train_x.columns[index]
+                                for index in fold_categorical
+                            )
+                            fold_plan = _plan_with_schema(
+                                fold_plan,
+                                columns=fold_feature_columns,
+                                categorical_columns=fold_categorical_columns,
+                                datetime_columns=fold_datetime_columns,
+                            )
+                            fold_estimator_x, fold_estimator_y = sample_training_rows(
+                                fold_train_x,
+                                fold_train_y,
+                                limit=estimator_train_rows,
+                                task=resolved_task,
+                                random_state=random_state + fold_number,
+                            )
+                            (
+                                fold_model,
+                                fold_seconds,
+                                fold_target_classes,
+                            ) = _fit_final_estimator(
+                                fold_estimator_x,
+                                fold_estimator_y,
+                                model_backend=model_backend,
+                                task=resolved_task,
+                                categorical=fold_categorical,
+                                random_state=random_state + fold_number,
+                                model_params=model_params,
+                            )
+                            rerank_model_seconds += fold_seconds
+                            rerank_train_rows += len(fold_estimator_x)
+                            fold_feature_counts.append(len(fold_feature_columns))
+                            del (
+                                fold_train_frame,
+                                fold_train_x,
+                                fold_train_y,
+                                fold_estimator_x,
+                                fold_estimator_y,
+                            )
+                            gc.collect()
+
+                            fold_truth: list[np.ndarray] = []
+                            fold_predictions: list[np.ndarray] = []
+                            for (
+                                fold_validation_descriptor
+                            ) in fold_validation_descriptors:
+                                if graph_labels is not None:
+                                    fold_validation_frame = (
+                                        _materialize_graph_labels_at_cutoff(
+                                            workspace,
+                                            normalized_tables,
+                                            normalized_relationships,
+                                            root_name,
+                                            config,
+                                            graph_labels,
+                                            cut_date=pd.Timestamp(
+                                                fold_validation_descriptor
+                                            ).to_pydatetime(),
+                                            split_value="validation",
+                                            split_marker=split_marker,
+                                            cutoff_marker=cutoff_marker,
+                                            compute_period_days=compute_period_days,
+                                            verbose=verbose,
+                                            execution_plan=fold_plan,
+                                            infer_ts_periods=False,
+                                        )
+                                    )
+                                else:
+                                    (
+                                        fold_validation_cutoff,
+                                        fold_validation_labels,
+                                    ) = fold_validation_descriptor
+                                    fold_validation_frame = _materialize_at_cutoff(
+                                        workspace,
+                                        normalized_tables,
+                                        normalized_relationships,
+                                        root_name,
+                                        config,
+                                        fold_validation_labels,
+                                        labels_spec,
+                                        cut_date=fold_validation_cutoff,
+                                        compute_period_days=compute_period_days,
+                                        verbose=verbose,
+                                        execution_plan=fold_plan,
+                                        infer_ts_periods=False,
+                                    )
+                                fold_validation_frame = _drop_graph_markers(
+                                    fold_validation_frame,
+                                    split_marker=split_marker,
+                                )
+                                missing_features = set(fold_feature_columns) - set(
+                                    fold_validation_frame.columns
+                                )
+                                if missing_features:
+                                    raise ValueError(
+                                        "Frozen rerank plan did not reproduce "
+                                        "training features: "
+                                        f"{sorted(missing_features)[:10]}"
+                                    )
+                                fold_validation_x = prepare_prediction_features(
+                                    fold_validation_frame,
+                                    columns=list(fold_feature_columns),
+                                    categorical_columns=set(fold_categorical_columns),
+                                    datetime_columns=set(fold_datetime_columns),
+                                )
+                                fold_truth.append(
+                                    fold_validation_frame[target_column].to_numpy(
+                                        copy=True
+                                    )
+                                )
+                                fold_predictions.append(
+                                    _predict_values(
+                                        fold_model,
+                                        fold_validation_x,
+                                        task=resolved_task,
+                                    )
+                                )
+                                rerank_validation_rows += len(fold_validation_frame)
+                                del fold_validation_frame, fold_validation_x
+                                gc.collect()
+                            fold_metric, fold_score = _score_prediction_chunks(
+                                fold_truth,
+                                fold_predictions,
+                                task=resolved_task,
+                                target_classes=fold_target_classes,
+                            )
+                            if (
+                                rerank_metric is not None
+                                and rerank_metric != fold_metric
+                            ):
+                                raise ValueError(
+                                    "Rerank folds produced inconsistent metrics"
+                                )
+                            rerank_metric = fold_metric
+                            fold_scores.append(fold_score)
+                            del fold_model
+                            fold_model = None
+                        gc.collect()
+
+                    mean_score = float(np.mean(fold_scores))
+                    score_std = float(np.std(fold_scores))
+                    base_objective = (
+                        mean_score if rerank_metric == "roc_auc" else -mean_score
+                    )
+                    rerank_trial = Trial(
+                        config=config,
+                        metric=rerank_metric or screening_trial.metric,
+                        validation_score=mean_score,
+                        objective_score=(
+                            base_objective - rerank_stability_penalty * score_std
+                        ),
+                        feature_count=max(fold_feature_counts),
+                        train_rows=rerank_train_rows,
+                        validation_rows=rerank_validation_rows,
+                        feature_seconds=(
+                            perf_counter() - rerank_started - rerank_model_seconds
+                        ),
+                        model_seconds=rerank_model_seconds,
+                        validation_standard_error=(
+                            score_std / max(1.0, np.sqrt(len(fold_scores)))
+                        ),
+                        feature_columns=screening_trial.feature_columns,
+                        categorical_columns=screening_trial.categorical_columns,
+                        datetime_columns=screening_trial.datetime_columns,
+                        execution_plan=copy.deepcopy(screening_trial.execution_plan),
+                        note=(
+                            f"walk-forward mean={mean_score:.6f}, "
+                            f"std={score_std:.6f}, folds={len(fold_scores)}"
+                        ),
+                        stage="rerank",
+                        sample_rows=None,
+                    )
+                    rerank_trials.append(rerank_trial)
+                    logger.info(
+                        "rerank_trial_completed",
+                        trial=f"{finalist_number}/{len(finalists)}",
+                        metric=rerank_trial.metric,
+                        score=round(mean_score, 6),
+                        score_std=round(score_std, 6),
+                        objective_score=round(rerank_trial.objective_score, 6),
+                        cutoff_folds=len(fold_scores),
+                        features=rerank_trial.feature_count,
+                        train_rows=rerank_trial.train_rows,
+                        validation_rows=rerank_trial.validation_rows,
+                    )
+                except Exception as exc:
+                    if not continue_on_error:
+                        raise
+                    rerank_trials.append(
+                        Trial(
+                            config=config,
+                            metric=screening_trial.metric,
+                            validation_score=float("nan"),
+                            objective_score=float("-inf"),
+                            feature_count=0,
+                            train_rows=rerank_train_rows,
+                            validation_rows=rerank_validation_rows,
+                            feature_seconds=perf_counter() - rerank_started,
+                            model_seconds=rerank_model_seconds,
+                            status="failed",
+                            error=f"{type(exc).__name__}: {exc}",
+                            stage="rerank",
+                            sample_rows=None,
+                        )
+                    )
+                    logger.warning(
+                        "rerank_trial_failed",
+                        trial=f"{finalist_number}/{len(finalists)}",
+                        feature_families=config.feature_families,
+                        depth=config.depth,
+                        auto_annotate_features=config.auto_annotate_features,
+                        error_type=type(exc).__name__,
+                        error=str(exc),
+                    )
+                finally:
+                    if fold_model is not None:
+                        del fold_model
+                    gc.collect()
+
+            successful_reranks = [
+                trial for trial in rerank_trials if trial.status == "completed"
+            ]
+            if successful_reranks:
+                annotate_complexity(
+                    successful_reranks,
+                    classification_gain=classification_negligible_gain,
+                    regression_relative_gain=regression_negligible_relative_gain,
+                    feature_growth=drastic_feature_growth,
+                    uncertainty_multiplier=complexity_uncertainty_multiplier,
+                )
+                # Full-frame walk-forward evidence is the final authority.
+                # Complexity remains available in the audit notes and as a
+                # screening/confirmation control, but cannot replace the raw
+                # stability-adjusted winner after this expensive evaluation.
+                best = stability_adjusted_winner(successful_reranks)
+                recommended = best
+                selected_plan = copy.deepcopy(best.execution_plan)
+                logger.info(
+                    "rerank_selected",
+                    metric=best.metric,
+                    score=round(best.validation_score, 6),
+                    objective_score=round(best.objective_score, 6),
+                    feature_families=best.config.feature_families,
+                    depth=best.config.depth,
+                    auto_annotate_features=best.config.auto_annotate_features,
+                    features=best.feature_count,
+                )
+
+    production_training_frames = len(full_train_cutoffs)
+    validation_frame_count = len(validation_descriptors)
+    total_fit_frames = production_training_frames + validation_frame_count
+    if model_backend != "catboost" and total_fit_frames > 1:
+        raise ValueError(
+            "Streaming multi-frame production fitting currently requires "
+            "model_backend='catboost'"
+        )
+    total_iterations = int((model_params or {}).get("iterations", 300))
+    per_frame_limit = estimator_train_rows
+    logger.info(
+        "frame_ensemble_refit_started",
+        feature_families=recommended.config.feature_families,
+        depth=recommended.config.depth,
+        auto_annotate_features=recommended.config.auto_annotate_features,
+        training_frames=production_training_frames,
+        validation_frames=validation_frame_count,
+        iterations_per_model=total_iterations,
+        ensemble_models=total_fit_frames,
+        frozen_plan=selected_plan is not None,
+    )
+
+    schema = _schema_from_plan(selected_plan or {})
+    feature_columns: tuple[str, ...] = ()
+    categorical_columns: tuple[str, ...] = ()
+    datetime_columns: tuple[str, ...] = ()
+    categorical: list[int] = []
+    final_model = None
+    validation_model = None
+    training_models: list[Any] = []
+    validation_frame_models: list[Any] = []
+    target_classes: tuple[Any, ...] = ()
+    final_model_seconds = 0.0
+    train_rows = 0
+    source_train_rows = 0
+    validation_rows = 0
+    final_estimator_rows = 0
+    validation_truth: list[np.ndarray] = []
+    validation_predictions: list[np.ndarray] = []
+
+    def materialize_production_frame(
+        workspace: _Workspace,
+        *,
+        descriptor: Any,
+        split_value: str,
+        allow_plan_learning: bool,
+    ) -> tuple[pd.DataFrame, dict[str, Any] | None]:
+        nonlocal selected_plan
+        frozen: list[dict[str, Any]] = []
+        if graph_labels is not None:
+            frame = _materialize_graph_labels_at_cutoff(
+                workspace,
+                normalized_tables,
+                normalized_relationships,
+                root_name,
+                recommended.config,
+                graph_labels,
+                cut_date=pd.Timestamp(descriptor).to_pydatetime(),
+                split_value=split_value,
+                split_marker=split_marker,
+                cutoff_marker=cutoff_marker,
+                compute_period_days=compute_period_days,
+                verbose=verbose,
+                execution_plan=selected_plan,
+                frozen_plan_sink=frozen if allow_plan_learning else None,
+                infer_ts_periods=infer_ts_periods and selected_plan is None,
+            )
+        else:
+            cutoff, labels = descriptor
+            frame = _materialize_at_cutoff(
+                workspace,
+                normalized_tables,
+                normalized_relationships,
+                root_name,
+                recommended.config,
+                labels,
+                labels_spec,
+                cut_date=cutoff,
+                compute_period_days=compute_period_days,
+                verbose=verbose,
+                execution_plan=selected_plan,
+                frozen_plan_sink=frozen if allow_plan_learning else None,
+                planning_labels=full_train_labels if allow_plan_learning else None,
+                infer_ts_periods=infer_ts_periods and selected_plan is None,
+            )
+        if selected_plan is None and frozen:
+            selected_plan = frozen[0]
+        return _drop_graph_markers(frame, split_marker=split_marker), selected_plan
+
+    if graph_labels is not None:
+        train_descriptors: Iterable[Any] = full_train_cutoffs
+    else:
+        train_descriptors = tuple(_training_groups(full_train_labels, labels_spec))
+
+    for frame_number, descriptor in enumerate(train_descriptors, start=1):
+        with _table_workspace(
+            connection,
+            normalized_tables,
+            sample_rows=sample_rows,
+            random_state=random_state,
+            search=False,
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        ) as workspace:
+            frame, _ = materialize_production_frame(
+                workspace,
+                descriptor=descriptor,
+                split_value="train",
+                allow_plan_learning=selected_plan is None,
+            )
+            source_train_rows += len(frame)
+            if schema is None:
+                x, y, categorical, datetime_columns = prepare_training_features(
+                    frame,
+                    target=target_column,
+                    excluded=excluded,
+                )
+                feature_columns = tuple(x.columns)
+                categorical_columns = tuple(x.columns[index] for index in categorical)
+                selected_plan = _plan_with_schema(
+                    selected_plan,
+                    columns=feature_columns,
+                    categorical_columns=categorical_columns,
+                    datetime_columns=datetime_columns,
+                )
+                schema = (
+                    feature_columns,
+                    categorical_columns,
+                    datetime_columns,
+                )
+            else:
+                feature_columns, categorical_columns, datetime_columns = schema
+                missing_features = set(feature_columns) - set(frame.columns)
+                if missing_features:
+                    raise ValueError(
+                        "Frozen GraphReduce plan did not reproduce production "
+                        f"features: {sorted(missing_features)[:10]}"
+                    )
+                x = prepare_prediction_features(
+                    frame,
+                    columns=list(feature_columns),
+                    categorical_columns=set(categorical_columns),
+                    datetime_columns=set(datetime_columns),
+                )
+                y = frame[target_column]
+                categorical = [
+                    index
+                    for index, column in enumerate(feature_columns)
+                    if column in set(categorical_columns)
+                ]
+            estimator_x, estimator_y = sample_training_rows(
+                x,
+                y,
+                limit=per_frame_limit,
+                task=resolved_task,
+                random_state=random_state + frame_number,
+            )
+            frame_model, seconds, target_classes = fit_incremental_catboost_frame(
+                estimator_x,
+                estimator_y,
+                task=resolved_task,
+                categorical=categorical,
+                random_state=random_state,
+                model_params=model_params,
+                init_model=None,
+                target_classes=target_classes or None,
+                iterations=total_iterations,
+            )
+            training_models.append(frame_model)
+            final_model_seconds += seconds
+            train_rows += len(estimator_x)
+            final_estimator_rows += len(estimator_x)
+            del frame, x, y, estimator_x, estimator_y, frame_model
+        gc.collect()
+
+    validation_model = FrameEnsemble(training_models, task=resolved_task)
+
+    for frame_number, descriptor in enumerate(validation_descriptors, start=1):
+        with _table_workspace(
+            connection,
+            normalized_tables,
+            sample_rows=sample_rows,
+            random_state=random_state,
+            search=False,
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        ) as workspace:
+            frame, _ = materialize_production_frame(
+                workspace,
+                descriptor=descriptor,
+                split_value="validation",
+                allow_plan_learning=False,
+            )
+            missing_features = set(feature_columns) - set(frame.columns)
+            if missing_features:
+                raise ValueError(
+                    "Frozen GraphReduce plan did not reproduce validation "
+                    f"features: {sorted(missing_features)[:10]}"
+                )
+            x = prepare_prediction_features(
+                frame,
+                columns=list(feature_columns),
+                categorical_columns=set(categorical_columns),
+                datetime_columns=set(datetime_columns),
+            )
+            y = frame[target_column]
+            validation_truth.append(y.to_numpy(copy=True))
+            validation_predictions.append(
+                _predict_values(validation_model, x, task=resolved_task)
+            )
+            validation_rows += len(frame)
+            estimator_x, estimator_y = sample_training_rows(
+                x,
+                y,
+                limit=per_frame_limit,
+                task=resolved_task,
+                random_state=random_state + production_training_frames + frame_number,
+            )
+            frame_model, seconds, target_classes = fit_incremental_catboost_frame(
+                estimator_x,
+                estimator_y,
+                task=resolved_task,
+                categorical=categorical,
+                random_state=random_state,
+                model_params=model_params,
+                init_model=None,
+                target_classes=target_classes,
+                iterations=total_iterations,
+            )
+            validation_frame_models.append(frame_model)
+            final_model_seconds += seconds
+            final_estimator_rows += len(estimator_x)
+            del frame, x, y, estimator_x, estimator_y, frame_model
+        gc.collect()
+
+    final_model = FrameEnsemble(
+        [*training_models, *validation_frame_models],
+        task=resolved_task,
+    )
+
+    full_metric, full_validation_score = _score_prediction_chunks(
+        validation_truth,
+        validation_predictions,
+        task=resolved_task,
+        target_classes=target_classes,
+    )
+    production_plan = _plan_with_schema(
+        selected_plan,
+        columns=feature_columns,
+        categorical_columns=categorical_columns,
+        datetime_columns=datetime_columns,
+    )
+    plan_fingerprint = _execution_plan_fingerprint(production_plan)
+
+    test_output_chunks: list[pd.DataFrame] = []
+    test_truth: list[np.ndarray] = []
+    test_estimates: list[np.ndarray] = []
+    if graph_labels is not None:
+        test_descriptors: Iterable[Any] = graph_labels.test_cutoffs
+    else:
+        test_descriptors = tuple(_training_groups(external_test_labels, labels_spec))
+    root = normalized_tables[root_name]
+    root_prefix = root.prefix or f"{_slug(root_name, 'n0')[:10]}0"
+    for descriptor in test_descriptors:
+        with _table_workspace(
+            connection,
+            normalized_tables,
+            sample_rows=sample_rows,
+            random_state=random_state,
+            search=False,
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        ) as workspace:
+            if graph_labels is not None:
+                test_frame = _materialize_graph_labels_at_cutoff(
+                    workspace,
+                    normalized_tables,
+                    normalized_relationships,
+                    root_name,
+                    recommended.config,
+                    graph_labels,
+                    cut_date=pd.Timestamp(descriptor).to_pydatetime(),
+                    split_value="test",
+                    split_marker=split_marker,
+                    cutoff_marker=cutoff_marker,
+                    compute_period_days=compute_period_days,
+                    verbose=verbose,
+                    execution_plan=production_plan,
+                    train=False,
+                    infer_ts_periods=False,
+                )
+            else:
+                cutoff, test_labels = descriptor
+                test_frame = _materialize_at_cutoff(
+                    workspace,
+                    normalized_tables,
+                    normalized_relationships,
+                    root_name,
+                    recommended.config,
+                    test_labels,
+                    labels_spec,
+                    cut_date=cutoff,
+                    compute_period_days=compute_period_days,
+                    verbose=verbose,
+                    execution_plan=production_plan,
+                    train=False,
+                    infer_ts_periods=False,
+                )
+            test_frame = _drop_graph_markers(test_frame, split_marker=split_marker)
+            test_x = prepare_prediction_features(
+                test_frame,
+                columns=list(feature_columns),
+                categorical_columns=set(categorical_columns),
+                datetime_columns=set(datetime_columns),
+            )
+            estimates = _predict_values(final_model, test_x, task=resolved_task)
+            output = pd.DataFrame(index=test_frame.index)
+            for key in _key_parts(root.key):
+                source_key = key if key in test_frame else f"{root_prefix}_{key}"
+                if source_key in test_frame:
+                    output[key] = test_frame[source_key]
+            for column in (
+                cutoff_marker,
+                *(
+                    (labels_spec.timestamp,)
+                    if labels_spec and labels_spec.timestamp
+                    else ()
+                ),
+            ):
+                if column in test_frame:
+                    output[column] = test_frame[column]
+            output["prediction"] = estimates
+            test_output_chunks.append(output.reset_index(drop=True))
+            if target_column in test_frame and test_frame[target_column].notna().all():
+                test_truth.append(test_frame[target_column].to_numpy(copy=True))
+                test_estimates.append(estimates)
+            del test_frame, test_x, output
+        gc.collect()
+
+    test_predictions = (
+        pd.concat(test_output_chunks, ignore_index=True) if test_output_chunks else None
+    )
+    test_score = None
+    if test_truth:
+        _test_metric, test_score = _score_prediction_chunks(
+            test_truth,
+            test_estimates,
+            task=resolved_task,
+            target_classes=target_classes,
+        )
+
+    fitted_model = FittedModel(
+        config=recommended.config,
+        execution_plan=production_plan,
+        plan_fingerprint=plan_fingerprint,
+        estimator=final_model,
+        validation_estimator=validation_model,
+        feature_columns=feature_columns,
+        categorical_columns=categorical_columns,
+        datetime_columns=datetime_columns,
+        target=target_column,
+        task=resolved_task,
+        metric=full_metric,
+        validation_score=full_validation_score,
+        train_rows=train_rows,
+        validation_rows=validation_rows,
+        training_frames=production_training_frames,
+        model_backend=model_backend,
+        target_classes=target_classes,
+        test_predictions=test_predictions,
+        test_score=test_score,
+    )
+    if preselected_config is not None:
+        best = recommended = Trial(
+            config=recommended.config,
+            metric=full_metric,
+            validation_score=full_validation_score,
+            objective_score=(
+                full_validation_score
+                if full_metric == "roc_auc"
+                else -full_validation_score
+            ),
+            feature_count=len(feature_columns),
+            train_rows=train_rows,
+            validation_rows=validation_rows,
+            feature_seconds=0.0,
+            model_seconds=final_model_seconds,
+            model=None,
+            feature_columns=feature_columns,
+            categorical_columns=categorical_columns,
+            datetime_columns=datetime_columns,
+            execution_plan=production_plan,
+        )
+        trials = [best]
+    logger.info(
+        "frame_ensemble_refit_completed",
+        metric=full_metric,
+        validation_score=round(full_validation_score, 6),
+        model_backend=model_backend,
+        training_frames=production_training_frames,
+        train_rows=source_train_rows,
+        estimator_train_rows=train_rows,
+        validation_rows=validation_rows,
+        features=len(feature_columns),
+        plan_operations=len(production_plan.get("records", [])),
+        plan_fingerprint=plan_fingerprint,
+        final_model_seconds=round(final_model_seconds, 3),
+        final_estimator_rows=final_estimator_rows,
+        ensemble_models=len(final_model.models),
+        test_rows=0 if test_predictions is None else len(test_predictions),
+        test_score=test_score,
+    )
+    return FitResult(
+        task=resolved_task,
+        metric=best.metric,
+        best_trial=best,
+        recommended_trial=recommended,
+        trials=tuple(trials),
+        confirmation_trials=tuple(confirmation_trials),
+        rerank_trials=tuple(rerank_trials),
+        fitted_model=fitted_model,
+        feature_audit=feature_audit,
+    )
+
+
 def predict(
     fitted: FitResult,
     parent_node: Table | Source,
@@ -2144,6 +4583,8 @@ def predict(
     label_timestamp: str | None = None,
     compute_period_days: int = 3650,
     connection: duckdb.DuckDBPyConnection | None = None,
+    duckdb_memory_limit: str = "64GB",
+    duckdb_max_temp_directory_size: str = "128GB",
     verbose: bool = False,
     use_validation_model: bool = False,
 ) -> pd.DataFrame:
@@ -2156,6 +4597,13 @@ def predict(
     artifact = fitted.fitted_model
     if artifact is None:
         raise ValueError("The FitResult does not contain a production fitted model")
+    if not isinstance(duckdb_memory_limit, str) or not duckdb_memory_limit.strip():
+        raise ValueError("duckdb_memory_limit must be a non-empty string")
+    if (
+        not isinstance(duckdb_max_temp_directory_size, str)
+        or not duckdb_max_temp_directory_size.strip()
+    ):
+        raise ValueError("duckdb_max_temp_directory_size must be a non-empty string")
     parent = coerce_table(
         parent_node,
         key=parent_key,
@@ -2181,41 +4629,56 @@ def predict(
         coerce_relationship(item) for item in relationships
     )
 
-    with _connection_scope(connection, max_temp_directory_size="128GB") as con:
-        workspace = _Workspace(con, sample_rows=1, random_state=0)
-        try:
-            for name, table in normalized_tables.items():
-                workspace.add(name, table.source, sample=False)
-            label_name = "prediction_rows"
-            while label_name in normalized_tables:
-                label_name += "_"
-            workspace.add(label_name, labels_spec.source, sample=False)
-            rows = workspace.frame(label_name)
-            required = {
-                *_key_parts(labels_spec.key),
-                *([labels_spec.timestamp] if labels_spec.timestamp else []),
-            }
-            missing = required - set(rows.columns)
-            if missing:
-                raise ValueError(
-                    f"Prediction source is missing columns: {sorted(missing)}"
-                )
-            order_column = "__kurversc_prediction_order__"
-            while order_column in rows:
-                order_column += "_"
-            rows = rows.copy()
-            rows[order_column] = range(len(rows))
-            frame = _materialize_external_test(
+    rows = _load_frame_source(
+        labels_spec.source,
+        connection=connection,
+        sample_rows=1,
+        random_state=0,
+        sample=False,
+        name="prediction_rows",
+        duckdb_memory_limit=duckdb_memory_limit,
+        duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+    )
+    required = {
+        *_key_parts(labels_spec.key),
+        *([labels_spec.timestamp] if labels_spec.timestamp else []),
+    }
+    missing = required - set(rows.columns)
+    if missing:
+        raise ValueError(f"Prediction source is missing columns: {sorted(missing)}")
+    order_column = "__kurversc_prediction_order__"
+    while order_column in rows:
+        order_column += "_"
+    rows = rows.copy()
+    rows[order_column] = range(len(rows))
+    estimator = (
+        artifact.validation_estimator if use_validation_model else artifact.estimator
+    )
+    predictions: list[pd.DataFrame] = []
+    for cutoff, prediction_rows in _training_groups(rows, labels_spec):
+        with _table_workspace(
+            connection,
+            normalized_tables,
+            sample_rows=1,
+            random_state=0,
+            search=False,
+            duckdb_memory_limit=duckdb_memory_limit,
+            duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+        ) as workspace:
+            frame = _materialize_at_cutoff(
                 workspace,
                 normalized_tables,
                 normalized_relationships,
                 root_name,
                 artifact.config,
-                rows,
+                prediction_rows,
                 labels_spec,
+                cut_date=cutoff,
                 execution_plan=artifact.execution_plan,
                 compute_period_days=compute_period_days,
                 verbose=verbose,
+                train=False,
+                infer_ts_periods=False,
             )
             inputs = prepare_prediction_features(
                 frame,
@@ -2223,36 +4686,33 @@ def predict(
                 categorical_columns=set(artifact.categorical_columns),
                 datetime_columns=set(artifact.datetime_columns),
             )
-            estimator = (
-                artifact.validation_estimator
-                if use_validation_model
-                else artifact.estimator
-            )
-            values = (
-                estimator.predict_proba(inputs)[:, 1]
-                if artifact.task == "classification"
-                else estimator.predict(inputs)
-            )
-            frame = frame.assign(__kurversc_prediction__=values)
-            if (
-                len(frame) != len(rows)
-                or frame[order_column].duplicated().any()
-                or set(frame[order_column]) != set(rows[order_column])
-            ):
-                raise ValueError(
-                    "Frozen graph prediction did not return exactly one row for "
-                    "every requested entity/timestamp"
+            values = _predict_values(estimator, inputs, task=artifact.task)
+            predictions.append(
+                pd.DataFrame(
+                    {
+                        order_column: frame[order_column].to_numpy(copy=True),
+                        "prediction": values,
+                    }
                 )
-            prediction_by_order = frame.set_index(order_column)[
-                "__kurversc_prediction__"
-            ]
-            output = rows.sort_values(order_column, kind="stable").drop(
-                columns=order_column
             )
-            output = output.copy()
-            output["prediction"] = prediction_by_order.reindex(
-                rows.sort_values(order_column, kind="stable")[order_column]
-            ).to_numpy()
-            return output.reset_index(drop=True)
-        finally:
-            workspace.close()
+            del frame, inputs
+        gc.collect()
+    prediction_frame = (
+        pd.concat(predictions, ignore_index=True)
+        if predictions
+        else pd.DataFrame(columns=[order_column, "prediction"])
+    )
+    if (
+        len(prediction_frame) != len(rows)
+        or prediction_frame[order_column].duplicated().any()
+        or set(prediction_frame[order_column]) != set(rows[order_column])
+    ):
+        raise ValueError(
+            "Frozen graph prediction did not return exactly one row for "
+            "every requested entity/timestamp"
+        )
+    prediction_by_order = prediction_frame.set_index(order_column)["prediction"]
+    ordered = rows.sort_values(order_column, kind="stable")
+    output = ordered.drop(columns=order_column).copy()
+    output["prediction"] = prediction_by_order.reindex(ordered[order_column]).to_numpy()
+    return output.reset_index(drop=True)
