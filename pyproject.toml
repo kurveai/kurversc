@@ -1,18 +1,20 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "kurversc"
-version = "0.1.0"
+version = "0.1.1"
 description = "Validation-guided configuration search for GraphReduce"
 authors = [{ name = "KurveAI" }]
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "catboost>=1.2,<2",
     "duckdb>=1.2,<1.3",
-    "graphreduce==1.10.13",
+    "graphreduce==1.10.14",
     "numpy>=1.24,<2",
     "pandas>=1.5,<3.1",
     "pytz>=2024.1",

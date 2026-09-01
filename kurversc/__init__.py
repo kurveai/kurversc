@@ -10,7 +10,7 @@ from .relbench import (
 from .search import FittedModel, FitResult, GraphConfig, Trial, incremental_configs
 from .specs import GraphLabels, Labels, Relationship, Table
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "FitResult",
