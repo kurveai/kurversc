@@ -163,13 +163,16 @@
   <text x="509" y="636" class="tiny" text-anchor="middle">score closes the loop</text>
 
   <!-- Winner -->
-  <path d="M807 765 L807 815" class="arrow"/>
+  <path d="M807 765 L807 803" class="arrow"/>
   <g filter="url(#shadow)">
-    <rect x="445" y="820" width="725" height="72" rx="18" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2"/>
+    <rect x="420" y="808" width="775" height="102" rx="18" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2"/>
   </g>
-  <circle cx="486" cy="856" r="20" fill="#DCFCE7"/>
-  <path d="M477 856l6 6 12-15" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="520" y="849" class="label">Select q* → freeze graph plan + schema → replay full frames → fit production ensemble</text>
-  <text x="520" y="875" class="tiny">One cutoff frame is materialized at a time; the winning relational program remains fixed.</text>
+  <circle cx="472" cy="859" r="20" fill="#DCFCE7"/>
+  <path d="M463 859l6 6 12-15" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="510" y="841" class="label">
+    <tspan x="510" dy="0">Select q* → freeze graph plan + schema</tspan>
+    <tspan x="510" dy="25">Replay full frames → fit production ensemble</tspan>
+  </text>
+  <text x="510" y="895" class="tiny">One cutoff frame is materialized at a time; the winning relational program remains fixed.</text>
 
 </svg>

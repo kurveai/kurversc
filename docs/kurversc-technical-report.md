@@ -1045,48 +1045,6 @@ On Elo, KurveRSC is third overall and second among the two system submissions.
 On RelArena's default `loss_rescaled` ordering it is second overall (0.142977),
 behind RT-PluRel (0.107752) and immediately ahead of TabPFN-Rel API (0.148825).
 
-## Configuration-selection summary
-
-| Quantity | Classification | Regression | Overall |
-|---|---:|---:|---:|
-| Tasks | 12 | 9 | 21 |
-| Mean successful candidates | — | — | — |
-| Mean selected depth | — | — | — |
-| Annotation enabled selections | — | — | — |
-| Mean selected feature count | — | — | — |
-| Complexity recommendation differs from raw winner | — | — | — |
-| Inferred-period selections | — | — | — |
-
-## Ablations
-
-| Variant | Classification aggregate | Regression aggregate | Mean feature count | Mean runtime | Peak RSS |
-|---|---:|---:|---:|---:|---:|
-| Full KurveRSC | — | — | — | — | — |
-| Fixed depth 1 + base | — | — | — | — | — |
-| No automatic annotations | — | — | — | — | — |
-| Fixed 7/30/90-day periods | — | — | — | — | — |
-| No complexity recommendation | — | — | — | — | — |
-| One production frame | — | — | — | — | — |
-| Three production frames | — | — | — | — | — |
-| Walk-forward finalist reranking | — | — | — | — | — |
-
-## Runtime and memory
-
-Runtime should separate graph search, optional reranking, final graph replay,
-learner fitting, and prediction. Peak RSS must be reported per task and for the
-parallel sweep host because aggregate parallel memory is not the same as a
-single-model requirement.
-
-| Model | Data preparation | Model fit | Prediction | End-to-end | Peak RSS | Hardware |
-|---|---:|---:|---:|---:|---:|---|
-| KurveRSC | — | — | — | — | — | — |
-| TabPFN-Rel Local | — | — | — | — | — | — |
-| RT-PluRel | — | — | — | — | — | — |
-
-No external baseline runtime should be inferred from predictive-score tables. If
-a method does not publish end-to-end relational preparation time or peak memory,
-the table should say "not reported" rather than estimate it.
-
 # Related work
 
 ## Automated relational feature engineering
