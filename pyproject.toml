@@ -28,7 +28,8 @@ relbench = ["relbench>=2.1,<3"]
 tabpfn = ["tabpfn>=8.5,<9"]
 
 [project.urls]
-Homepage = "https://github.com/kurveai/kurversc"
+Homepage = "https://kurve.ai/research"
+Blog = "https://kurve.ai/blog/kurversc-learning-the-shape-of-relational-signal"
 Repository = "https://github.com/kurveai/kurversc"
 Documentation = "https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.md"
 Issues = "https://github.com/kurveai/kurversc/issues"

@@ -6,6 +6,13 @@ its relational feature engine, searches graph configurations
 across temporal frames, and selects them by downstream validation performance.
 
 <p align="center">
+  <a href="https://kurve.ai/research">Kurve Research</a> ·
+  <a href="https://kurve.ai/blog/kurversc-learning-the-shape-of-relational-signal">KurveRSC Article</a> ·
+  <a href="https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.pdf">Technical Report</a> ·
+  <a href="https://pypi.org/project/kurversc/">PyPI</a>
+</p>
+
+<p align="center">
   <img
     src="https://raw.githubusercontent.com/kurveai/kurversc/main/docs/assets/kurversc-shape-selection.svg"
     alt="KurveRSC materializes relational feature frames with different shapes, evaluates them jointly with a downstream learner, and selects one frozen graph configuration for final fitting."
