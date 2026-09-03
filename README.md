@@ -30,18 +30,21 @@ across temporal frames, and selects them by downstream validation performance.
 > Keeping this boundary explicit makes the learner pluggable: today CatBoost;
 > tomorrow TabPFN-3 or another tabular or relational foundation model.
 
-Two independent results motivate this direction. KumoRFM-2 reports that
-task-specific fine-tuning improves its average SALT MRR from 0.83 in-context to
-0.89, showing that a strong relational foundation model still benefits
-materially from task adaptation
+Kurve has pursued this direction from the outset: predictive performance
+depends on adapting the relational representation as well as the learner that
+consumes it. Recent independent results validate that longstanding bet from
+adjacent directions. KumoRFM-2 reports that task-specific fine-tuning improves
+its average SALT MRR from 0.83 in-context to 0.89, showing that even a strong
+relational foundation model benefits materially from task adaptation
 ([KumoRFM-2](https://arxiv.org/abs/2604.12596)). Prior Labs' TabPFN-Rel couples
 Deep Feature Synthesis with TabPFN-3 and obtains leading RelArena results,
-showing that a foundation learner can benefit from a separately constructed
+demonstrating the value of giving a foundation learner a separately constructed
 relational representation
-([RelArena and TabPFN-Rel](https://arxiv.org/abs/2608.16319)). These systems do
-not optimize the same object as KurveRSC, but together support its modular
-hypothesis: relational representation and downstream learning should be
-adapted jointly without permanently binding either layer to the other.
+([RelArena and TabPFN-Rel](https://arxiv.org/abs/2608.16319)). Neither system
+optimizes exactly the same object as KurveRSC, but both reinforce KurveRSC's
+original modular thesis: relational representation and downstream learning
+should be adapted jointly without permanently binding either layer to the
+other.
 
 ### How KurveRSC differs from Deep Feature Synthesis
 
