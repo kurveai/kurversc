@@ -112,6 +112,49 @@ def test_feature_funnel_audits_explicitly_excluded_columns() -> None:
     assert omitted["reason"] == "excluded by Table.columns"
 
 
+def test_public_feature_preflight_estimates_topology_without_relational_sql() -> None:
+    customers = pd.DataFrame(
+        {"customer_id": range(10), "age": [float(value) for value in range(10)]}
+    )
+    events = pd.DataFrame(
+        {
+            "event_id": range(30),
+            "customer_id": [value // 3 for value in range(30)],
+            "occurred_at": pd.date_range("2025-01-01", periods=30, freq="h"),
+            "amount": [float(value % 7) for value in range(30)],
+        }
+    )
+    preflight = kurversc.estimate_features(
+        kurversc.Table(customers, name="customers", key="customer_id", timeless=True),
+        tables=(
+            kurversc.Table(
+                events,
+                name="events",
+                key="event_id",
+                date="occurred_at",
+            ),
+        ),
+        relationships=(
+            kurversc.Relationship(
+                parent="customers",
+                child="events",
+                parent_key="customer_id",
+                child_key="customer_id",
+            ),
+        ),
+        graph_configs=(
+            kurversc.GraphConfig(depth=1, auto_annotate_features=False),
+            kurversc.GraphConfig(depth=2, auto_annotate_features=False),
+        ),
+        feature_ranking_rows=5,
+    )
+
+    assert len(preflight.estimates) == 2
+    assert preflight.results["estimated_output_features"].gt(0).all()
+    assert preflight.results["estimated_peak_features"].gt(0).all()
+    assert set(preflight.details["table"]) == {"customers", "events"}
+
+
 def test_capabilities_prune_only_structurally_unavailable_families() -> None:
     tables = {
         "entities": kurversc.Table(

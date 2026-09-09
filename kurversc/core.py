@@ -33,8 +33,12 @@ from .modeling import (
     sample_training_rows,
 )
 from .feature_audit import (
+    ConfigFeatureEstimate,
+    FeaturePreflight,
     available_feature_families,
+    estimate_config_features,
     estimate_config_feature_width,
+    free_text_columns,
     rank_feature_tables,
 )
 from .search import (
@@ -233,6 +237,7 @@ class _Workspace:
         self.random_state = random_state
         self.views: dict[str, str] = {}
         self.columns: dict[str, list[str]] = {}
+        self._free_text_columns: dict[str, frozenset[str]] = {}
         self._registered: list[str] = []
         self._auxiliary_views: list[str] = []
 
@@ -279,6 +284,15 @@ class _Workspace:
         return self.connection.sql(
             f"SELECT * FROM {_quote_identifier(self.views[name])}"
         ).to_df()
+
+    def free_text_columns(self, name: str) -> frozenset[str]:
+        """Classify free text once per sampled source view."""
+        if name not in self._free_text_columns:
+            sample = self.connection.sql(
+                f"SELECT * FROM {_quote_identifier(self.views[name])} LIMIT 500"
+            ).to_df()
+            self._free_text_columns[name] = free_text_columns(sample)
+        return self._free_text_columns[name]
 
     def entity_filtered_view(
         self,
@@ -612,6 +626,33 @@ def _rank_feature_funnel(
     )
 
 
+def _known_source_row_counts(
+    tables: Mapping[str, Table],
+    *,
+    search: bool,
+    overrides: Mapping[str, int] | None = None,
+) -> dict[str, int]:
+    """Return free row counts and caller-supplied counts for planning."""
+
+    counts = dict(overrides or {})
+    unknown = set(counts) - set(tables)
+    if unknown:
+        raise ValueError(
+            f"source_row_counts contains unknown tables: {sorted(unknown)}"
+        )
+    if any(rows < 0 for rows in counts.values()):
+        raise ValueError("source_row_counts must contain non-negative row counts")
+    for name, table in tables.items():
+        source = (
+            table.search_source
+            if search and table.search_source is not None
+            else table.source
+        )
+        if name not in counts and isinstance(source, pd.DataFrame):
+            counts[name] = len(source)
+    return counts
+
+
 def _split_labels(
     labels: pd.DataFrame,
     spec: Labels,
@@ -799,6 +840,9 @@ def _build_graph(
     execution_plan: Mapping[str, Any] | None = None,
     train: bool = True,
     infer_ts_periods: bool = True,
+    compute_layer: Any = None,
+    node_class: type | None = None,
+    checkpoint_schema: str | None = None,
 ):
     from graphreduce.enum import ComputeLayerEnum, PeriodUnit
     from graphreduce.graph_reduce import GraphReduce
@@ -806,6 +850,8 @@ def _build_graph(
     from graphreduce.node import DuckdbNode
     from graphreduce.enum import SQLOpType
 
+    compute_layer = compute_layer or ComputeLayerEnum.duckdb
+    node_class = node_class or DuckdbNode
     root_key_columns = _key_parts(tables[root_name].key)
     root_source = (
         workspace.entity_filtered_view(
@@ -829,6 +875,11 @@ def _build_graph(
         available = workspace.columns[name]
         selected = list(table.columns) if table.columns is not None else list(available)
         selected = [column for column in selected if column not in excluded_columns]
+        if not config.auto_text_features:
+            detected_text_columns = workspace.free_text_columns(name)
+            selected = [
+                column for column in selected if column not in detected_text_columns
+            ]
         for key in _key_parts(table.key) if table.key is not None else []:
             if key not in selected:
                 selected.insert(0, key)
@@ -848,7 +899,7 @@ def _build_graph(
         # A very large slice bound preserves KurveRSC's public ``None`` = no
         # cap semantics without changing GraphReduce itself.
         uncapped_budget = 2_147_483_647
-        node = DuckdbNode(
+        node = node_class(
             fpath=root_source if name == root_name else workspace.views[name],
             prefix=prefix,
             pk=table.key,
@@ -950,8 +1001,9 @@ def _build_graph(
     graph = GraphReduce(
         name=f"kurversc-{config.depth}-{'-'.join(config.feature_families)}",
         parent_node=nodes[root_name],
-        compute_layer=ComputeLayerEnum.duckdb,
+        compute_layer=compute_layer,
         sql_client=workspace.connection,
+        checkpoint_schema=checkpoint_schema,
         cut_date=graph_cut_date,
         compute_period_val=compute_period_days,
         compute_period_unit=PeriodUnit.day,
@@ -2555,6 +2607,177 @@ def _fit_buffered_legacy(
             )
         finally:
             workspace.close()
+
+
+def estimate_features(
+    parent_node: Table | Source,
+    *,
+    tables: Sequence[Table | Source] | Mapping[str, Table | Source] = (),
+    relationships: Sequence[Relationship | Mapping[str, Any]] = (),
+    parent_key: Key | Sequence[str] | None = None,
+    parent_date: str | None = None,
+    parent_timeless: bool = False,
+    max_depth: int = 3,
+    feature_family_stages: Sequence[Sequence[str]] = DEFAULT_FAMILY_STAGES,
+    auto_annotate_options: Sequence[bool] = (True, False),
+    feature_family_max_columns: int | None = 4,
+    feature_family_max_column_options: Sequence[int | None] | None = None,
+    feature_family_max_features_per_column: int | None = 32,
+    feature_propagation_max_functions_per_column: int | None = 1,
+    feature_ranking_rows: int = 2_000,
+    capability_pruning: bool = True,
+    graph_configs: Sequence[GraphConfig] | None = None,
+    auto_text_features: bool = False,
+    auto_annotate_max_text_columns: int | None = None,
+    source_row_counts: Mapping[str, int] | None = None,
+    connection: duckdb.DuckDBPyConnection | None = None,
+    random_state: int = 42,
+    duckdb_memory_limit: str = "128GB",
+    duckdb_max_temp_directory_size: str = "128GB",
+) -> FeaturePreflight:
+    """Estimate feature volume without executing relational feature SQL.
+
+    The preflight reads at most ``feature_ranking_rows`` rows from each source,
+    profiles its schema, and simulates feature propagation over the configured
+    graph topology. It reports final root width, peak intermediate width, and
+    total generated columns for every candidate configuration.
+    """
+
+    if max_depth < 1:
+        raise ValueError("max_depth must be at least 1")
+    if feature_ranking_rows < 1:
+        raise ValueError("feature_ranking_rows must be positive")
+    if (
+        feature_family_max_features_per_column is not None
+        and feature_family_max_features_per_column < 1
+    ):
+        raise ValueError(
+            "feature_family_max_features_per_column must be positive or None"
+        )
+    if (
+        feature_propagation_max_functions_per_column is not None
+        and feature_propagation_max_functions_per_column < 1
+    ):
+        raise ValueError(
+            "feature_propagation_max_functions_per_column must be positive or None"
+        )
+    if graph_configs is not None and len(graph_configs) == 0:
+        raise ValueError("graph_configs must contain at least one configuration")
+    if not isinstance(duckdb_memory_limit, str) or not duckdb_memory_limit.strip():
+        raise ValueError("duckdb_memory_limit must be a non-empty string")
+    if (
+        not isinstance(duckdb_max_temp_directory_size, str)
+        or not duckdb_max_temp_directory_size.strip()
+    ):
+        raise ValueError("duckdb_max_temp_directory_size must be a non-empty string")
+
+    parent = coerce_table(
+        parent_node,
+        key=parent_key,
+        date=parent_date,
+        timeless=parent_timeless,
+    )
+    root_name, normalized_tables = _normalize_tables(parent, tables)
+    normalized_relationships = tuple(
+        coerce_relationship(item) for item in relationships
+    )
+    if graph_configs is None:
+        column_budgets = resolve_feature_family_column_budgets(
+            feature_family_max_columns,
+            feature_family_max_column_options,
+        )
+        configs = incremental_configs(
+            max_depth=max_depth,
+            feature_family_stages=feature_family_stages,
+            auto_annotate_options=auto_annotate_options,
+            feature_family_max_columns=feature_family_max_columns,
+            feature_family_max_column_options=column_budgets,
+            feature_family_max_features_per_column=(
+                feature_family_max_features_per_column
+            ),
+            feature_propagation_max_functions_per_column=(
+                feature_propagation_max_functions_per_column
+            ),
+        )
+    else:
+        configs = tuple(graph_configs)
+        column_budgets = tuple(
+            dict.fromkeys(config.feature_family_max_columns for config in configs)
+        )
+    if auto_text_features or auto_annotate_max_text_columns is not None:
+        configs = tuple(
+            replace(
+                config,
+                auto_text_features=bool(auto_text_features),
+                auto_annotate_max_text_columns=auto_annotate_max_text_columns,
+            )
+            for config in configs
+        )
+
+    normalized_tables, feature_audit = _rank_feature_funnel(
+        normalized_tables,
+        normalized_relationships,
+        connection=connection,
+        sample_rows=feature_ranking_rows,
+        random_state=random_state,
+        feature_family_max_columns=column_budgets[0],
+        feature_family_max_column_options=column_budgets,
+        feature_family_max_features_per_column=(feature_family_max_features_per_column),
+        duckdb_memory_limit=duckdb_memory_limit,
+        duckdb_max_temp_directory_size=duckdb_max_temp_directory_size,
+    )
+    if capability_pruning and graph_configs is None:
+        configs = tuple(
+            config
+            for config in configs
+            if set(config.feature_families).issubset(
+                available_feature_families(
+                    normalized_tables,
+                    normalized_relationships,
+                    feature_audit,
+                    auto_annotate_features=config.auto_annotate_features,
+                )
+            )
+        )
+
+    known_rows = _known_source_row_counts(
+        normalized_tables,
+        search=True,
+        overrides=source_row_counts,
+    )
+    estimates: tuple[ConfigFeatureEstimate, ...] = tuple(
+        estimate_config_features(
+            config,
+            feature_audit,
+            normalized_relationships,
+            normalized_tables,
+            root_name=root_name,
+            source_rows=known_rows,
+        )
+        for config in configs
+    )
+    logger.info(
+        "feature_preflight_completed",
+        candidates=len(estimates),
+        sample_rows=feature_ranking_rows,
+        max_output_features=max(
+            (estimate.estimated_output_features for estimate in estimates),
+            default=0,
+        ),
+        max_peak_features=max(
+            (estimate.estimated_peak_features for estimate in estimates),
+            default=0,
+        ),
+        max_total_generated_features=max(
+            (estimate.estimated_total_generated_features for estimate in estimates),
+            default=0,
+        ),
+        max_peak_working_cells=max(
+            (estimate.estimated_peak_working_cells or 0 for estimate in estimates),
+            default=0,
+        ),
+    )
+    return FeaturePreflight(estimates=estimates, feature_audit=feature_audit)
 
 
 def fit(

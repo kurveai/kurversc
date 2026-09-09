@@ -99,6 +99,87 @@ print(result.full_validation_score)
 print(result.results)             # complete configuration-search audit trail
 ```
 
+### Snowflake-native joint optimization
+
+Install the optional Snowflake runtime when both GraphReduce feature
+materialization and downstream model selection should remain in Snowflake:
+
+```bash
+pip install "kurversc[snowflake]"
+```
+
+`fit_snowflake` searches the same `GraphConfig` surface as `fit`, but executes
+every GraphReduce candidate with the Snowflake compute layer and evaluates it
+with a selectable downstream learner. `snowflake_native` uses Snowflake's SQL
+`SNOWFLAKE.ML.CLASSIFICATION` class; `snowpark_xgboost` supports classification
+and regression through Snowpark ML. Candidate feature relations are temporary.
+After selection, KurveRSC replays the recommended frozen plan over full data
+and persists only the final refit model.
+
+```python
+import snowflake.connector
+import kurversc
+
+connection = snowflake.connector.connect(
+    account="...",
+    user="...",
+    password="...",
+    role="KURVE_ML_ROLE",
+)
+
+result = kurversc.fit_snowflake(
+    parent_node=kurversc.Table(
+        "RAW.CUSTOMERS",
+        name="customers",
+        key="CUSTOMER_ID",
+        timeless=True,
+    ),
+    label_node=kurversc.GraphLabels(
+        table="events",
+        field="EVENT_ID",
+        operation="bool",
+        period_days=30,
+        train_cutoffs=("2026-01-01", "2026-02-01"),
+        validation_cutoffs=("2026-03-01",),
+        target="WILL_RETURN",
+    ),
+    tables=[
+        kurversc.Table(
+            "RAW.EVENTS",
+            name="events",
+            key="EVENT_ID",
+            date="EVENT_AT",
+        )
+    ],
+    relationships=[
+        kurversc.Relationship(
+            parent="customers",
+            child="events",
+            parent_key="CUSTOMER_ID",
+            child_key="CUSTOMER_ID",
+        )
+    ],
+    backend=kurversc.SnowflakeBackend(
+        connection=connection,
+        database="KURVE",
+        schema="ML_OUTPUT",
+        warehouse="KURVE_SNOWPARK_WH",
+    ),
+    learner="snowflake_native",
+    model_name="CUSTOMER_RETURN_MODEL",
+)
+
+print(result.recommended_config)
+print(result.full_validation_score)
+print(result.model.fqn)       # KURVE.ML_OUTPUT.CUSTOMER_RETURN_MODEL
+print(result.model.version)   # registry version for Snowpark XGBoost; empty for SQL ML
+```
+
+The initial Snowflake-native path intentionally requires `GraphLabels`, so
+point-in-time labels and features are produced together without downloading
+label frames. See [Snowflake joint optimization](docs/snowflake.md) for the
+execution lifecycle and required privileges.
+
 `result` is the fitted KurveRSC artifact: the selected `GraphConfig`, frozen
 GraphReduce feature-operation plan, downstream learner, feature schema, and
 validation metadata. Pass it to `kurversc.predict(...)` to replay the exact

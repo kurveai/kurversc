@@ -471,6 +471,55 @@ def test_dated_parent_always_receives_graphreduce_filter_ops() -> None:
     }
 
 
+def test_graph_builder_omits_free_text_unless_text_features_are_enabled() -> None:
+    connection = duckdb.connect(":memory:")
+    workspace = _Workspace(connection, sample_rows=100, random_state=42)
+    table = kurversc.Table(
+        pd.DataFrame(
+            {
+                "post_id": [1, 2],
+                "status": ["question", "answer"],
+                "body": [
+                    "<p>This is a long document with enough words to be free text.</p>",
+                    "<p>This is another long document that must not become a category.</p>",
+                ],
+            }
+        ),
+        name="posts",
+        key="post_id",
+        timeless=True,
+        prefix="posts",
+    )
+    workspace.add("posts", table.source)
+    try:
+        without_text = _build_graph(
+            workspace,
+            {"posts": table},
+            (),
+            "posts",
+            kurversc.GraphConfig(auto_text_features=False),
+            cut_date=datetime(2020, 1, 2),
+            compute_period_days=3650,
+            excluded_columns=set(),
+        )
+        with_text = _build_graph(
+            workspace,
+            {"posts": table},
+            (),
+            "posts",
+            kurversc.GraphConfig(auto_text_features=True),
+            cut_date=datetime(2020, 1, 2),
+            compute_period_days=3650,
+            excluded_columns=set(),
+        )
+    finally:
+        workspace.close()
+        connection.close()
+
+    assert without_text.parent_node.columns == ["post_id", "status"]
+    assert with_text.parent_node.columns == ["post_id", "status", "body"]
+
+
 def test_relation_cutoff_is_relbench_inclusive_without_future_rows() -> None:
     connection = duckdb.connect(":memory:")
     workspace = _Workspace(connection, sample_rows=100, random_state=42)
