@@ -1,7 +1,10 @@
 ---
 title: "KurveRSC"
 subtitle: "Validation-Guided Relational Signal Compression with a Downstream Learner in the Loop"
-author: "Kurve AI"
+author: |
+  W. Madrigal  
+  Kurve AI
+author-meta: "W. Madrigal"
 date: "September 1, 2026"
 lang: en-US
 papersize: letter
