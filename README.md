@@ -678,7 +678,7 @@ If you use KurveRSC in research, please cite the
 ```bibtex
 @techreport{madrigal2026kurversc,
   title       = {KurveRSC: Validation-Guided Relational Signal Compression with a Downstream Learner in the Loop},
-  author      = {Madrigal, W.},
+  author      = {Madrigal, Wes},
   institution = {Kurve AI},
   year        = {2026},
   month       = sep,
