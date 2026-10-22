@@ -13,6 +13,10 @@ from graphreduce.predicates import EqualityPredicate
 Key = str | tuple[str, ...]
 Source = str | Path | pd.DataFrame
 
+TARGET_HISTORY_TABLE = "__kurversc_target_history__"
+TARGET_HISTORY_VALUE = "__kurversc_prior_target__"
+TARGET_HISTORY_TIME = "__kurversc_prior_target_time__"
+
 
 def _as_key(value: str | Sequence[str] | None, *, field: str) -> Key | None:
     if value is None:
@@ -36,6 +40,12 @@ class Table:
     ``auto_base_predicate_max`` bounded equality trajectories in the ``base``
     family. Supplying ``base_predicates`` freezes an explicit learned manifest;
     otherwise GraphReduce discovers frequent low-cardinality predicates.
+    ``sample_in_search=False`` keeps a compact, high-value relation complete
+    while ordinary feature tables use KurveRSC's search row budget.
+    ``cutoff_boundary`` can explicitly choose ``"strict"`` (date < cutoff) or
+    ``"inclusive"`` (date <= cutoff); ``None`` uses KurveRSC's task-level
+    default. ``"exact"`` selects only date == cutoff, for externally fitted
+    feature snapshots that must not be mixed with older snapshots.
     """
 
     source: Source
@@ -47,9 +57,17 @@ class Table:
     columns: tuple[str, ...] | None = None
     context_keys: tuple[str, ...] = ()
     search_source: Source | None = None
+    fidelity_source: Source | None = None
+    sample_in_search: bool = True
+    cutoff_boundary: str | None = None
     auto_base_predicate_max: int = 2
     base_predicate_windows: tuple[int, ...] = (7, 14, 30, 60)
     base_predicates: tuple[EqualityPredicate, ...] | None = None
+    path_base_tables: tuple[str, ...] = ()
+    # Optional second clock: event time controls windows; availability time
+    # independently controls whether a source row can be observed at all.
+    available_at: str | None = None
+    model_exclusions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "key", _as_key(self.key, field="Table.key"))
@@ -59,9 +77,18 @@ class Table:
             )
         if self.columns is not None:
             object.__setattr__(self, "columns", tuple(self.columns))
+        object.__setattr__(self,"model_exclusions",tuple(dict.fromkeys(self.model_exclusions)))
         object.__setattr__(
             self, "context_keys", tuple(dict.fromkeys(self.context_keys))
         )
+        path = tuple(str(value) for value in self.path_base_tables)
+        if any(not value for value in path):
+            raise ValueError("Table.path_base_tables must contain non-empty names")
+        object.__setattr__(self, "path_base_tables", path)
+        if self.cutoff_boundary not in {None, "strict", "inclusive", "exact"}:
+            raise ValueError(
+                "Table.cutoff_boundary must be 'strict', 'inclusive', 'exact', or None"
+            )
         if self.auto_base_predicate_max < 0:
             raise ValueError("Table.auto_base_predicate_max must be non-negative")
         windows = tuple(
@@ -81,7 +108,16 @@ class Table:
 
 @dataclass(frozen=True)
 class Labels:
-    """Labels and their train/validation/test split metadata."""
+    """Labels and their train/validation/test split metadata.
+
+    Temporal labels automatically become a strict, leak-safe historical child
+    relation. During validation it contains training targets only; the fitted
+    artifact retains train-plus-validation targets for later prediction.
+    ``history_source`` may provide the authoritative unsampled availability
+    pool when ``source`` is intentionally restricted. Set
+    ``target_history=False`` only for an ablation or an unavailable-label
+    deployment contract.
+    """
 
     source: Source
     target: str | None = None
@@ -92,6 +128,13 @@ class Labels:
     validation_value: Any = "validation"
     test_value: Any = "test"
     search_source: Source | None = None
+    fidelity_source: Source | None = None
+    history_source: Source | None = None
+    target_history: bool = True
+    peer_context: Any = None
+    # Historical targets may become observable after their example timestamp.
+    # None preserves the original public API's already-observed-label contract.
+    available_at: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "key", _as_key(self.key, field="Labels.key"))
