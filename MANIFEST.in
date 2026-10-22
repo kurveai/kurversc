@@ -1,0 +1,7 @@
+include staged_build.py
+include docs/staged-release.md
+include docs/staged-validation.json
+include tools/check_release_artifacts.py
+include scripts/parent_event_response_context_20261020.py
+include examples/relbench_planner_collection.py
+include docs/checkpoints/20261007/frozen-graph-campaign-21.csv

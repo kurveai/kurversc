@@ -1,5 +1,12 @@
 # KurveRSC
 
+> Release candidate: `0.2.0rc1` packages the complete staged procedure as
+> `kurversc.run_staged_task(...)` / `kurversc-staged`. The existing `fit` and
+> `predict` APIs remain available. See [staged reproduction](docs/staged-release.md)
+> for installation, protocol boundaries, and outstanding qualification work.
+> Historical benchmark tables below describe earlier releases, not a completed
+> 21-task evaluation of this candidate.
+
 KurveRSC is an integrated relational representation and model-selection
 system. It uses [GraphReduce](https://github.com/wesmadrigal/graphreduce) as
 its relational feature engine, searches graph configurations

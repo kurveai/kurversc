@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-22",
+  "release_candidate": "0.2.0rc1",
+  "kurversc_tests": {"passed": 696, "skipped": 1},
+  "graphreduce_tests": {"passed": 106, "skipped": 1},
+  "current_relarena_adapter_tests": {"passed": 14},
+  "installed_wheel_smoke": {
+    "status": "passed",
+    "rows": 48,
+    "elapsed_seconds": 188.0658951671794,
+    "unregistered_schema": true,
+    "benchmark_registry_lookup": false,
+    "hidden_targets_supplied": false,
+    "full_staged_procedure": true,
+    "fresh_optional_dependency_resolution": false
+  },
+  "reference_source_parity": {
+    "core_modules": 46,
+    "stage_modules": 106,
+    "exact_before_release_version_stamp": true,
+    "reference_kurversc_wheel_sha256": "b0c94fe8782886902cccab8337f4586e9439ec45e6f7a8d675952e9421d046e0",
+    "reference_graphreduce_wheel_sha256": "7023d60dfbe69b1ab64c338169d9bc4cef8740d81f6e6eb83b03cb26769e0ce4"
+  },
+  "official_task_completions": 12,
+  "official_task_count": 21,
+  "full_21_task_reproduction_passed": false,
+  "elo_claimed": false,
+  "merge_ready": false
+}
