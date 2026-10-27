@@ -1,0 +1,46 @@
+KurveRSC 21-task final score comparison
+=======================================
+
+Current run: results/kurversc-root-reachable-context-fixed-all21-20261003/campaign-results.csv
+Published results: https://github.com/PriorLabs/relarena/blob/main/baseline_results/results.csv
+Checked: 2026-10-04. All 21 current tasks completed; no task failures.
+
+The "Best TabPFN-Rel API" column takes the better reported selected test score
+for each task across the 2026-08-15 and 2026-09-28 API versions. An asterisk
+marks a 2026-08-15 score; all other API scores are 2026-09-28. This is a
+per-task best-of-two comparison, not one leaderboard submission.
+
+Task                         Metric    Current       Old KurveRSC   Best TabPFN-Rel API
+----------------------------------------------------------------------------------------
+Amazon / item-churn          AUC ↑      0.828727       0.827256       0.828653
+Amazon / item-ltv            MAE ↓     42.302193      42.273080      45.270515
+Amazon / user-churn          AUC ↑      0.710520       0.710347       0.711698
+Amazon / user-ltv            MAE ↓     14.020508      14.020545      13.877122
+Avito / ad-ctr               MAE ↓      0.033512       0.033440       0.031080 *
+Avito / user-clicks          AUC ↑      0.646745       0.658406       0.691631
+Avito / user-visits          AUC ↑      0.671029       0.674721       0.672453
+Event / user-attendance      MAE ↓      0.260053       0.258668       0.241652
+Event / user-ignore          AUC ↑      0.858020       0.832628       0.878659 *
+Event / user-repeat          AUC ↑      0.766310       0.779679       0.760495
+F1 / driver-dnf              AUC ↑      0.728688       0.746484       0.732172 *
+F1 / driver-position         MAE ↓      3.959796       3.863205       3.757398
+F1 / driver-top3             AUC ↑      0.803766       0.664957       0.791702
+H&M / item-sales             MAE ↓      0.032900       0.032168       0.036479
+H&M / user-churn             AUC ↑      0.708239       0.696916       0.706021
+Stack / post-votes           MAE ↓      0.063421       0.063243       0.062733
+Stack / user-badge           AUC ↑      0.873230       0.877626       0.883443
+Stack / user-engagement      AUC ↑      0.903559       0.903027       0.907662
+Trial / site-success         MAE ↓      0.395259       0.403842       0.377615
+Trial / study-adverse        MAE ↓     39.650691      41.270229      34.401374
+Trial / study-outcome        AUC ↑      0.721066       0.712131       0.764702 *
+
+Current KurveRSC beats published KurveRSC on 10/21 tasks and the per-task
+best TabPFN-Rel API score on 6/21 tasks.
+
+RelArena models-plus-systems Elo on all 21 tasks, with current KurveRSC added
+as a separate method: 4th of 14, Elo 1855.9. Published KurveRSC: 6th, Elo
+1804.2. Higher-ranked methods are TabPFN-Rel API 2026-09-28 (1984.2),
+TabPFN-Rel local 2026-09-28 (1926.2), and RT-PluRel (1866.6). Elo values
+are relative to the set of methods included; replacing the published
+KurveRSC row instead of adding a separate method gives current KurveRSC
+4th place with Elo 1864.2.
