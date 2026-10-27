@@ -146,7 +146,7 @@ The comparator is **`tabpfn-rel-client-2026-09-28`**, captured with the other
 RelArena results on October 25. Previous KurveRSC means its rows in that same
 capture. It differs from the older September 2 README snapshot.
 
-| Dataset / task | Metric | Previous KurveRSC | KurveRSC 0.2.0 | TabPFN-Rel client | Winner |
+| Dataset / task | Metric | Previous KurveRSC | KurveRSC | TabPFN-Rel client | Winner |
 | --- | --- | --- | --- | --- | --- |
 | rel-amazon/item-churn | AUROC ↑ | 0.827256 | 0.829162 | 0.828653 | KurveRSC |
 | rel-amazon/item-ltv | MAE ↓ | 42.273080 | 42.575857 | 45.270515 | KurveRSC |
@@ -187,7 +187,7 @@ leaderboard acceptance.
 
 | Elo rank | Method | Kind | Elo | Bootstrap + / - | Mean rank | Panel win rate | Rescaled loss |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | KurveRSC 0.2.0 staged | system | 1948.6 | +101.5 / -76.2 | 3.714 | 80.61% | 0.073390 |
+| 1 | KurveRSC | system | 1948.6 | +101.5 / -76.2 | 3.714 | 80.61% | 0.073390 |
 | 2 | TabPFN-Rel client (2026-09-28) | model | 1937.1 | +105.8 / -67.5 | 3.857 | 79.59% | 0.073884 |
 | 3 | TabPFN-Rel local (2026-09-28) | model | 1893.5 | +92.6 / -62.2 | 4.429 | 75.51% | 0.075685 |
 | 4 | RT-J | system | 1839.7 | +145.5 / -118.9 | 5.190 | 70.07% | 0.153949 |
@@ -214,7 +214,7 @@ from regression nMAE normalized by the training-target standard deviation.
 
 | Loss rank | Method | Rescaled loss | Elo rank | Elo |
 | --- | --- | --- | --- | --- |
-| 1 | KurveRSC 0.2.0 staged | 0.073390 | 1 | 1948.6 |
+| 1 | KurveRSC | 0.073390 | 1 | 1948.6 |
 | 2 | TabPFN-Rel client (2026-09-28) | 0.073884 | 2 | 1937.1 |
 | 3 | TabPFN-Rel local (2026-09-28) | 0.075685 | 3 | 1893.5 |
 | 4 | Nori-Rel | 0.125534 | 7 | 1739.8 |
