@@ -31,6 +31,7 @@ READOUT_CONTRACT = dict(target_domain=True, zero_aware_quantiles=True,
     deployment_seed=0, teacher_workers=4,
     optional_feature_cell_capacity=500_000_000,
     semantic_row_capacity=500_000, semantic_document_capacity=200_000,
+    object_history_query_threads=1,
     incumbent_preserved_when_challenger_exceeds_capacity=True)
 
 

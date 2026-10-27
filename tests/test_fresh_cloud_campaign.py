@@ -9,7 +9,22 @@ from scripts import run_fresh_cloud_campaign as cloud
 from scripts.run_fresh_cloud_campaign import dispatch, graph_arguments, task_pairs
 
 
-def test_all_21_tasks_are_unique_and_interleaved():
+def task_metadata_fixture(tmp_path, monkeypatch):
+    """Legacy scheduler tests need task names, never historical scores/plans."""
+    import csv
+    from scripts.run_default_relarena_cloud import task_pairs as official_pairs
+
+    path = tmp_path / "metadata/docs/checkpoints/20261007/frozen-graph-campaign-21.csv"
+    path.parent.mkdir(parents=True)
+    with path.open("w") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["dataset", "task"])
+        writer.writerows(official_pairs())
+    monkeypatch.setattr(cloud, "ROOT", tmp_path / "metadata")
+
+
+def test_all_21_tasks_are_unique_and_interleaved(tmp_path, monkeypatch):
+    task_metadata_fixture(tmp_path, monkeypatch)
     pairs = task_pairs()
     assert len(pairs) == len(set(pairs)) == 21
     assert len({dataset for dataset, _ in pairs[:7]}) == 7
@@ -35,11 +50,14 @@ def test_stages_are_redirected_to_this_fresh_graph_root():
     assert original[3] == 'scripts.benchmark_sparse_training'
 
 
-def test_audit_parallelism_changes_only_scheduling():
+@pytest.mark.parametrize("seed_workers", [1, 2, 20])
+def test_frozen_audit_keeps_veto_and_fidelity_without_parallel_state(seed_workers):
     args = ['--origins', '3', '--seeds', '0,1,2', '--threads', '4']
-    actual = dispatch(['python', '-m', 'scripts.benchmark_temporal_policy', *args], Path('/fresh/graphs'))
-    assert 'scripts.run_temporal_audit_parallel' in actual
-    assert actual[actual.index('--') + 1:] == [*args, '--workers', '2']
+    actual = dispatch(['python', '-m', 'scripts.benchmark_temporal_policy', *args],
+                      Path('/fresh/graphs'), seed_workers=seed_workers)
+    assert 'scripts.benchmark_temporal_policy' in actual
+    assert 'scripts.run_temporal_audit_parallel' not in actual
+    assert actual[actual.index('--') + 1:] == [*args, '--prune-vetoed']
 
 
 def test_isolated_engine_spill_limit_scales_with_machine_memory():
@@ -134,6 +152,7 @@ def test_resume_keeps_results_and_accounts_for_interrupted_runtime(tmp_path):
 
 
 def test_18_task_resume_uses_ten_slots_then_isolates_hm(tmp_path, monkeypatch):
+    task_metadata_fixture(tmp_path, monkeypatch)
     pairs = task_pairs()
     completed = {'rel-avito/ad-ctr', 'rel-event/user-ignore', 'rel-event/user-attendance'}
     identity = dict(kurversc_commit=cloud.RSC_COMMIT, graphreduce_commit=cloud.GR_COMMIT,

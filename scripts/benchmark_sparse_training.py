@@ -47,6 +47,10 @@ from scripts.benchmark_frozen_event_summaries import (
 from scripts.run_kurversc_selected_relarena import AuditWinnerSystem
 from kurversc.plan_dates import atomic_execution_plan
 from scripts.temporal_campaign_support import required_policy_cutoffs
+from scripts.frozen_materialization_cache import (
+    FrozenMaterializationCache,
+    assert_cache_equivalent,
+)
 
 
 IMPLEMENTATION_SHA256 = hashlib.sha256(
@@ -210,12 +214,14 @@ def main():
         val = pd.read_parquet(args.output / "validation.parquet", **headers)
         original_score = cache["control_score"]
     else:
+        canonical = FrozenMaterializationCache(args.output, columns=columns,
+            categorical=categorical, datetime=datetime)
         system = AuditWinnerSystem(
             cache=resolve_cache_config(None, on_miss="raise"),
             run_identity=source.run_identity(),
         )
         system.peer_context_mode, system.peer_max_history_rows = "both", 50_000
-        with _capture(columns, task.target_col, task.entity_col, task.entity_table) as (
+        with canonical.install(), _capture(columns, task.target_col, task.entity_col, task.entity_table) as (
             baseline,
             _,
         ):
@@ -264,7 +270,11 @@ def main():
             labels.source[labels.split] != labels.train_value
         ].copy()
         selected = pd.concat([historical, validation_source], ignore_index=True)
-        problem = replace(problem, label_node=replace(labels, source=selected))
+        # Changing label support must never change the authoritative unsampled
+        # observed-label relation used to build the frozen graph's features.
+        history_source = labels.history_source if labels.history_source is not None else labels.source
+        problem = replace(problem, label_node=replace(labels, source=selected,
+            history_source=history_source))
         config = _runtime_config()
         config.update(
             full_training_frames=len(all_cutoffs), temporal_estimator_mode="pooled"
@@ -274,7 +284,7 @@ def main():
             preselected_execution_plan=copy.deepcopy(trial.execution_plan))
         if args.stream_feature_cache:
             from scripts.streaming_feature_cache import capture_to_disk
-            with capture_to_disk(columns, task.target_col, task.entity_col,
+            with canonical.install(replay=True), capture_to_disk(columns, task.target_col, task.entity_col,
                     task.entity_table, args.output / "captured-frames") as sink:
                 pooled = kurversc.fit(**options)
             sink.concatenate(args.output / "history.parquet", cutoffs=all_cutoffs)
@@ -285,31 +295,25 @@ def main():
             train = pd.read_parquet(args.output / "history.parquet", columns=["__event_cutoff"])
             val = pd.read_parquet(args.output / "validation.parquet")
         else:
-            with _capture(columns, task.target_col, task.entity_col, task.entity_table) as (frames, cuts):
+            with canonical.install(replay=True), _capture(columns, task.target_col, task.entity_col, task.entity_table) as (frames, cuts):
                 pooled = kurversc.fit(**options)
             training_frames = [frame for frame, cutoff in zip(frames, cuts) if pd.Timestamp(cutoff) in all_cutoffs]
             validation_frames = [frame for frame, cutoff in zip(frames, cuts) if pd.Timestamp(cutoff) not in all_cutoffs]
             train, val = pd.concat(training_frames, ignore_index=True), pd.concat(validation_frames, ignore_index=True)
             latest = train.loc[train["__event_cutoff"] == str(all_cutoffs[-1])].reset_index(drop=True)
-        # Concatenating older nullable frames may promote int64 to Int64.
-        # Require identical values AND identical prepared learner values,
-        # not an incidental pandas storage dtype before feature preparation.
-        equivalence = dict(check_dtype=False)
-        if args.stream_feature_cache:
-            equivalence.update(check_categorical=False, check_exact=True)
-        pd.testing.assert_frame_equal(latest, baseline_train.reset_index(drop=True), **equivalence)
-        pd.testing.assert_frame_equal(val, baseline_val.reset_index(drop=True), **equivalence)
+        # Both fits consume the SAME immutable overlapping cohorts. Do not
+        # recompute floating aggregates and then accept a numerical tolerance.
+        # Parquet's None/pd.NA and list/ndarray storage differences are checked
+        # canonically; all numeric and prepared learner values remain exact.
         for actual, reference in ((latest, baseline_train), (val, baseline_val)):
-            prepared = [
-                prepare_prediction_features(
-                    frame,
-                    columns=columns,
-                    categorical_columns=categorical,
-                    datetime_columns=datetime,
-                ).reset_index(drop=True)
-                for frame in (actual, reference)
-            ]
-            pd.testing.assert_frame_equal(*prepared, **equivalence)
+            assert_cache_equivalent(actual, reference, columns=columns,
+                categorical=categorical, datetime=datetime)
+        if canonical.hits != len(baseline):
+            raise ValueError("Every original control cohort must be reused exactly once")
+        canonical_report = dict(strategy="single_frozen_materialization",
+            replayed_control_cohorts=canonical.hits, independent_overlap_recomputations=0,
+            numeric_tolerance_used=False, model_visible_values_identical=True)
+        canonical.close()
         if not args.stream_feature_cache:
             train.to_parquet(args.output / "history.parquet", index=False)
             val.to_parquet(args.output / "validation.parquet", index=False)
@@ -321,6 +325,7 @@ def main():
             "frozen_plan_fingerprint": pooled.plan_fingerprint,
             "overlapping_frames_identical": True,
             "streamed_feature_capture": args.stream_feature_cache,
+            "canonical_overlap": canonical_report,
         }
         cache_file.write_text(json.dumps(cache, indent=2) + "\n")
         del pooled

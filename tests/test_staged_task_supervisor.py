@@ -32,6 +32,7 @@ def test_supervisor_isolates_research_environment_and_owns_only_its_worker(monke
     bundle,output,calls,signals = setup(monkeypatch,tmp_path)
     monkeypatch.setenv("KURVERSC_CATBOOST_ITERATIONS","1")
     monkeypatch.setenv("KURVERSC_INCLUDE_TARGET_HISTORY","0")
+    monkeypatch.setenv("KURVERSC_DUCKDB_MEMORY_LIMIT","256GiB")
     result = run_staged_task(bundle,output=output,task_hours=1)
     assert result.report["status"]=="completed"
     _,kwargs = calls[0]
@@ -39,6 +40,7 @@ def test_supervisor_isolates_research_environment_and_owns_only_its_worker(monke
     assert kwargs["env"]["KURVERSC_TASK_CONTEXT"]==str(bundle)
     assert "KURVERSC_CATBOOST_ITERATIONS" not in kwargs["env"]
     assert "KURVERSC_INCLUDE_TARGET_HISTORY" not in kwargs["env"]
+    assert kwargs["env"]["KURVERSC_DUCKDB_MEMORY_LIMIT"] == "256GiB"
     assert signals and {pid for pid,_ in signals}=={417}
 
 

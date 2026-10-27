@@ -79,7 +79,9 @@ def run_staged_task(context, *, output,task_hours=23.75,minimum_available_memory
         raise TimeoutError("The original complete-procedure deadline is exhausted")
     # A frozen public recipe must not inherit a research shell's hidden tree,
     # frame, winner or selector overrides. Resource admission is explicit.
-    environment = {k:v for k,v in os.environ.items() if not k.startswith("KURVERSC_")}
+    resource_keys = {"KURVERSC_DUCKDB_MEMORY_LIMIT", "KURVERSC_DUCKDB_MAX_TEMP_DIRECTORY_SIZE"}
+    environment = {k:v for k,v in os.environ.items()
+        if not k.startswith("KURVERSC_") or k in resource_keys}
     environment[CONTEXT_ENV] = str(path)
     environment["PYTHONPATH"] = str(root)+os.pathsep+environment.get("PYTHONPATH","")
     command = [sys.executable,"-u","-m",module,"--context",str(path),"--output",str(output),"--hours",str(task_hours)]

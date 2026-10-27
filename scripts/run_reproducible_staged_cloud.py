@@ -25,12 +25,12 @@ BOUNDED_CONTRACT = dict(optional=True, maximum_added_columns=112,
     maximum_rows=250_000, no_graph_configurations_added=True,
     preserve_already_admitted_procedures=True, exact_native_replay_required=True,
     historical_winner_lookup=False, official_targets_used_for_selection=False)
-STORAGE_POLICY = dict(duckdb_working_memory="min(128, floor(host GiB / 4)) GiB",
+STORAGE_POLICY = dict(duckdb_working_memory="explicit allocation, otherwise floor(0.60 * host GiB)",
     task_rss_cap=None, source_sampling_changed=False, model_budget_changed=False)
 
 
 def spill_threshold(total_bytes):
-    return f"{max(1, min(128, int(total_bytes / 2**30 / 4)))}GiB"
+    return f"{max(1, int(total_bytes / 2**30 * .60))}GiB"
 
 
 def bounded_root(root, key):
@@ -75,7 +75,9 @@ def extend_recipe(staged, fresh):
             raise TimeoutError("Original complete-task deadline exhausted before bounded-view stage")
         args.output.mkdir(parents=True, exist_ok=True)
         freeze(args.output / "source-identity.json", source_identity(fresh.ROOT))
-        engine = spill_threshold(psutil.virtual_memory().total)
+        # The resource coordinator may assign a task-specific spill budget.
+        # Never silently replace that allocation with a hidden 128-GiB cap.
+        engine = os.environ.get("KURVERSC_DUCKDB_MEMORY_LIMIT") or spill_threshold(psutil.virtual_memory().total)
         os.environ["KURVERSC_DUCKDB_MEMORY_LIMIT"] = engine
         freeze(args.output / "execution-allocation.json", dict(duckdb_spill_threshold=engine,
             host_bytes=psutil.virtual_memory().total, task_rss_cap=None,

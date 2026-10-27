@@ -153,8 +153,7 @@ def dispatch(command, graph, seed_workers=2):
     index = command.index("-m") + 1
     module = command[index]
     if module == "scripts.benchmark_temporal_policy":
-        module = "scripts.run_temporal_audit_parallel"
-        command.extend(["--workers", str(seed_workers)])
+        command.append("--prune-vetoed")
     elif module == "scripts.benchmark_supported_official":
         module = "scripts.run_official_cloud"
         command.extend(["--threads", "8", "--duckdb-threads", "8"])
@@ -168,7 +167,7 @@ def dispatch(command, graph, seed_workers=2):
 def stage_main(args, remaining):
     allowed = {
         "scripts.benchmark_sparse_training", "scripts.materialize_policy_folds",
-        "scripts.run_temporal_audit_parallel", "scripts.reselect_temporal_policy",
+        "scripts.benchmark_temporal_policy", "scripts.run_temporal_audit_parallel", "scripts.reselect_temporal_policy",
         "scripts.run_official_cloud",
         "scripts.benchmark_signal_challengers",
     }
@@ -187,8 +186,9 @@ def stage_main(args, remaining):
         def limit(value):
             return None if isinstance(value, str) and value.lower() in {"none", "null", "unlimited"} else value
 
-        engine_limit = limit(os.environ.get("KURVERSC_DUCKDB_MEMORY_LIMIT"))
-        with original_scope(connection, memory_limit=engine_limit or limit(memory_limit),
+        engine_limit = (limit(os.environ["KURVERSC_DUCKDB_MEMORY_LIMIT"])
+            if "KURVERSC_DUCKDB_MEMORY_LIMIT" in os.environ else limit(memory_limit))
+        with original_scope(connection, memory_limit=engine_limit,
                             max_temp_directory_size=limit(max_temp_directory_size)) as con:
             yield con
 

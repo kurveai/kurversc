@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from time import perf_counter
 from typing import Any, Mapping
@@ -199,19 +200,25 @@ def prepare_prediction_features(
 ) -> pd.DataFrame:
     """Apply the inference-time half of :func:`prepare_features`."""
 
-    inputs = frame.reindex(columns=columns).copy()
+    # Normalize one column at a time. Reindexing and copying a complete wide
+    # matrix first can retain several full numeric buffers during replacement.
+    # The resulting columns have the same values/dtypes and caller index.
+    prepared = {}
     for column in columns:
-        inputs[column] = _normalize_unhashable(inputs[column])
+        values = frame[column] if column in frame else pd.Series(np.nan, index=frame.index)
+        values = _normalize_unhashable(values)
         if column in datetime_columns:
-            inputs[column] = (
-                pd.to_datetime(inputs[column]).astype("int64") / 1_000_000_000
+            prepared[column] = (
+                pd.to_datetime(values).astype("int64") / 1_000_000_000
             )
         elif column in categorical_columns:
-            inputs[column] = inputs[column].astype("string").fillna("__missing__")
+            prepared[column] = values.astype("string").fillna("__missing__")
         else:
-            inputs[column] = pd.to_numeric(inputs[column], errors="coerce").replace(
+            prepared[column] = pd.to_numeric(values, errors="coerce").replace(
                 [np.inf, -np.inf], np.nan
             )
+    inputs = pd.DataFrame(prepared, index=frame.index, copy=False)
+    inputs.attrs = copy.deepcopy(frame.attrs)
     if "__kurversc_label_available_at" in frame:
         # Routing metadata, not a predictor. Tuple storage avoids ambiguous
         # numpy-array comparisons when pandas propagates DataFrame.attrs.

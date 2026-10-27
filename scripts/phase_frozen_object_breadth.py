@@ -5,7 +5,6 @@ limits source visibility. Advancing the former must never advance the latter.
 The original single-cutoff provider is left immutable for prior experiments.
 """
 
-import duckdb
 import numpy as np
 import pandas as pd
 
@@ -15,27 +14,26 @@ from scripts.object_breadth_challenger import ObjectBreadth
 
 class PhaseFrozenObjectBreadth(ObjectBreadth):
     def __init__(self, *args, **kwargs):
+        requested_threads = kwargs.get("threads", 1)
+        if isinstance(requested_threads, bool) or not isinstance(requested_threads, int) or requested_threads < 1:
+            raise ValueError("Positive integer object-history query thread count required")
+        # The pinned DuckDB engine can SIGSEGV in TupleDataCollection::Combine
+        # on these nested, high-cardinality grouped aggregates. A Python
+        # exception handler cannot recover from that native process crash.
+        # Avoid the unsafe parallel-combine path on the FIRST execution,
+        # without changing the SQL, source rows, windows or request cohorts.
+        kwargs["threads"] = 1
         super().__init__(*args, **kwargs)
-        self._serial_recovery_config = dict(memory_limit="2GB",threads=1,
-            temp_directory=str(kwargs["temporary"]),max_temp_directory_size="20GB")
         self.query_recoveries = []
+        self.query_execution = dict(requested_threads=requested_threads,
+            effective_threads=1, strategy="serial_from_first_query",
+            query_changed=False, source_sampling_changed=False)
+        self.audit["query_execution"] = self.query_execution
 
     def _summary(self, query, requested):
-        try:
-            return self.con.execute(query).df()
-        except duckdb.InternalException as error:
-            if "Attempting to combine TupleDataCollection with mismatching types" not in str(error):
-                raise
-            # An internal error invalidates the connection. Replay precisely
-            # the same query/visibility/request keys on a fresh serial engine;
-            # changing only parallel execution avoids the failing combine.
-            self.con.close()
-            self.con = duckdb.connect(config=self._serial_recovery_config)
-            self.con.register("requested_roots",requested)
-            result = self.con.execute(query).df()
-            self.query_recoveries.append(dict(reason="duckdb_parallel_aggregate_type_mismatch",
-                fallback="fresh_serial_connection",same_query_and_request_keys=True))
-            return result
+        # Unknown engine/data errors remain fatal. Do not silently retry,
+        # drop a feature family, or call incomplete evidence successful.
+        return self.con.execute(query).df()
 
     def transform(self, requests, *, phase_boundary):
         times = pd.to_datetime(requests["__event_cutoff"])
@@ -93,5 +91,6 @@ class PhaseFrozenObjectBreadth(ObjectBreadth):
         self.last_audit = dict(knowledge_boundary=str(phase),
             latest_query=str(times.max()), strict_source_visibility=True,
             windows_anchored_at="each forecast query, not the knowledge boundary",
+            query_execution=dict(self.query_execution),
             query_recoveries=list(self.query_recoveries))
         return pd.concat(chunks).sort_values("__position").drop(columns="__position").reset_index(drop=True).astype("float32")

@@ -25,7 +25,7 @@ def check(root):
         names = set(archive.namelist())
         metadata_name, = (name for name in names if name.endswith('.dist-info/METADATA'))
         metadata = BytesParser().parsebytes(archive.read(metadata_name))
-        assert metadata['Version'] == '0.2.0rc1'
+        assert metadata['Version'] == '0.2.0'
         for file in (root/'kurversc').rglob('*.py'):
             if '_staged' in file.parts:
                 continue
@@ -48,7 +48,7 @@ def check(root):
         wheel_sha256=hashlib.sha256(wheel.read_bytes()).hexdigest(),
         sdist_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
         source_and_wheel_exact=True, no_models_or_benchmark_data=True,
-        full_21_task_qualification=False)
+        benchmark_execution_performed_by_this_check=False)
 
 
 if __name__ == '__main__':

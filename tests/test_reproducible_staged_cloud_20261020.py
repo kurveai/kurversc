@@ -46,7 +46,7 @@ def test_optional_fallback_preserves_entire_previous_procedure_exactly(tmp_path,
     assert {k: result[k] for k in baseline} == baseline
     assert len(calls) == 1 and not stages["bounded_views"]["admitted"]
     allocation = json.loads((tmp_path / "execution-allocation.json").read_text())
-    assert allocation["task_rss_cap"] is None and allocation["duckdb_spill_threshold"] == "128GiB"
+    assert allocation["task_rss_cap"] is None and allocation["duckdb_spill_threshold"] == "none"
     assert not allocation["source_sampling_changed"] and not allocation["model_budget_changed"]
 
 
@@ -77,7 +77,15 @@ def test_incomplete_or_expired_procedure_never_calls_official_confirmation(tmp_p
 
 
 def test_engine_spill_policy_is_host_generic_and_never_an_rss_cap():
-    assert runner.spill_threshold(48*2**30) == "12GiB"
-    assert runner.spill_threshold(512*2**30) == "128GiB"
-    assert runner.spill_threshold(1536*2**30) == "128GiB"
+    assert runner.spill_threshold(48*2**30) == "28GiB"
+    assert runner.spill_threshold(512*2**30) == "307GiB"
+    assert runner.spill_threshold(1536*2**30) == "921GiB"
     assert runner.STORAGE_POLICY["task_rss_cap"] is None
+
+
+def test_explicit_large_spill_allocation_is_not_clamped(tmp_path, monkeypatch):
+    _, fresh, args, _, _ = setup(tmp_path, monkeypatch)
+    monkeypatch.setenv("KURVERSC_DUCKDB_MEMORY_LIMIT", "256GiB")
+    fresh.task_main(args)
+    allocation = json.loads((tmp_path / "execution-allocation.json").read_text())
+    assert allocation["duckdb_spill_threshold"] == "256GiB"

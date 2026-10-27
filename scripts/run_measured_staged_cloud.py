@@ -88,13 +88,17 @@ def run_queue(output):
 
     queue.admission_available = admission
     state_path = output / "queue/state.json"
-    for attempt in range(3):
-        queue.run(argparse.Namespace(manifest=output / "manifest.json", output=output / "queue", detach=False))
+    manifest = json.loads((output / "manifest.json").read_text())
+    # Default to no unchanged pressure retries. A caller may explicitly allow
+    # one reduced-concurrency retry; failures must still fail the whole run.
+    retry_rounds = min(1, int(manifest.get("resource_pressure_retries", 0)))
+    for attempt in range(1+retry_rounds):
+        code = queue.run(argparse.Namespace(manifest=output / "manifest.json", output=output / "queue", detach=False))
         state = json.loads(state_path.read_text())
         deferred = [v for v in state["jobs"].values() if v["status"] == "resource_deferred"]
-        if not deferred or attempt == 2:
+        if not deferred or attempt == retry_rounds:
             resources(output)
-            return
+            return code
         for row in state["jobs"].values():
             if row.get("started_epoch"):
                 row.setdefault("first_started_epoch", row["started_epoch"])
@@ -152,10 +156,10 @@ def main():
     if args.mode == "launch":
         launch(args)
     elif args.mode == "queue":
-        run_queue(args.output)
+        return run_queue(args.output)
     else:
         resources(args.output)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

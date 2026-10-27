@@ -15,6 +15,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 import kurversc.core as core
+from scripts.frozen_materialization_cache import _canonical_objects
 from scripts.run_gap_followup_queue import digest, dump
 
 
@@ -34,7 +35,7 @@ class FrameSink:
             if (not proof_path.exists() or json.loads(proof_path.read_text()) !=
                     dict(identity, output_sha256=digest(path))):
                 raise ValueError("Existing frame capture identity is missing or changed")
-            pd.testing.assert_frame_equal(pd.read_parquet(path), frame,
+            pd.testing.assert_frame_equal(_canonical_objects(pd.read_parquet(path)), _canonical_objects(frame),
                 check_dtype=False, check_categorical=False, check_exact=True)
         else:
             frame.to_parquet(path, index=False)

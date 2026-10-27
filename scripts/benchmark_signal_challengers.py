@@ -45,6 +45,12 @@ def prepared(frame, schema):
         datetime_columns=set(schema["datetime_columns"]))
 
 
+def routing_headers(frame, schema):
+    """Own the nonpayload columns without retaining a wide numeric buffer."""
+    payload = set(schema["columns"])
+    return frame.loc[:, [name for name in frame if name not in payload]].copy()
+
+
 def values(model, features, task):
     return np.asarray(model.predict_proba(features)[:, 1] if task == "classification"
                       else model.predict(features)).reshape(-1)
@@ -71,14 +77,18 @@ def fit_candidate(spec, base, x, y, times, vx, *, origin, metadata, categorical,
         mask, support = mature_support_mask(times, origin=origin,
             horizon=metadata["label_horizon"], refit_frames=metadata["validation_cutoffs"], policy=base,
             available_at=x.attrs.get("kurversc_label_available_at"))
-        head = BoundedTextReadout(task=task, random_state=0).fit(x.loc[mask], y.loc[mask],
-            categorical=[x.columns[i] for i in categorical], root_prefix=root)
+        text_columns = [x.columns[i] for i in categorical]
+        # The text selector consumes categorical fields only. Project those
+        # fields before the row mask instead of copying every numeric feature
+        # for the complete mature history.
+        head = BoundedTextReadout(task=task, random_state=0).fit(x.loc[:, text_columns].loc[mask], y.loc[mask],
+            categorical=text_columns, root_prefix=root)
         return head.predict_values(vx), {**head.audit, "support": support}
     if spec.kind == "exposure":
         if extra is None or heldout_extra is None:
             raise ChallengerUnavailable("No eligible exposure path")
         routing = dict(x.attrs)
-        x, vx = pd.concat([x, extra], axis=1), pd.concat([vx, heldout_extra], axis=1)
+        x, vx = pd.concat([x, extra], axis=1, copy=False), pd.concat([vx, heldout_extra], axis=1, copy=False)
         x.attrs.update(routing)
     params = dict(thread_count=threads)
     if spec.regularized:
@@ -122,7 +132,10 @@ def validate(args):
     cache = args.task_root / "cache"
     frame = pd.concat([pd.read_parquet(cache / n) for n in ("history.parquet", "validation.parquet")], ignore_index=True)
     schema = metadata["feature_schema"]
-    x, y, times = prepared(frame, schema), pd.to_numeric(frame[metadata["target"]]), pd.to_datetime(frame["__event_cutoff"])
+    x = prepared(frame, schema)
+    frame = routing_headers(frame, schema)
+    gc.collect()
+    y, times = pd.to_numeric(frame[metadata["target"]]), pd.to_datetime(frame["__event_cutoff"])
     categorical = [i for i, name in enumerate(x) if name in schema["categorical_columns"]]
     from kurversc.task_source import load_task_source as RelBenchDatasetTask
     source = RelBenchDatasetTask(metadata["dataset"], metadata["task"], download=False)
@@ -150,11 +163,13 @@ def validate(args):
             if pd.Timestamp(origin) > pd.Timestamp(fold["origin"]) or pd.Timestamp(snapshot_manifest["latest_observed_label_complete_at"]) > pd.Timestamp(origin):
                 raise ValueError("Future state or immature targets reached a snapshot")
             heldout = pd.read_parquet(folder / "validation.parquet")
-            positions = heldout["__position"].to_numpy(dtype=int)
+            positions = heldout["__position"].to_numpy(dtype=int, copy=True)
             if len(set(positions)) != len(positions):
                 raise ValueError("Duplicated validation positions")
             np.testing.assert_array_equal(heldout[metadata["target"]], y.iloc[positions])
             vx = prepared(heldout, schema)
+            heldout = routing_headers(heldout, schema)
+            gc.collect()
             heldout_extra = provider.transform(heldout, phase_boundary=origin) if provider else None
             if provider:
                 dump(args.output / f"fold{number}-exposure-audit.json", provider.last_audit)
@@ -302,6 +317,8 @@ def official(args, selected, metadata):
         prediction_keys = query_keys
         schema = metadata["feature_schema"]
         x, vx = prepared(train, schema), prepared(forecast, schema)
+        train, forecast = routing_headers(train, schema), routing_headers(forecast, schema)
+        gc.collect()
         y, times = pd.to_numeric(train[metadata["target"]]), pd.to_datetime(train["__event_cutoff"])
         categorical = [i for i, name in enumerate(x) if name in schema["categorical_columns"]]
         extra, heldout_extra, provider = None, None, None

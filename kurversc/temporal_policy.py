@@ -259,7 +259,11 @@ def fit_temporal_policy(
         return model, dict(
             policy=asdict(policy), incumbent=base_audit, challenger=audit
         )
-    x, y = features.reset_index(drop=True), labels.reset_index(drop=True)
+    # Features are read-only in this fitter. Normalize the index on a shallow
+    # DataFrame so small cohort fits do not duplicate the complete history.
+    x = features.copy(deep=False)
+    x.index = pd.RangeIndex(len(features))
+    y = labels.reset_index(drop=True)
     times = pd.to_datetime(timestamps).reset_index(drop=True)
     available_at = available_at if available_at is not None else features.attrs.get("kurversc_label_available_at")
     ready = pd.Series(pd.to_datetime(available_at)).reset_index(drop=True) if available_at is not None else None

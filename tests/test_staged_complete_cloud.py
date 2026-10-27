@@ -158,13 +158,14 @@ def test_real_queue_unblocks_all_21_only_after_recovery(tmp_path, monkeypatch, r
 
     monkeypatch.setattr(queue.subprocess, "Popen", Worker)
     monkeypatch.setattr(queue.psutil, "Process", lambda pid: SimpleNamespace(create_time=lambda: 1.0))
-    monkeypatch.setattr(queue.psutil, "virtual_memory", lambda: SimpleNamespace(available=1500 * 2**30))
+    monkeypatch.setattr(queue.psutil, "virtual_memory", lambda: SimpleNamespace(
+        total=1536 * 2**30, available=1500 * 2**30))
     monkeypatch.setattr(queue.shutil, "disk_usage", lambda path: SimpleNamespace(free=2000 * 2**30))
     monkeypatch.setattr(queue, "tree_rss", lambda pid: 1.0)
     monkeypatch.setattr(queue.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(queue.signal, "signal", lambda *args: None)
     output = tmp_path / "queue"
-    assert queue.run(Namespace(manifest=manifest_path, output=output, detach=False)) == 0
+    assert queue.run(Namespace(manifest=manifest_path, output=output, detach=False)) == (0 if recovered else 1)
     state = json.loads((output / "state.json").read_text())
     benchmark = {k: v for k, v in state["jobs"].items() if k.startswith("rel-")}
     assert peak_workers <= 8

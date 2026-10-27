@@ -64,7 +64,7 @@ from .temporal_policy import (
     select_and_fit_temporal_policy,
 )
 
-__version__ = "0.2.0rc1"
+__version__ = "0.2.0"
 
 __all__ = [
     "COMPACT_MODERN_FAMILY_TEMPLATES",

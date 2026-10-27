@@ -23,6 +23,7 @@ import psutil
 
 
 TERMINAL = {"completed", "failed", "blocked", "resource_deferred", "time_budget_exceeded"}
+RESOURCE_ENVIRONMENT = {"KURVERSC_DUCKDB_MEMORY_LIMIT", "KURVERSC_DUCKDB_MAX_TEMP_DIRECTORY_SIZE"}
 
 
 def digest(path):
@@ -51,6 +52,10 @@ def validate_manifest(manifest):
     if manifest["reserve_gib"] < 128 or not 0 < manifest["task_hours"] < 24:
         raise ValueError("At least 128 GiB reserve and a <24-hour task budget required")
     for job in jobs:
+        environment = job.get("environment", {})
+        if (not isinstance(environment, dict) or set(environment) - RESOURCE_ENVIRONMENT
+                or any(not isinstance(v, str) or not v.strip() for v in environment.values())):
+            raise ValueError("Job environment may contain only explicit DuckDB resource settings")
         if not job.get("external") and (not job.get("command") or job["ram_gib"] <= 0 or job["threads"] <= 0):
             raise ValueError("Runnable command and positive resource estimate required")
         if any(d not in names or d == job["name"] for d in [*job.get("depends", []), *job.get("wait_for_terminal", [])]):
@@ -230,6 +235,14 @@ def run(args):
                 if len(active) >= manifest["max_workers"] or sum(i["job"]["threads"] for i in active.values()) + job["threads"] > manifest["max_threads"]:
                     entry["wait_reason"] = "concurrency_budget"
                     continue
+                if job.get("exclusive") and active or any(i["job"].get("exclusive") for i in active.values()):
+                    entry["wait_reason"] = "exclusive_resource_allocation"
+                    continue
+                capacity = psutil.virtual_memory().total / 2**30 - manifest["reserve_gib"]
+                if job["ram_gib"] > capacity:
+                    entry.update(status="resource_deferred", reason="Declared task allocation exceeds this host's safe capacity",
+                        required_gib=job["ram_gib"]+manifest["reserve_gib"], host_gib=psutil.virtual_memory().total/2**30)
+                    continue
                 free = admission_available(psutil.virtual_memory().available / 2**30, active.values(), pending_external_reserve)
                 if free < manifest["reserve_gib"] + job["ram_gib"] or disk < 100:
                     entry["wait_reason"] = "resource_admission"
@@ -252,6 +265,7 @@ def run(args):
                 environment = {k: v for k, v in os.environ.items() if not k.startswith("KURVERSC_")}
                 environment.update(TMPDIR=str(temporary.resolve()), OMP_NUM_THREADS="1",
                                    OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+                environment.update(job.get("environment", {}))
                 command = [sys.executable if arg == "{python}" else arg for arg in job["command"]]
                 log = (folder / "worker.log").open("a", buffering=1)
                 child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
@@ -264,9 +278,12 @@ def run(args):
                 print(json.dumps({"started": job["name"], "pid": child.pid}), flush=True)
             save()
             if all(e["status"] in TERMINAL for e in state["jobs"].values()):
-                state["status"] = "finished"
+                failures = {name: entry["status"] for name, entry in state["jobs"].items()
+                    if entry["status"] != "completed"}
+                state.update(status="failed" if failures else "finished",
+                    all_jobs_completed=not failures, incomplete_jobs=failures)
                 save()
-                return 0
+                return 1 if failures else 0
             time.sleep(5)
     except BaseException as error:
         for name, item in active.items():

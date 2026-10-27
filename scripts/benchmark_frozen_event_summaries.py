@@ -81,9 +81,18 @@ def _checkpoint(dataset, task):
 def _capture(columns, target, entity, root):
     original = core._materialize_at_cutoff
     frames, cutoffs = [], []
+    active = 0
 
     def materialize(*args, **kwargs):
-        frame = original(*args, **kwargs)
+        nonlocal active
+        active += 1
+        try:
+            frame = original(*args, **kwargs)
+            outermost = active == 1
+        finally:
+            active -= 1
+        if not outermost:
+            return frame
         key = entity if entity in frame else f"{root}_{entity}"
         if key not in frame:
             raise ValueError("Frozen frame lacks its entity key")

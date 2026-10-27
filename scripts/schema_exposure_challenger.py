@@ -111,7 +111,10 @@ class SchemaExposureQuality:
 
     def transform(self, frame, *, phase_boundary):
         parts, audits = [], []
-        for cutoff, rows in frame.groupby("__event_cutoff", sort=True):
+        # Grouping the complete learner matrix copies payload columns which
+        # this provider never reads. Keep the original index and query keys.
+        queries = frame.loc[:, ["__event_cutoff", "__event_entity"]]
+        for cutoff, rows in queries.groupby("__event_cutoff", sort=True):
             result = self.provider.transform(rows["__event_entity"],
                 min(pd.Timestamp(cutoff), pd.Timestamp(phase_boundary)))
             extra = pd.concat([result["activity"], result["quality"]], axis=1)

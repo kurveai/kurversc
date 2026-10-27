@@ -1,29 +1,61 @@
 {
-  "date": "2026-10-22",
-  "release_candidate": "0.2.0rc1",
-  "kurversc_tests": {"passed": 696, "skipped": 1},
-  "graphreduce_tests": {"passed": 106, "skipped": 1},
-  "current_relarena_adapter_tests": {"passed": 14},
+  "date": "2026-10-27",
+  "version": "0.2.0",
+  "graphreduce_version": "1.10.18",
+  "kurversc_tests": {
+    "passed": 704,
+    "skipped": 0
+  },
+  "graphreduce_tests": {
+    "passed": 157,
+    "skipped": 2
+  },
+  "current_relarena_adapter_tests": {
+    "passed": 19
+  },
   "installed_wheel_smoke": {
     "status": "passed",
-    "rows": 48,
-    "elapsed_seconds": 188.0658951671794,
+    "actual_current_core_splits": true,
+    "cases": {
+      "classification": {
+        "keyed_predictions_exact": true,
+        "rows": 48,
+        "reference_elapsed_seconds": 209.5792611320503,
+        "release_elapsed_seconds": 209.6254298449494
+      },
+      "regression": {
+        "keyed_predictions_exact": true,
+        "rows": 48,
+        "reference_elapsed_seconds": 175.55615453398786,
+        "release_elapsed_seconds": 179.5290462729754
+      }
+    },
     "unregistered_schema": true,
-    "benchmark_registry_lookup": false,
     "hidden_targets_supplied": false,
     "full_staged_procedure": true,
     "fresh_optional_dependency_resolution": false
   },
   "reference_source_parity": {
     "core_modules": 46,
-    "stage_modules": 106,
+    "stage_modules": 108,
+    "graphreduce_modules": 22,
+    "modules_including_namespace_init": 177,
     "exact_before_release_version_stamp": true,
-    "reference_kurversc_wheel_sha256": "b0c94fe8782886902cccab8337f4586e9439ec45e6f7a8d675952e9421d046e0",
-    "reference_graphreduce_wheel_sha256": "7023d60dfbe69b1ab64c338169d9bc4cef8740d81f6e6eb83b03cb26769e0ce4"
+    "reference_kurversc_wheel_sha256": "04d066bb09185bed1bc687e1bcf30bfcc0349afdcc5800540f391e1e6a890692",
+    "reference_graphreduce_wheel_sha256": "dbf00d70a340e3707f6315ffb350caf746a040b738a0c1b60d60120c913450fc"
   },
-  "official_task_completions": 12,
+  "official_task_completions": 21,
   "official_task_count": 21,
-  "full_21_task_reproduction_passed": false,
-  "elo_claimed": false,
-  "merge_ready": false
+  "full_21_task_reproduction_passed": true,
+  "historical_score_substitutions": false,
+  "official_scorer_point_elo": 1948.6,
+  "fixed_panel_rank": 1,
+  "comparator": "tabpfn-rel-client-2026-09-28",
+  "captured_panel_methods": 15,
+  "scoring_scope": "Replace captured original KurveRSC rows with all 21 fresh scores; retain 14 comparison methods",
+  "current_harness_full_21_task_reproduction": false,
+  "maintainer_reproduction_pending": true,
+  "pretrained_encoder_policy_review_pending": true,
+  "package_publication_performed": false,
+  "source_parity_receipt": "staged-source-parity.json"
 }

@@ -1,0 +1,893 @@
+{
+  "date": "2026-10-27",
+  "reference_source_identity_sha256": "7b3c8832547a490d180cbc849b6feb039e3e3ada66c01225da5b51713ec931ae",
+  "version_metadata_only_change": true,
+  "modules_checked": 177,
+  "modules": [
+    {
+      "module": "kurversc/__init__.py",
+      "reference_sha256": "8b5fe9ee302c2ec2367eef01f8c7fca9d1cff713ba5218ec1016523fed606b3f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/__init__.py",
+      "reference_sha256": "9ab0a59ffac7cb6754f925900e403393eab0302eb96c93c54f5c05d052b2730e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/activity_timeline_challenger.py",
+      "reference_sha256": "fd8885cc6b68f965051b540cf40d4e4d0f69f4ef9688ae7efc050586ff34c8f1",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/arrow_relbench_storage.py",
+      "reference_sha256": "a083e0b528f322264ea97ef2ccbb8eda750dc8b6eb4d69335a676fc3b5f6bb25",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/association_state_compression_20261020.py",
+      "reference_sha256": "aa3f565535410d1fb2703dba61273c477d5df4a285c5de19d98be37bcea270e3",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/audit_dormant_reactivation.py",
+      "reference_sha256": "3af197d367d113f8f6ccff5d08d720d9a0c1a2e7ac8a086d885227701b02c6f3",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/avito_exposure_signals.py",
+      "reference_sha256": "1bb5316a7c3b46211fc121cf74eb2fbae10952330936573c9032aca90ee03a73",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_association_state_20261020.py",
+      "reference_sha256": "1db82161cec8233d36caf0d00d627616d488c099ef0b91cd154665bea9b2c23b",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_avito_quality_official.py",
+      "reference_sha256": "ea26b324466ce1e0fc7b39d21f7a89a2b549d85468b73b45b1e870220fb8e297",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_avito_recovered_quality.py",
+      "reference_sha256": "bc0d001d38cb464fb09257746afbecbd7e0a10dc9c66e545256a3e9c2726885e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_complete_count_challenger.py",
+      "reference_sha256": "870f6c5d47a60775a126ac337e44d12dda4095ffebf27d9c5af2827776593394",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_current_frozen_heads.py",
+      "reference_sha256": "27d4d1ae579c2d00a6e0ad61e2676e044683e6d6a2b12363554357b10679ed2f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_engagement_offset_ranker.py",
+      "reference_sha256": "5c37457b8c389b24bb83b5223e4683913e05140d1b354bf873dbb47dff23a703",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_frozen_event_summaries.py",
+      "reference_sha256": "f8c4a38e4ed818d4d4036ebba9da730e9572bf02ec3f2dc018ae6505836c125b",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_large_gap_challengers.py",
+      "reference_sha256": "58bf46f1572cf88e875b208ed34444657814e512edd5befc59c05319e6731b65",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_latest_completed_peers_20261020.py",
+      "reference_sha256": "30fd55d7b6f2932dbd80e2ffa724dbe83b796128b2dea2c4ea639f67015b47f0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_phase_frozen_breadth_v2.py",
+      "reference_sha256": "3e65342e4ec01718a0848a84c2d44a35d2f06046dbe7d42f5900dfb1b92b9af4",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_poisson_count_median.py",
+      "reference_sha256": "1e40c986008fc752e91084ee680b7b0b86c787c8ccdf0f6aadd4de29206e3ada",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_production_finalists.py",
+      "reference_sha256": "15bd31b9257bb819008091ae6f782fae93641f25fccd377146031b8b53c0b227",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_production_finalists_v2.py",
+      "reference_sha256": "ca1a0a0ed1bd8e9e9a56853b932205a02a5925e4c2e7e58b0bb043e15e84c1cc",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_production_sequence.py",
+      "reference_sha256": "8b0b3262105387c400ed6eef107d9d6838724a94c42d76560799f2a9149be03b",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_recovered_readouts.py",
+      "reference_sha256": "8eb8be5f3ef7fad274651f0f29c8fe8a8eb89b402a40ab7f33f243a15aa1040c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_reliability_blending.py",
+      "reference_sha256": "87392ccf5c115bf96952475a10ec45dc47a169613aec7665e47452c897f820e0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_selected_row_budget.py",
+      "reference_sha256": "fee01bc3607bb7b46d17c69134216a4aab6f1cdc91576d03dc14b0fa1218b9ec",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_sequence_recovery_20261020.py",
+      "reference_sha256": "22d925d6180a8d6d5e8d5f825fc52b4d2273cc5e6e2e63d8a5c23ba5a9bb8c59",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_signal_challengers.py",
+      "reference_sha256": "094504978b0558e3217db33f65f622b9b3564b96ca124aac7404c9429a6abcc2",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_small_finalist_readout.py",
+      "reference_sha256": "7f0e7118b3d26e2dcf300f3a0f8b02c1554bc623002280441b81ca180d0270d7",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_source_response_annotation_20261020.py",
+      "reference_sha256": "78a5553e6adc79ec5dbf244f0c1c142e4ec98b330022d6c78212c67ac4cb8d9c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_sparse_training.py",
+      "reference_sha256": "025a8a9ca7dc67b118fee3168732be63bae49b8a559c59571c35780d11f142b6",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_streamed_count_likelihood.py",
+      "reference_sha256": "70681caec6da30654e81fd1679b7de4822e978b007b49f43ac23a9ea5456e16c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_support_transitions.py",
+      "reference_sha256": "9da7ebc62cfd06da027d8563c2369124f0755f69b0b315143b73d18fa77912f5",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_supported_official.py",
+      "reference_sha256": "f6f472c3ada31a56ed27652b892ee765fab91d581ca027ea869a0eab300348db",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_temporal_policy.py",
+      "reference_sha256": "bdce9c0d56abe2a8bf635b292420514141005412910c493688d531d0c27a4097",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_training_row_budget.py",
+      "reference_sha256": "2370c11aebf503ba868454bc100c31f52b7ebb7873664f0eb3543f35b77e448c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/benchmark_validated_count_challenger.py",
+      "reference_sha256": "f9ab6ee3b10d67a007722b737c39113c05f408dda62bbd2e9f01e63b0f25e2e5",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/bounded_channel_transitions.py",
+      "reference_sha256": "6bf33bdac65af81fcda67ce8cb932c925fea83e973b7a4b492f38c7c9a251e5e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/bounded_pairwise_readout.py",
+      "reference_sha256": "d577143bd0a8e1f9a1562e8f1bb9a96367a67c33f4fbd1e8cc719d602f8ffc4d",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/capture_owned_pooled_native_20261020.py",
+      "reference_sha256": "6021b5b1ee5d4f5821b56067799014a4b8f429d4f5aeee1f6fed339fd4486500",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/causal_parent_text_annotation.py",
+      "reference_sha256": "1107d5ac5990aebe0fb342cca3a96dabb9dbce003d1458e3cc12def619af4802",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/cloud_task_metrics.py",
+      "reference_sha256": "c14e9eadc5542cb51805408d839edfa3dd79f5937508f7dbc1176024e53a8846",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/completed_peer_extension.py",
+      "reference_sha256": "7752242427be8f20dd9f70ffddc082b663ba1c7e5dca1d45342d94795294f5b7",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/concurrent_portable_bagged_offset.py",
+      "reference_sha256": "dd76f574b28ac2cc845cfbea7f298a82ba29ceedf160e92f80350eaba7e49e98",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/confirm_bounded_view_recovery_20261020.py",
+      "reference_sha256": "a984395c8275f9857a9cde14068085c5f2654650c3302f26880a5e639adbc1c0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/confirm_production_sequence.py",
+      "reference_sha256": "ae2d35cc52794fa95bfa99db65254cde42354db484534b5d10b14220362c2886",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/confirm_selected_row_budget.py",
+      "reference_sha256": "39f3af9acdeaf603a9f8d84626d510d8a3fcdb88ff387d738e7a22e8b2688e86",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/count_challenger_protocol.py",
+      "reference_sha256": "cb25d951f948a06ddef2e294db8048b30bffe67804b8abaed609e31fe0978198",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/count_likelihood_regressor.py",
+      "reference_sha256": "68ce75932d58d2b388d7eae2c3d6cdc47b4e873d7d0f5246ae86ea1a81a1f975",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/count_median_faithful_inputs.py",
+      "reference_sha256": "25d7c04fac10c890914fdd267d36120dc2b7db0d3731ed69c1fc0a3c7f0f494d",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/crossfit_semantic_propensity.py",
+      "reference_sha256": "017046c6b05802fd0ccc9f606f34bd33ddb369cea9161360859e6a62bb282925",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/deep_peer_extension.py",
+      "reference_sha256": "e0df1b525ffe5c3fdceaf6fc7d4cd2fe6bb14aea713ca6c00e524daf443893a9",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/diagnose_event_recurrence.py",
+      "reference_sha256": "d32b5603a6ddbbfd25d49576a698a7bdcaea02fac404956e8905f737a4980e5d",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/discrete_target_projection.py",
+      "reference_sha256": "688563ad4aa89b59569bd87928bb0090b633c98a6105cb45639f96b2e1384fe9",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/engagement_hypothesis_features.py",
+      "reference_sha256": "31b5f919abcbabec0e5b8c5e275c33bc490e288370f68c0344c06b7aa2113cc8",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/engagement_local_comparison.py",
+      "reference_sha256": "f75c6e17238834842515f18fa5a4bd9bc4bd14d2fe72e599a19e4b292e5f2f53",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/enum_event_history_20261020.py",
+      "reference_sha256": "7dc5637247eca84a32d8c4c025599100708f4c2491492e9b59e47d7d66d7f14e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/fast_matched_bootstrap.py",
+      "reference_sha256": "2b31e31b20a7ad58ef0a69b3f41678aa525a18866c88b03f977b50c6c2d7eeb0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/frozen_auc_bootstrap.py",
+      "reference_sha256": "572084a0b61161aeac09729df3de89f38faa2140636d647ee33a22bc0fa84b14",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/frozen_materialization_cache.py",
+      "reference_sha256": "4a409f0b3bd3da85a2ec440e427694a57042e73dd97450b374ba11e772fd9801",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/frozen_offset_ranker.py",
+      "reference_sha256": "13ed854d0b126abfdb03e471f3e9aa1733054f7bd4bb1c4768c6cdbda7481b27",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/frozen_parent_semantic_embedding.py",
+      "reference_sha256": "ad4b224ba6cf99b932640a19f07134784151fd669c0c92d3175d189cdebcb758",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/gap_text_readout.py",
+      "reference_sha256": "a5334b24d8229b623560618c5346998f20b5187d78eea18b2281356f471edf87",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/hard_comparison_offset.py",
+      "reference_sha256": "7d74f47725000e9ffa2c411309bb9ad0df58b90a6f9d68d10b84a85dad279a6b",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/latest_completed_peers_20261020.py",
+      "reference_sha256": "7786515a260528be2cf433147a95d3c17855d8662f3efd20998e12971e68a27c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/marked_response_history.py",
+      "reference_sha256": "006dffcf44d378cb79530c981ff140a201a204d584cd1b63b8a5e7ff3fffc627",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/matched_learner_challengers.py",
+      "reference_sha256": "52551f32635aed1a3450a8811ebf93dcb22587069ef687d03fa72d6d4a674799",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/materialize_policy_folds.py",
+      "reference_sha256": "fceb001fc8cc4d81af09a8e204a34706ef2063815deef13feeaf6f5d7a2df878",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/materialize_sequence_incumbent.py",
+      "reference_sha256": "dd21818c51897906e66b604183fc9f454d00749339911f29af58903bde6b2dc8",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/materialize_validation_origins.py",
+      "reference_sha256": "1b5efdf331edee094fb8965a7f44eec0def8266e16a0edd9641ef5bdb216cb9e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/object_breadth_challenger.py",
+      "reference_sha256": "bb56786f7818d2fb54fae5ef41d3e92825229cf6c8e48bf1d42ada40ad95299d",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/overdispersed_count_readout.py",
+      "reference_sha256": "12eb377acbe388fd8fd1a5759690c501741c66377f0ddfeaa1d89e84eae3b69a",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/phase_frozen_object_breadth.py",
+      "reference_sha256": "6df455dfe1b85195ebf779474c0e3bc8e4cb491859892fea2ccc92036443da72",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/poisson_count_median.py",
+      "reference_sha256": "b8c36272f8f2ce107a3ff775345c48697a8a7ec2f578c7ad16ed260bd3e9bb92",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/portable_bagged_offset.py",
+      "reference_sha256": "c86fd033cd5c61fbb7d0c9a4853b1d6586dd7d34eb69a3b6d2116aad706a6cc2",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/portable_offset_readout.py",
+      "reference_sha256": "b428827619899d8e5807868eae0b17add145c7b0eca8db8b5f209f5f3ca9d6b3",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/probe_arrow_frozen_replay.py",
+      "reference_sha256": "b67e9dfaebe37fd585286ba3bee5a3929669cdd0572fa3807a8e2bdfbed00b7f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/qualify_bounded_view_consensus_20261020.py",
+      "reference_sha256": "07e3f75d2438ff373fa2e6f44f0d48c2565cf6e260a1f0fdc68e30b47245c65e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/recheck_zero_aware_strong_control.py",
+      "reference_sha256": "26ba0f035677a7ec3740d4ee3c2dfc3414c257b3cebea1a82704d79fa15639d9",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/recovered_reference_profile.py",
+      "reference_sha256": "d3d3b305c6f64279eb2a4f56115c4d036268f81c28b6c1a8612ed081eb66c3b1",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/reselect_temporal_policy.py",
+      "reference_sha256": "fa950a511f9999b7af39a7b77a583d83fef581badac03dc9c0d7fc70a26b4a6a",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_bounded_view_validation_20261020.py",
+      "reference_sha256": "8b8a116b4321d0eeb9a3a51bc75327d434af9e8e0d34fe1a883d84fa83d1cf24",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_count_challenger_cloud.py",
+      "reference_sha256": "69cbb9cfc5cb69a49feabc9141cbc9bc6947fd1452229016433814daf2cf80eb",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_default_relarena_cloud.py",
+      "reference_sha256": "dbdba37ab7e1eda083e770e6f679ce8909aaa618396d0f7ac1e1e0bdf0fde9ba",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_fresh_cloud_campaign.py",
+      "reference_sha256": "e20da83cd15f240e9bb045415176ceb36e6d5cfaf2ecaffde4b4e36428b3f584",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_gap_followup_queue.py",
+      "reference_sha256": "588b1196c00aa5ff44b5eac4248807b1291b5038ddcca8e3911b4d2facc3efa4",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_kurversc_local_campaign.py",
+      "reference_sha256": "300c2555cdc0f503a22aa328e32c1c93cf2c12aa9bb9593cf9a5f23815e84dcc",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_kurversc_selected_relarena.py",
+      "reference_sha256": "32229e7886303e6d3ef93926548deff635a3d1aa09b483dc458871b28679dbc2",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_measured_staged_cloud.py",
+      "reference_sha256": "16b0e8b730d93e8c4c5e4a2d3e442ce006c052f2c0aaba7e27be8096e9781cae",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_official_cloud.py",
+      "reference_sha256": "cadb2ba8ce023263cba8b2f46c4475de2257071da9bfb7c8332e23260e451c19",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_portable_staged.py",
+      "reference_sha256": "9db2839d30362d2abd185c0e500992ad550ae49ae5cfb0f75dff91c9131de8c8",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_production_finalist_cloud.py",
+      "reference_sha256": "012349f92c4d083f934c42dbab69a4b21bb0286c9cb9159d0b38582da44574be",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_production_finalist_cloud_v2.py",
+      "reference_sha256": "c241778f1049549e7702e66250d0def9fa6bb98fce217a5f62ec1dd2af284d7c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_recovered_staged_cloud.py",
+      "reference_sha256": "4ce6f4fbfe4e4fe909f6a4f998df1f9b207518c7eb83ab836add01d365be63b5",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_reproducible_staged_cloud.py",
+      "reference_sha256": "8b5cf103ae6325e659dfbb19ae4a32d254f9da2ce4281d81d7200f798570d8b0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_sequence_recovery_cloud.py",
+      "reference_sha256": "fb5c82e0e9303dc63fc30edd2babe19d0662608a53a364fdea905e0c3394093c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_staged_complete_cloud.py",
+      "reference_sha256": "1a7edc62ef9e6435cb11bed85794f49f1ac19c836c7567b71c30ae786a6e410a",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_streamed_sequence_cloud.py",
+      "reference_sha256": "c10b9d8288f1d169c328eaf06183cae3da96aca962c8a77c4f461818010bfeb5",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_temporal_audit_parallel.py",
+      "reference_sha256": "c0166994b300efb8c75bc4031fed1ece998220f525c9fc6407a3bfe73805b9d3",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/run_temporal_policy_campaign.py",
+      "reference_sha256": "87f3c93f4050090f4223c205b474b0f83a8a1643cf92f55d4ff70ac4201740e0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/schema_exposure_challenger.py",
+      "reference_sha256": "f7e286295cb8452d823158f449eb54a74cf2eb22abd73dd35b5e8cce0071ce88",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/schema_semantic_recurrence.py",
+      "reference_sha256": "ea922ae2b1a3428827cdc16b75e3f4151805c02385745c4d7e0a8a8729cecf87",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/select_activity_readout.py",
+      "reference_sha256": "3c0ddc939d7dfa99159a52e455212276063bab99e1b85de0653cab8f2dc00de1",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/sequence_basis.py",
+      "reference_sha256": "a67b04cf7f1c162326faa1a664b2b1ed50d3c34e6e6cb870ad018683ffda1869",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/sequence_recovery_protocol.py",
+      "reference_sha256": "36765be905c2affd056567597b04155d2f97bf372be584f7844827144798f338",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/source_response_annotation_20261020.py",
+      "reference_sha256": "c1320c21989fa0d1d73c95548cedb64e0d7671ffb5d1812d3344d154a8842d59",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/stable_peer_moments.py",
+      "reference_sha256": "169cb8c23764d91e5dd7c66a0d584ca4c3b3f76ada660a8a2dbe11f0d9fb8aa9",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/streaming_feature_cache.py",
+      "reference_sha256": "a698898eb3232c286c55a67a8712b9afc0145404078531380f9cd40b5f56be90",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/subday_sequence.py",
+      "reference_sha256": "7b7c33034248f8dd6917285cddae4a1bc1ee73c7782422d50e9d194cd8c32de1",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/temporal_audit_veto.py",
+      "reference_sha256": "57bee8c27a29397eee9bb9b38ce033a73e8d2e7c1d5927823c59e2f53dfc41c6",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/temporal_campaign_support.py",
+      "reference_sha256": "4b189a71d8fe55d6ae3eb60d76fbbbe24e78b7f75d535ccc4fa2f9c3cc86c69f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/_staged/zero_aware_quantile_readout.py",
+      "reference_sha256": "e7922a45810c507e7b81ef7007ab74bd6455a257d6acf5ecf167537294d9cdae",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/checkpointing.py",
+      "reference_sha256": "30c5420dae3fd08686a8a58b601fe62bd48bda867b2b8ad369a5f2b07e743b33",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/core.py",
+      "reference_sha256": "186d6acc8ddfe3d1e1077032c8bcbc8833e7f9ddf20a3e7c831e5efd7689eb11",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/count_regression.py",
+      "reference_sha256": "e50c909cbaa76e17ffb82de50e1e1262cea06434e30d247c2c0834cd2c36e9b4",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/event_summaries.py",
+      "reference_sha256": "f908729046ce71a876a79326215e785d5986156a0f5a548681c3bae52477bb6a",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/exposure_regression.py",
+      "reference_sha256": "568b7e02e329011b9724afd8aec6de68e0dc7f33f5f4d2dd02edff9cc7ae34ce",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/feature_audit.py",
+      "reference_sha256": "a7874aeb8ad3fbd2dccd11ee62fcd85f94755e666383a308229eaddea344e963",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/joint_event_distributions.py",
+      "reference_sha256": "82a256c5cadcb7f456dd6278aa43e27a91f33f3421bae325d9975cfe78be3338",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/joint_neighborhoods.py",
+      "reference_sha256": "4b6f4699a71f088a19acebc4b17e33ab2c2ceef8643372180fb501066db95a9a",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/learned_messages.py",
+      "reference_sha256": "ec2a1c0ca927712752ece514c53cbd1192584e76d6c890a7a49f3f620b32031f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/logging.py",
+      "reference_sha256": "31b8a58342dffc52a458c61273c29b5b4c5f05ddc50ed2568970c33a711a261d",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/message_frames.py",
+      "reference_sha256": "4e93df6cd6cb1cb5175ca5ca6fcde689a11a2eb59d75f5f7a456f1cac956e6ff",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/modeling.py",
+      "reference_sha256": "b0a5e8bead8a68c53d423d65740ddf4504cb486e570dca59e90129dc4cb7cd17",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/neighborhood_inputs.py",
+      "reference_sha256": "08277f00c02e48ad99ab8f445f5896c91a6c17611edfb15d1479c5ec48f4d2ad",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/ordered_regression.py",
+      "reference_sha256": "0a90e2c1c75747dbb35278eed6489c4bd5df1a0741427731f769f1c5609375fb",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/ordinal_regression.py",
+      "reference_sha256": "765043fd6f0aac8bdcc71e0b6855fddb65480e73030a1e785f73857ba2271696",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/paired_peer_context.py",
+      "reference_sha256": "73dfc97ea8264d77d956090a306ca4d7537186c129cfcd3cf31fad16cd01f912",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/parent_features.py",
+      "reference_sha256": "140fb72f7a13c8199dc2945e2506945c989bcdb6058e6f5dff44b0cf6751c18c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/peer_context.py",
+      "reference_sha256": "03deff5f132199f7308d5d8d2dc130982b1643121fd2fc4f90dbe3dfed690f51",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/peer_history.py",
+      "reference_sha256": "bc7a5965a4cf9fa3d2b74ece38a594251b0d194d65ea053a9e80efcf2515a8de",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/peer_sampling.py",
+      "reference_sha256": "c01eaa7f2797c738102d9d107cc07091779befc8da326d063d0ce9a7b92c411c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/plan_dates.py",
+      "reference_sha256": "3305324b7567e718c0df26d839892c17b3dced536190689d4f9cc85da8b65de2",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/planner_collection.py",
+      "reference_sha256": "eca3e44da0a4f3408374d08a77b43450a245352756ccbf9b477d11f844421342",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/planner_profiles.py",
+      "reference_sha256": "6880523a621248dbe79773b3bfc9605e0cec2f1a85521c97f05efee977260057",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/planner_traces.py",
+      "reference_sha256": "380b8188112744d53cfd00c43240e5b240f56c130d5aa9cc28045802e06fd569",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/planner_training.py",
+      "reference_sha256": "d8d1e43244e9fc2c3c1558cbf4fe848ce512e284df15957fffb80798d30eb38e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/pooled_alignment.py",
+      "reference_sha256": "0f881c2ac55ad062b146745a96214041192041462c004468aeffd5931b18a32a",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/pooled_messages.py",
+      "reference_sha256": "daa611f1b623fb456657b58b309f31b900e43df27c3702b18aec0fc8f8afdce0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/prediction_provenance.py",
+      "reference_sha256": "bdd89e1b396093831daa8a4849282be05e2e2931ef96a883ea475b471a37d980",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/protocol_context.py",
+      "reference_sha256": "a33a378ecd0786a5833f0610e0a1f4f02e691cca05cdb94cc6c9f67047d708bd",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/protocol_runner.py",
+      "reference_sha256": "6a9a5f731f925882a9c9d0271ba05945827fa62a8173d5035d0536d951b54e16",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/quantile_regression.py",
+      "reference_sha256": "00adc08ff88b04b75e28f6d1f4c1cd74beae5a786396c5211d076b2487806260",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/relational_inputs.py",
+      "reference_sha256": "00694477c5078e78f13cf72a81a6c5307c247eebddeb64099ae80e6d0ed40d9f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/relbench.py",
+      "reference_sha256": "546f8683a7ab0de6be45a6a2f7d268e77a03e50589d2a07c09c1219468b9bd75",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/response_signals.py",
+      "reference_sha256": "c7330be9b5a2e05c74014cac6b70ba99bf2ea49aba69e0dfa9ac35a208f50bae",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/search.py",
+      "reference_sha256": "e0bb3f65c012aec354b10493143ed4e68926c155ba5f0ab1d28674c64efd695e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/signal_challengers.py",
+      "reference_sha256": "f5ffe0f7f8c18e9a483ef3c09535147c421ae669d19cb43d3a4a0e3c87bfae97",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/specs.py",
+      "reference_sha256": "06abd0cbe9efb6329e680dd982aa0fe4aa62a3d63cec339905e7c238e3e8a17f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/staged.py",
+      "reference_sha256": "4027adac65bd6aab44ffca919574e19f2636aaab2044d9302d4e4901f5808ecc",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/staged_adapter.py",
+      "reference_sha256": "63704a54dbc1e10681644cef272a7002f734436744ce0d6f32dbd11591c198de",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/staged_runtime.py",
+      "reference_sha256": "0ef086b4fe452233f1884bd6c57740d1674d9d00c97710009016650c2cbefdb2",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/task_context.py",
+      "reference_sha256": "f2d212044c7b40a3cf94ed101b0a39b4ad4112e6204d41fb3e10569e55001aca",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/task_source.py",
+      "reference_sha256": "de00dd7a9d35ad3abac206aec577d4c16969d7642ccbe0b34c26293c4d0392c8",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/temporal_policy.py",
+      "reference_sha256": "97a12f7af0bbc38d84ba9055d89e9da8a0d09ba3c2d624fa4179cef2775e37ab",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/temporal_sampling.py",
+      "reference_sha256": "d4561a71d633fe1bb5316bbb9f94c4b16720d596613793c5e36502f8a67ecdb5",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "kurversc/training_support.py",
+      "reference_sha256": "6c58c48825994b522457a945cc671fa9ac31b2f79cf87ac99b3ac65de4b76531",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/__init__.py",
+      "reference_sha256": "6069240545bbe2ce092c2a7b5dba277fb9b19bb66b558a45d99a3843503a7407",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/__main__.py",
+      "reference_sha256": "c2bec9d492d8c06d4e8fe689e6806496fa554df3e9c09b65f3ec088cfc3f125f",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/base_distribution.py",
+      "reference_sha256": "400741695fa9c658722b0ef00e125b135c74cbee3bf324f2a79ae90e38514d63",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/cli/__init__.py",
+      "reference_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/cli/auto_fe.py",
+      "reference_sha256": "91c38bf61a451c77cf6fb5feddcabdd37677dfec454a959fffffabba0dc13f3c",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/cli/entry_point.py",
+      "reference_sha256": "3d857abfabe1ce0ac8c90ad9f91910efd24bc8dda3457407875f5f79d904a1cf",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/common.py",
+      "reference_sha256": "d6d91fa809e7bb254434df882d59355b9842aeeb850ddb90773c6abe5464daa3",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/constants.py",
+      "reference_sha256": "1e413d1cea6b67b69a1ed4e112e39816a86a4dc5b71516d5ca0c2f468cbdb54b",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/context.py",
+      "reference_sha256": "19bf661a911cd087e0e989ba426b945bbb13047b890b6b981b0744e88fe01192",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/distribution_sketch.py",
+      "reference_sha256": "c854b98c39b0f2e64b2a11473f794005ba9513c24432d7969deb3ba6e2f2e0e0",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/enum.py",
+      "reference_sha256": "544b884cd995b120f1cd87aa12d9715537964dcc7797b9b56163c04ba32fd8f7",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/feature_schema.py",
+      "reference_sha256": "875145752e95a4cf424ac8e19cc88376ac0ece3f928db6e2ad329ff3e1c35e98",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/graph_reduce.py",
+      "reference_sha256": "d5d90bd6582b576db45ce057ff11ace5010e1e127d2f4cc39f9dd3fdcee82078",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/joint_distribution.py",
+      "reference_sha256": "49a99a2a1838c7057c2768b7b3d2dbcba1f7d2266ba8d9d03f210c184a34384e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/learned_messages.py",
+      "reference_sha256": "3c2826bbb2162396a98030be8cb699255ec2fd9964f7e537f24778d15b336f60",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/metadata.py",
+      "reference_sha256": "3ac99c4e46845478d9330a3d076e820f8e6618d2cf90ee17c65c8a90979e7ba6",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/models/__init__.py",
+      "reference_sha256": "42cfa2fea83197e3fbaa16a96e5467f4aefa1249043c0ca6adef96b97a09461d",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/neighbor_context.py",
+      "reference_sha256": "f2a2b8c27b5743f56dcb15c2800b3589d1851368bcda2750c6d3b552950a02db",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/node.py",
+      "reference_sha256": "0e64e00c60f39229184aef553270aa44fd03a5e86b4d603d1fb7373880063cbf",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/predicates.py",
+      "reference_sha256": "9731c536be5cddac851e68830b6b557af6d717ca300b0df5f6560354d13ba0e2",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/storage.py",
+      "reference_sha256": "f50b4a8abfe439bd62c9a3731cda85094d519244e4ea2238898990b2c1afc73e",
+      "matches_before_version_stamp": true
+    },
+    {
+      "module": "graphreduce/stypes.py",
+      "reference_sha256": "dc41eb1fa634c63ed99373b3bc94de5a54fabe8b6b5ef1165d9359884bd27b79",
+      "matches_before_version_stamp": true
+    }
+  ]
+}

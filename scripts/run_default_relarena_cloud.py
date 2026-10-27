@@ -57,7 +57,8 @@ def task_pairs():
 def clean_environment():
     # Refuse accidental opt-in hypotheses, graph profiles, known winners,
     # downstream budgets, or cutoff overrides inherited from a research shell.
-    unexpected = [key for key in os.environ if key.startswith("KURVERSC_")]
+    resources = {"KURVERSC_DUCKDB_MEMORY_LIMIT", "KURVERSC_DUCKDB_MAX_TEMP_DIRECTORY_SIZE"}
+    unexpected = [key for key in os.environ if key.startswith("KURVERSC_") and key not in resources]
     if unexpected:
         raise ValueError(f"Registered defaults require no inherited overrides: {unexpected}")
 

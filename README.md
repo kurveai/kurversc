@@ -1,11 +1,13 @@
 # KurveRSC
 
-> Release candidate: `0.2.0rc1` packages the complete staged procedure as
+> Version `0.2.0`, prepared for review, packages the complete staged procedure as
 > `kurversc.run_staged_task(...)` / `kurversc-staged`. The existing `fit` and
 > `predict` APIs remain available. See [staged reproduction](docs/staged-release.md)
 > for installation, protocol boundaries, and outstanding qualification work.
-> Historical benchmark tables below describe earlier releases, not a completed
-> 21-task evaluation of this candidate.
+> The [fresh 21-task results](docs/kurversc-staged-results.md),
+> [resources](docs/kurversc-staged-resources.md), and
+> [new technical report](docs/kurversc-staged-technical-report.md) document this
+> pipeline. Native-reference tables elsewhere below are historical.
 
 KurveRSC is an integrated relational representation and model-selection
 system. It uses [GraphReduce](https://github.com/wesmadrigal/graphreduce) as
@@ -78,6 +80,17 @@ The [KurveRSC technical report](https://github.com/kurveai/kurversc/blob/main/do
 ([PDF](https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.pdf)) explains the
 GraphReduce algorithm, relational feature families, learner-guided graph search,
 point-in-time guarantees, frozen-plan lifecycle, and evaluation protocol.
+
+## Complete staged pipeline (0.2.0)
+
+The complete staged procedure is available through `TaskContext`,
+`run_staged_task` and the `kurversc-staged` command. It includes graph search,
+production-faithful finalist checks, temporal support/readout selection and
+final refitting. Native `fit` / `predict` remain component interfaces.
+
+See [installation and the full procedure](docs/staged-release.md) and the
+[measured resource report](docs/kurversc-staged-resources.md). The release is
+under review; final fresh benchmark score tables will follow the last task.
 
 ## Quickstart
 
