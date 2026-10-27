@@ -1,0 +1,79 @@
+GraphReduce feature ownership
+Recorded: 2026-10-27
+Status: deferred until after the current 0.2.0 submission; not a release blocker.
+
+Decision
+Keep the qualified staged pipeline frozen. Move reusable relational feature
+operators into GraphReduce in subsequent updates, with behavior-preserving
+comparisons. Do not combine that migration with new features, search dimensions,
+model tuning, altered budgets or changed statistical selection rules.
+
+Why this is debt
+Experimental feature builders accumulated in KurveRSC and its staged scripts.
+Several now perform relational extraction, annotation and aggregation that any
+GraphReduce consumer could reuse. Keeping those operators in two packages
+duplicates ownership of temporal semantics, materialization and backend work.
+Their current location alone does not invalidate the reproduced results.
+
+Intended boundary
+GraphReduce owns relational feature construction: path/membership extraction,
+as-of joins, annotations, aggregation/pooling, fitted transformation state and
+execution/replay through supported backends.
+
+KurveRSC owns task-aware search and learning: candidate generation and budgets,
+fidelity promotion, validation origins/seeds, supervised scorer training,
+admission/complexity gates, temporal support selection, final learner fitting
+and prediction ensembles/readouts.
+
+KurveRSC declares which observed labels and availability clocks a phase may
+expose. GraphReduce operators enforce those declared boundaries. Historical
+label aggregation is feature construction; label dependence does not by itself
+make an operator model-selection logic.
+
+Migration priorities
+1. Peer and historical feature operators.
+   - kurversc/peer_context.py: recency/specificity weighting, moments, shrinkage.
+   - kurversc/peer_history.py: historical memberships, mature-label summaries,
+     exclusion of the query entity from both group statistics and priors.
+   - kurversc/core.py: generic historical-target relation construction, with
+     task-specific label authorization retained in the adapter/orchestrator.
+
+2. Event, object and exposure feature operators.
+   - Activity timelines, object breadth/concentration, exposure/response
+     summaries and parent-event context currently implemented in staged scripts.
+   - Extract schema-generic operators; do not transplant dataset-shaped
+     prototype interfaces verbatim. Prefer existing temporal/state/context/
+     conditional families and composable operations over additional search axes.
+
+3. Payload preservation and annotation.
+   - Reusable parts of kurversc/relational_inputs.py: bounded categorical/text
+     encodings, source/parent annotations and frozen transformation replay.
+   - Reuse GraphReduce's existing neighborhood extraction, pooling, CDF and
+     joint-distribution primitives. Keep supervised encoder/scorer optimization
+     and validation-based selection in KurveRSC; expose fitted-transform
+     execution through the feature-plan boundary where appropriate.
+
+Migration requirements
+- Preserve dependency direction: KurveRSC depends on GraphReduce. GraphReduce
+  must not import KurveRSC task/spec classes, benchmark registries or recipes.
+- Preserve exact cutoff/availability semantics, original-time memberships,
+  deterministic sampling and tie-breaking, self-exclusion and query ordering.
+- Preserve names/order/dtypes/missingness, fitted cutpoints/vocabularies,
+  feature budgets and execution-plan serialization. Do not relax cache or
+  model-input equivalence checks to make a migration pass.
+- Move one operator group at a time behind compatible wrappers. Compare exact
+  feature frames and keyed predictions against the frozen implementation.
+- Exercise classification/regression, labels becoming available late, repeated
+  entities, shared peers and representative large materializations. Repeat the
+  frozen 21-task procedure before replacing the release default.
+- Moving files alone does not provide warehouse-native execution or lower RAM.
+  Backend lowering, shared execution and memory optimizations require separate
+  implementations and measured parity checks.
+
+Baseline and urgency
+Use the qualified 0.2.0/GraphReduce 1.10.18 source payload and the October 27
+21-task receipts as the baseline. See docs/staged-source-parity.json and
+docs/assets/kurversc-staged-scores-20261027.csv in the release branch.
+Prioritize this work before substantial new operator/backend expansion or reuse
+by other learners. An independently discovered correctness or data-boundary
+defect would require its own immediate fix; package ownership cleanup can wait.
