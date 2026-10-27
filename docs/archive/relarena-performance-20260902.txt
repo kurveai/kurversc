@@ -1,0 +1,142 @@
+Historical README performance snapshot, September 2, 2026
+
+## RelArena performance
+
+The latest fully completed 21-task reference profile (September 2, 2026) uses
+official RelBench v1 test splits through RelArena: full-data latest-cutoff graph
+search, three sequential reranking folds, one production cutoff, CatBoost,
+GraphReduce's fixed temporal
+periods, and no automatic text features. Classification reports test AUROC
+(higher is better); regression reports test MAE (lower is better).
+
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/kurveai/kurversc/main/docs/assets/kurversc-relarena-default.svg"
+    alt="KurveRSC RelArena default: complete latest-cutoff graph search, top-three reranking over three sequential full cutoff folds, a frozen selected graph plan, and final CatBoost fitting on one complete cutoff."
+    width="1100"
+  />
+</p>
+
+<p align="center"><em>The reported reproducibility default prioritizes complete graph-configuration evidence while retaining only one materialized feature frame at a time.</em></p>
+
+| Dataset | Task | Metric | KurveRSC | TabPFN-Rel Local | Winner |
+|---|---|---|---:|---:|---|
+| rel-amazon | user-churn | AUROC ↑ | 0.709873 | 0.702403 | KurveRSC |
+| rel-amazon | item-churn | AUROC ↑ | 0.826457 | 0.827857 | TabPFN-Rel Local |
+| rel-amazon | user-ltv | MAE ↓ | 14.141898 | 14.400940 | KurveRSC |
+| rel-amazon | item-ltv | MAE ↓ | 42.379024 | 47.768328 | KurveRSC |
+| rel-avito | user-visits | AUROC ↑ | 0.674190 | 0.668811 | KurveRSC |
+| rel-avito | user-clicks | AUROC ↑ | 0.663718 | 0.614522 | KurveRSC |
+| rel-avito | ad-ctr | MAE ↓ | 0.033658 | 0.031379 | TabPFN-Rel Local |
+| rel-event | user-repeat | AUROC ↑ | 0.754278 | 0.769251 | TabPFN-Rel Local |
+| rel-event | user-ignore | AUROC ↑ | 0.831978 | 0.701376 | KurveRSC |
+| rel-event | user-attendance | MAE ↓ | 0.260420 | 0.239383 | TabPFN-Rel Local |
+| rel-f1 | driver-dnf | AUROC ↑ | 0.753755 | 0.714468 | KurveRSC |
+| rel-f1 | driver-top3 | AUROC ↑ | 0.682359 | 0.792916 | TabPFN-Rel Local |
+| rel-f1 | driver-position | MAE ↓ | 3.913433 | 3.761699 | TabPFN-Rel Local |
+| rel-hm | user-churn | AUROC ↑ | 0.696306 | 0.705690 | TabPFN-Rel Local |
+| rel-hm | item-sales | MAE ↓ | 0.031837 | 0.061362 | KurveRSC |
+| rel-stack | user-engagement | AUROC ↑ | 0.903012 | 0.905834 | TabPFN-Rel Local |
+| rel-stack | user-badge | AUROC ↑ | 0.875081 | 0.863470 | KurveRSC |
+| rel-stack | post-votes | MAE ↓ | 0.063356 | 0.067957 | KurveRSC |
+| rel-trial | study-outcome | AUROC ↑ | 0.708141 | 0.730607 | TabPFN-Rel Local |
+| rel-trial | study-adverse | MAE ↓ | 41.333896 | 42.591708 | KurveRSC |
+| rel-trial | site-success | MAE ↓ | 0.401755 | 0.385751 | TabPFN-Rel Local |
+
+KurveRSC wins 11 of 21 direct comparisons with TabPFN-Rel Local: 6–6 on
+classification and 5–4 on regression. On the complete 21-task matrix it is
+third overall by RelArena's bootstrapped Elo calculation at 1763.3, behind
+RT-PluRel and TabPFN-Rel API and ahead of TabPFN-Rel Local.
+
+### Aggregate RelArena leaderboard
+
+This table includes every reproduced RelArena participant on the complete
+21-task matrix. Elo is anchored to the global constant predictor at 1000;
+higher Elo and win rate are better, while lower mean rank and rescaled loss are
+better.
+
+| Elo rank | Method | Kind | Elo | Mean rank | Win rate | Rescaled loss |
+|---:|---|---|---:|---:|---:|---:|
+| 1 | RT-PluRel | system | 1857.5 | 2.952 | 80.48% | 0.107555 |
+| 2 | TabPFN-Rel API | model | 1832.5 | 3.190 | 78.10% | 0.148619 |
+| **3** | **KurveRSC** | **system** | **1763.3** | **3.905** | **70.95%** | **0.145282** |
+| 4 | TabPFN-Rel Local | model | 1733.0 | 4.238 | 67.62% | 0.189932 |
+| 5 | GraphSAGE | model | 1662.2 | 5.048 | 59.52% | 0.206977 |
+| 6 | RelGT | model | 1578.1 | 6.024 | 49.76% | 0.321848 |
+| 7 | RDBLearn | model | 1563.6 | 6.190 | 48.10% | 0.274152 |
+| 8 | RelGNN-ES | model | 1531.8 | 6.548 | 44.52% | 0.305919 |
+| 9 | LightGBM (entity-only) | model | 1359.6 | 8.286 | 27.14% | 0.546808 |
+| 10 | Constant (per-entity) | model | 1259.4 | 9.095 | 19.05% | 0.618487 |
+| 11 | Constant (global) | model | 1000.0 | 10.524 | 4.76% | 0.941930 |
+
+#### Ranking by rescaled loss
+
+RelArena's default aggregate orders methods by mean per-task min-max rescaled
+error. Lower is better; the Elo rank is retained to make the two orderings easy
+to compare.
+
+| Loss rank | Method | Kind | Rescaled loss | Elo rank | Elo |
+|---:|---|---|---:|---:|---:|
+| 1 | RT-PluRel | system | 0.107555 | 1 | 1857.5 |
+| **2** | **KurveRSC** | **system** | **0.145282** | **3** | **1763.3** |
+| 3 | TabPFN-Rel API | model | 0.148619 | 2 | 1832.5 |
+| 4 | TabPFN-Rel Local | model | 0.189932 | 4 | 1733.0 |
+| 5 | GraphSAGE | model | 0.206977 | 5 | 1662.2 |
+| 6 | RDBLearn | model | 0.274152 | 7 | 1563.6 |
+| 7 | RelGNN-ES | model | 0.305919 | 8 | 1531.8 |
+| 8 | RelGT | model | 0.321848 | 6 | 1578.1 |
+| 9 | LightGBM (entity-only) | model | 0.546808 | 9 | 1359.6 |
+| 10 | Constant (per-entity) | model | 0.618487 | 10 | 1259.4 |
+| 11 | Constant (global) | model | 0.941930 | 11 | 1000.0 |
+
+KurveRSC is also second overall by rescaled loss, behind RT-PluRel. Because
+systems use their own internal selection regimes, RelArena reports method kind
+explicitly: KurveRSC and RT-PluRel are systems, while the remaining learned
+participants are models under RelArena's standardized tuning interface.
+
+### Per-task results across all participants
+
+These matrices combine KurveRSC's default-profile test results with the
+validation-selected, seed-zero test scores in RelArena's reproduced release
+artifact. Bold marks the best held-out score on each task. AUROC is maximized;
+MAE is minimized.
+
+<details open>
+<summary><strong>Classification — AUROC ↑</strong></summary>
+
+| Dataset / task | KurveRSC | RT-PluRel | TabPFN-Rel API | TabPFN-Rel Local | GraphSAGE | RelGT | RDBLearn | RelGNN-ES | LightGBM | Constant/entity | Constant/global | Overall winner |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| rel-amazon/item-churn | 0.826457 | **0.832656** | 0.827996 | 0.827857 | 0.830527 | 0.823835 | 0.819538 | 0.785579 | 0.662211 | 0.728875 | 0.500000 | **RT-PluRel** |
+| rel-amazon/user-churn | 0.709873 | **0.713460** | 0.708649 | 0.702403 | 0.704596 | 0.701924 | 0.684375 | 0.694281 | 0.517056 | 0.634205 | 0.500000 | **RT-PluRel** |
+| rel-avito/user-clicks | 0.663718 | 0.583376 | 0.675191 | 0.614522 | 0.608674 | 0.644353 | **0.678769** | 0.667571 | 0.564163 | 0.504143 | 0.500000 | **RDBLearn** |
+| rel-avito/user-visits | **0.674190** | 0.670887 | 0.668026 | 0.668811 | 0.665758 | 0.662142 | 0.659624 | 0.648731 | 0.529282 | 0.602703 | 0.500000 | **KurveRSC** |
+| rel-event/user-ignore | 0.831978 | 0.847577 | **0.878659** | 0.701376 | 0.758728 | 0.781507 | 0.664351 | 0.805393 | 0.777181 | 0.839930 | 0.500000 | **TabPFN-Rel API** |
+| rel-event/user-repeat | 0.754278 | **0.791377** | 0.759291 | 0.769251 | 0.784626 | 0.734358 | 0.744084 | 0.754612 | 0.748295 | 0.751805 | 0.500000 | **RT-PluRel** |
+| rel-f1/driver-dnf | **0.753755** | 0.731460 | 0.732172 | 0.714468 | 0.717235 | 0.711667 | 0.714551 | 0.726106 | 0.730298 | 0.699258 | 0.500000 | **KurveRSC** |
+| rel-f1/driver-top3 | 0.682359 | 0.758858 | 0.771426 | 0.792916 | 0.725975 | **0.810841** | 0.780081 | 0.758864 | 0.738889 | 0.556530 | 0.500000 | **RelGT** |
+| rel-hm/user-churn | 0.696306 | 0.704356 | 0.705215 | **0.705690** | 0.698525 | 0.689531 | 0.698352 | 0.682025 | 0.590081 | 0.647972 | 0.500000 | **TabPFN-Rel Local** |
+| rel-stack/user-badge | 0.875081 | **0.891612** | 0.880386 | 0.863470 | 0.888748 | 0.574286 | 0.771147 | 0.620584 | 0.537995 | 0.788956 | 0.500000 | **RT-PluRel** |
+| rel-stack/user-engagement | 0.903012 | 0.896775 | 0.905994 | 0.905834 | 0.905609 | **0.906731** | 0.858670 | 0.905054 | 0.811836 | 0.826717 | 0.500000 | **RelGT** |
+| rel-trial/study-outcome | 0.708141 | 0.723487 | **0.764702** | 0.730607 | 0.686232 | 0.668495 | 0.721205 | 0.657435 | 0.715018 | 0.500000 | 0.500000 | **TabPFN-Rel API** |
+
+</details>
+
+<details>
+<summary><strong>Regression — MAE ↓</strong></summary>
+
+| Dataset / task | KurveRSC | RT-PluRel | TabPFN-Rel API | TabPFN-Rel Local | GraphSAGE | RelGT | RDBLearn | RelGNN-ES | LightGBM | Constant/entity | Constant/global | Overall winner |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| rel-amazon/item-ltv | **42.379024** | 43.028012 | 46.768181 | 47.768328 | 49.245337 | 48.673386 | 48.997527 | 52.458084 | 55.750750 | 65.351419 | 64.233613 | **KurveRSC** |
+| rel-amazon/user-ltv | 14.141898 | **13.943011** | 14.358212 | 14.400940 | 14.415321 | 14.352129 | 14.577540 | 14.575225 | 16.784682 | 17.423469 | 16.782979 | **RT-PluRel** |
+| rel-avito/ad-ctr | 0.033658 | 0.034848 | **0.031080** | 0.031379 | 0.038966 | 0.036499 | 0.034103 | 0.042646 | 0.041250 | 0.041201 | 0.043067 | **TabPFN-Rel API** |
+| rel-event/user-attendance | 0.260420 | 0.240949 | 0.243944 | **0.239383** | 0.245018 | 0.261493 | 0.242215 | 0.243858 | 0.262798 | 0.269152 | 0.263534 | **TabPFN-Rel Local** |
+| rel-f1/driver-position | 3.913433 | 3.817699 | 3.769181 | **3.761699** | 4.011112 | 4.765529 | 3.888649 | 4.265887 | 4.105829 | 4.103509 | 4.399101 | **TabPFN-Rel Local** |
+| rel-hm/item-sales | **0.031837** | 0.040258 | 0.060507 | 0.061362 | 0.055153 | 0.053168 | 0.067132 | 0.056493 | 0.075295 | 0.078033 | 0.076087 | **KurveRSC** |
+| rel-stack/post-votes | **0.063356** | 0.063463 | 0.067882 | 0.067957 | 0.064898 | 0.067904 | 0.067719 | 0.067904 | 0.066099 | 0.069374 | 0.067904 | **KurveRSC** |
+| rel-trial/site-success | 0.401755 | 0.410357 | 0.412624 | 0.385751 | **0.324851** | 0.370110 | 0.485833 | 0.340493 | 0.437506 | 0.441148 | 0.462222 | **GraphSAGE** |
+| rel-trial/study-adverse | 41.333896 | **32.652791** | 39.753674 | 42.591708 | 44.315261 | 44.125887 | 44.026705 | 46.270064 | 44.573495 | 57.533247 | 57.533247 | **RT-PluRel** |
+
+</details>
+
+See the [technical report](https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.md#experimental-protocol-and-results)
+for the complete protocol and bootstrap uncertainty intervals.

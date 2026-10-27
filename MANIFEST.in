@@ -1,4 +1,5 @@
 include staged_build.py
+include TECH_DEBT.txt
 include docs/staged-release.md
 include docs/staged-validation.json
 include docs/staged-source-parity.json
@@ -14,6 +15,8 @@ include docs/assets/kurversc-staged-references-20261026.json
 recursive-include docs/assets *20261027*
 include tools/check_release_artifacts.py
 include tools/smoke_staged_release.py
+include tools/refresh_performance_tables.py
+recursive-include docs/archive *.txt
 include scripts/parent_event_response_context_20261020.py
 include scripts/observe_submission_resources_20261025.py
 include examples/relbench_planner_collection.py
