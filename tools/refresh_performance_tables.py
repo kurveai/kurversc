@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 NAMES = {
-    "kurversc": "KurveRSC 0.2.0 staged",
+    "kurversc": "KurveRSC",
     "tabpfn-rel-client-2026-09-28": "TabPFN-Rel client (2026-09-28)",
     "tabpfn-rel-local-2026-09-28": "TabPFN-Rel local (2026-09-28)",
     "tabpfn-rel-client-2026-08-15": "TabPFN-Rel client (2026-08-15)",
@@ -203,7 +203,7 @@ The comparator is **`tabpfn-rel-client-2026-09-28`**, captured with the other
 RelArena results on October 25. Previous KurveRSC means its rows in that same
 capture. It differs from the older September 2 README snapshot.
 
-{table(["Dataset / task", "Metric", "Previous KurveRSC", "KurveRSC 0.2.0", "TabPFN-Rel client", "Winner"], comparisons)}
+{table(["Dataset / task", "Metric", "Previous KurveRSC", "KurveRSC", "TabPFN-Rel client", "Winner"], comparisons)}
 
 KurveRSC wins **11 of 21** direct comparisons with that client: **8 of 12
 classification tasks** and **3 of 9 regression tasks**. Sixteen scores improve
