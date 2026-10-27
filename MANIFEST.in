@@ -1,0 +1,21 @@
+include staged_build.py
+include docs/staged-release.md
+include docs/staged-validation.json
+include docs/staged-source-parity.json
+include docs/kurversc-staged-resources.md
+include docs/kurversc-staged-resources.csv
+include docs/kurversc-staged-results.md
+include docs/kurversc-staged-results.csv
+include docs/kurversc-staged-technical-report.md
+include docs/kurversc-staged-technical-report.pdf
+include docs/kurversc-staged-references.bib
+include docs/kurveplanner-training.md
+include docs/assets/kurversc-staged-references-20261026.json
+recursive-include docs/assets *20261027*
+include tools/check_release_artifacts.py
+include tools/smoke_staged_release.py
+include scripts/parent_event_response_context_20261020.py
+include scripts/observe_submission_resources_20261025.py
+include examples/relbench_planner_collection.py
+include examples/olist_cookbook_staged.py
+include docs/checkpoints/20261007/frozen-graph-campaign-21.csv
