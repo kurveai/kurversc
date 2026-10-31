@@ -5,7 +5,7 @@
 > finalist and temporal-policy selection, and a shared menu of generic readouts.
 > See [the revised procedure](docs/staged-release.md). The October 27 tables and
 > technical report describe the superseded recipe; they do not measure this
-> revision. Fresh six-task pilot evaluation is in progress.
+> revision. The [six-task pilot](docs/generic-staged-pilot.md) is complete; full-panel evaluation remains pending.
 
 KurveRSC is an integrated relational representation and model-selection
 system. It uses [GraphReduce](https://github.com/wesmadrigal/graphreduce) as

@@ -2,8 +2,7 @@
 
 The runnable submission has been narrowed following maintainer review. The
 previous October 27 results and resource tables describe a superseded pipeline;
-they do not establish performance or Elo for this revision. Fresh evaluation is
-in progress.
+they do not establish performance or Elo for this revision. The six-task pilot is complete; full-panel evaluation remains pending.
 
 ## Retained procedure
 
@@ -103,3 +102,8 @@ No replacement 21-task result or updated Elo is claimed until measured.
 
 See the [review changes](generic-staged-review.md), [current pilot table](generic-staged-pilot.md),
 and [checksummed pilot admission bundle](generic-staged-pilot-admissions.tar.gz).
+
+The six-task pilot has completed. The shared gate admitted the zero-aware head
+for study-adverse and the generic text head for study-outcome; the other four
+retained the incumbent. User-engagement scores lower after removing the disputed
+correction stack. All score changes appear in the pilot table.

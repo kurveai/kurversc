@@ -41,7 +41,7 @@
     "passed": 710,
     "skipped": 1
   },
-  "official_task_completions": 4,
+  "official_task_completions": 6,
   "official_task_count": 21,
   "authorized_pilot_tasks": 6,
   "full_21_task_reproduction_passed": false,
@@ -77,5 +77,7 @@
     "hidden_targets_supplied": false,
     "full_generic_staged_procedure": true,
     "fresh_optional_dependency_resolution": false
-  }
+  },
+  "pilot_complete": true,
+  "predictive_sources_unchanged_since": "78d0c650ea0db67ba29a51d2558c4bf183f2dd6b"
 }
