@@ -26,31 +26,20 @@ class SignalChallenger:
     regularized: bool = False
 
     def __post_init__(self):
-        if self.kind not in {"text", "exposure", "support"} or not 0 < self.weight <= 1:
+        if self.kind not in {"text", "support"} or not 0 < self.weight <= 1:
             raise ValueError("A supported challenger and bounded weight are required")
         if self.training_frames is not None and self.training_frames not in {3, 5}:
             raise ValueError("Only the bounded 3/5-frame support challengers are supported")
 
 
-def challenger_menu(*, text=True, exposure=True, support=True, exposure_blends=False):
+def challenger_menu(*, text=True, exposure=False, support=True, exposure_blends=False):
     """Explicit opt-in menu, independent of the graph-configuration lattice."""
+    if exposure or exposure_blends:
+        raise ValueError("The exposure challenger has been removed from the submitted candidate menu")
     menu = []
     if text:
         menu += [SignalChallenger("text25", "text", .25),
                  SignalChallenger("text50", "text", .5)]
-    if exposure:
-        menu += [SignalChallenger("exposure_quality", "exposure"),
-                 SignalChallenger("exposure_quality_regularized", "exposure", regularized=True),
-                 SignalChallenger("exposure_quality_frames3", "exposure", training_frames=3),
-                 SignalChallenger("exposure_quality_frames3_regularized", "exposure", training_frames=3, regularized=True)]
-        if exposure_blends:
-            # Reuse the two same-support heads; do not expand the graph lattice
-            # or add support variants that cannot be evaluated faithfully.
-            menu += [SignalChallenger(f"{name}__blend_{weight:g}", "exposure",
-                        weight=weight, regularized=regularized)
-                     for name, regularized in (("exposure_quality", False),
-                         ("exposure_quality_regularized", True))
-                     for weight in (.125, .5)]
     if support:
         menu += [SignalChallenger("frame_ensemble3", "support", training_frames=3),
                  SignalChallenger("frame_ensemble5", "support", training_frames=5)]

@@ -22,7 +22,7 @@ from kurversc.task_source import CONTEXT_ENV, ContextTaskSource
 from kurversc.staged_runtime import staged_source_identity
 from kurversc.checkpointing import search_runtime_identity
 from scripts.run_gap_followup_queue import dump
-from scripts.run_reproducible_staged_cloud import PROFILE, install_recipe
+from scripts import run_admissible_staged as staged
 
 
 def require_supported_availability(source):
@@ -37,24 +37,12 @@ def require_supported_availability(source):
 
 
 def prediction_artifact(root,slug):
-    task = root/"workers"/slug/"temporal/tasks"/slug
-    # Resolve the procedure actually admitted, never whichever prediction file
-    # happens to have the most recent timestamp or the most favorable score.
-    bounded = task/"bounded-views"
-    if (bounded/"admission.json").exists():
-        admission = json.loads((bounded/"admission.json").read_text())
-        if admission["admitted"]:
-            return bounded/"official/predictions.npz"
-    sequence = task/"production-sequence"
-    if (sequence/"admission.json").exists():
-        admission = json.loads((sequence/"admission.json").read_text())
-        if admission["admitted"]:
-            return sequence/"official/predictions.npz"
-    count = task/"conditional-count"
-    admission = json.loads((count/"admission.json").read_text())
-    if admission["admitted"]:
-        return count/"official/predictions.npz"
-    return task/"recovered-readouts/predictions.npz"
+    return staged.prediction_artifact(root,slug)
+
+
+def procedure_contract():
+    """Use the persisted JSON representation for immutable resume checks."""
+    return json.loads(json.dumps(staged.CONTRACT))
 
 
 def remaining_context_budget(output, *, hours, preprocessing_seconds, now=None):
@@ -85,9 +73,7 @@ def run(args):
         if not name or Path(name).name!=name or name in {".",".."}:
             raise ValueError("Dataset/task namespace identifiers must be simple path components")
     os.environ[CONTEXT_ENV] = str(source.path)
-    from scripts import run_fresh_cloud_campaign as fresh
-    staged = install_recipe()
-    identity = dict(profile=staged.PROFILE,contract=staged.CONTRACT,
+    identity = dict(profile=staged.PROFILE,contract=procedure_contract(),
         context_sha256=source.identity_digest,context=str(source.path),
         task_hours=args.hours,heldout_targets_present=False,
         benchmark_recipe_lookup=False,benchmark_registry_lookup=False,
@@ -101,14 +87,14 @@ def run(args):
     key,slug = f"{dataset}/{task}",f"{dataset}_{task}"
     state_path = output/"campaign-status.json"
     if not state_path.exists():
-        dump(state_path,dict(identity=dict(signal_challengers=True,complete_profile=staged.CONTRACT),
+        dump(state_path,dict(identity=dict(signal_challengers=False,complete_profile=procedure_contract()),
             tasks={key:dict(status="running",consumed_seconds=0)}))
     state = json.loads(state_path.read_text())
     state["tasks"][key]["consumed_seconds"] = args.hours*3600-remaining
     dump(state_path,state)
     started = time.monotonic()
-    result = fresh.task_main(argparse.Namespace(output=output,dataset=dataset,task=task,
-        search_workers=1,seed_workers=1,task_hours=args.hours,signal_challengers=True))
+    result = staged.run_task(argparse.Namespace(output=output,dataset=dataset,task=task,
+        search_workers=1,seed_workers=1,task_hours=args.hours,signal_challengers=False))
     if result:
         raise RuntimeError(f"Portable complete pipeline failed: exit={result}")
     if identity["sources"]!=staged_source_identity(Path(__file__).resolve().parents[1]):

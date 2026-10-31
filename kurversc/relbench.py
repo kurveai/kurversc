@@ -311,7 +311,7 @@ def _edge_instances(
         prefix=root_table[:10],
         path_base_tables=(root_table,),
         available_at=getattr(root_meta,"available_col",None),
-        cutoff_boundary=getattr(root_meta,"cutoff_boundary",None),
+        cutoff_boundary=getattr(root_meta,"cutoff_boundary",None) or ("strict" if root_meta.time_col else None),
         model_exclusions=tuple(root_meta.fkey_col_to_pkey_table)
             if getattr(database,"exclude_structural_aliases",False) else (),
     )
@@ -452,7 +452,7 @@ def _edge_instances(
                 ),
                 path_base_tables=(*path, child_base),
                 available_at=getattr(child_meta,"available_col",None),
-                cutoff_boundary=getattr(child_meta,"cutoff_boundary",None),
+                cutoff_boundary=getattr(child_meta,"cutoff_boundary",None) or ("strict" if child_meta.time_col else None),
                 model_exclusions=tuple(c for c in (child_meta.pkey_col,*child_meta.fkey_col_to_pkey_table) if c)
                     if getattr(database,"exclude_structural_aliases",False) else (),
             )

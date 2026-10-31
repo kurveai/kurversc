@@ -1,15 +1,54 @@
 {
-  "date": "2026-10-27",
+  "profile": "kurversc-generic-staged-v1",
+  "targeted_checks": {
+    "passed": 94
+  },
+  "additional_native_context_object_checks": {
+    "passed": 102,
+    "skipped": 1
+  },
+  "wheel_inspection": {
+    "wheel": "results/admissible-revision-20261029/clean-source-dist/kurversc-0.2.0-py3-none-any.whl",
+    "sha256": "510907334480fa1cf063001a182213631848e1ba5fdb751b2cad61d61be7fc6a",
+    "native_modules": 46,
+    "stage_modules": 32,
+    "excluded_modules_absent": true,
+    "retained_version_metadata": "0.2.0",
+    "predictive_sources_equal_to_frozen_pilot": true,
+    "staged_dependencies": [
+      "Requires-Dist: graphreduce==1.10.18; extra == \"staged\"",
+      "Requires-Dist: catboost==1.2.10; extra == \"staged\"",
+      "Requires-Dist: duckdb==1.2.2; extra == \"staged\"",
+      "Requires-Dist: numpy==1.26.4; extra == \"staged\"",
+      "Requires-Dist: pandas==2.3.3; extra == \"staged\"",
+      "Requires-Dist: scikit-learn==1.6.1; extra == \"staged\"",
+      "Requires-Dist: relbench==2.1.2; extra == \"staged\"",
+      "Requires-Dist: psutil<8,>=5.9; extra == \"staged\"",
+      "Requires-Dist: pyarrow==20.0.0; extra == \"staged\""
+    ]
+  },
+  "current_full_21_results": false,
+  "updated_elo": null,
+  "metadata_contract_repair": {
+    "tests_passed": 22,
+    "predictive_parameters_changed": false,
+    "receipt": "generic-staged-pilot-admissions.tar.gz:source-amendment.json"
+  },
+  "date": "2026-10-31",
   "version": "0.2.0",
   "graphreduce_version": "1.10.18",
-  "kurversc_tests": {
-    "passed": 704,
-    "skipped": 0
+  "kurversc_clean_source_tests": {
+    "passed": 710,
+    "skipped": 1
   },
-  "graphreduce_tests": {
-    "passed": 157,
-    "skipped": 2
-  },
+  "official_task_completions": 6,
+  "official_task_count": 21,
+  "authorized_pilot_tasks": 6,
+  "full_21_task_reproduction_passed": false,
+  "current_harness_full_21_task_reproduction": false,
+  "maintainer_reproduction_pending": true,
+  "package_publication_performed": false,
+  "historical_score_substitutions": false,
   "current_relarena_adapter_tests": {
     "passed": 19
   },
@@ -18,44 +57,27 @@
     "actual_current_core_splits": true,
     "cases": {
       "classification": {
-        "keyed_predictions_exact": true,
+        "status": "passed",
         "rows": 48,
-        "reference_elapsed_seconds": 209.5792611320503,
-        "release_elapsed_seconds": 209.6254298449494
+        "harness": true,
+        "elapsed_seconds": 133.8186773750058,
+        "hidden_targets_supplied": false,
+        "unregistered_schema": true
       },
       "regression": {
-        "keyed_predictions_exact": true,
+        "status": "passed",
         "rows": 48,
-        "reference_elapsed_seconds": 175.55615453398786,
-        "release_elapsed_seconds": 179.5290462729754
+        "harness": true,
+        "elapsed_seconds": 129.9409031249961,
+        "hidden_targets_supplied": false,
+        "unregistered_schema": true
       }
     },
     "unregistered_schema": true,
     "hidden_targets_supplied": false,
-    "full_staged_procedure": true,
+    "full_generic_staged_procedure": true,
     "fresh_optional_dependency_resolution": false
   },
-  "reference_source_parity": {
-    "core_modules": 46,
-    "stage_modules": 108,
-    "graphreduce_modules": 22,
-    "modules_including_namespace_init": 177,
-    "exact_before_release_version_stamp": true,
-    "reference_kurversc_wheel_sha256": "04d066bb09185bed1bc687e1bcf30bfcc0349afdcc5800540f391e1e6a890692",
-    "reference_graphreduce_wheel_sha256": "dbf00d70a340e3707f6315ffb350caf746a040b738a0c1b60d60120c913450fc"
-  },
-  "official_task_completions": 21,
-  "official_task_count": 21,
-  "full_21_task_reproduction_passed": true,
-  "historical_score_substitutions": false,
-  "official_scorer_point_elo": 1948.6,
-  "fixed_panel_rank": 1,
-  "comparator": "tabpfn-rel-client-2026-09-28",
-  "captured_panel_methods": 15,
-  "scoring_scope": "Replace captured original KurveRSC rows with all 21 fresh scores; retain 14 comparison methods",
-  "current_harness_full_21_task_reproduction": false,
-  "maintainer_reproduction_pending": true,
-  "pretrained_encoder_policy_review_pending": true,
-  "package_publication_performed": false,
-  "source_parity_receipt": "staged-source-parity.json"
+  "pilot_complete": true,
+  "predictive_sources_unchanged_since": "78d0c650ea0db67ba29a51d2558c4bf183f2dd6b"
 }
