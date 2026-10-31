@@ -1,3 +1,9 @@
+> **Historical recipe.** This document records the superseded October 27
+> pipeline. The [current accepted-component revision](staged-release.md)
+> removes the disputed recovery stages and is being evaluated afresh.
+> These scores, resources and qualification claims do not describe that
+> revision. Strict temporal compliance of the earlier scores was not established.
+
 # KurveRSC complete staged reproduction: resources
 
 Snapshot: 2026-10-27T13:34:35.809800+00:00. **21/21 tasks completed** in the fresh

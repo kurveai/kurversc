@@ -17,8 +17,15 @@ include tools/check_release_artifacts.py
 include tools/smoke_staged_release.py
 include tools/refresh_performance_tables.py
 recursive-include docs/archive *.txt
-include scripts/parent_event_response_context_20261020.py
 include scripts/observe_submission_resources_20261025.py
 include examples/relbench_planner_collection.py
 include examples/olist_cookbook_staged.py
 include docs/checkpoints/20261007/frozen-graph-campaign-21.csv
+
+include docs/generic-staged-review.md
+include docs/generic-staged-validation.json
+include docs/generic-staged-pilot.md
+include docs/generic-staged-pilot.csv
+include docs/generic-staged-pilot.json
+include docs/generic-staged-pilot-admissions.tar.gz
+recursive-include docs/archive *.json

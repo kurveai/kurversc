@@ -55,7 +55,7 @@ def main():
     task = "classification" if original["metric"] == "roc_auc" else "regression"
     weights = tuple(float(value) for value in args.blend_weights.split(",") if value)
     evidence, recipes = add_incumbent_blends(evidence, weights=weights)
-    decision = select_temporal_policy(evidence, task=task, deployment_seed=0)
+    decision = select_temporal_policy(evidence, task=task, deployment_seed=0, minimum_seeds=3)
     if decision["selected"] in recipes:
         recipe = recipes[decision["selected"]]
         selected = {

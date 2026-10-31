@@ -1,0 +1,81 @@
+{
+  "profile": "kurversc-generic-staged-v1",
+  "targeted_checks": {
+    "passed": 94
+  },
+  "additional_native_context_object_checks": {
+    "passed": 102,
+    "skipped": 1
+  },
+  "wheel_inspection": {
+    "wheel": "results/admissible-revision-20261029/clean-source-dist/kurversc-0.2.0-py3-none-any.whl",
+    "sha256": "510907334480fa1cf063001a182213631848e1ba5fdb751b2cad61d61be7fc6a",
+    "native_modules": 46,
+    "stage_modules": 32,
+    "excluded_modules_absent": true,
+    "retained_version_metadata": "0.2.0",
+    "predictive_sources_equal_to_frozen_pilot": true,
+    "staged_dependencies": [
+      "Requires-Dist: graphreduce==1.10.18; extra == \"staged\"",
+      "Requires-Dist: catboost==1.2.10; extra == \"staged\"",
+      "Requires-Dist: duckdb==1.2.2; extra == \"staged\"",
+      "Requires-Dist: numpy==1.26.4; extra == \"staged\"",
+      "Requires-Dist: pandas==2.3.3; extra == \"staged\"",
+      "Requires-Dist: scikit-learn==1.6.1; extra == \"staged\"",
+      "Requires-Dist: relbench==2.1.2; extra == \"staged\"",
+      "Requires-Dist: psutil<8,>=5.9; extra == \"staged\"",
+      "Requires-Dist: pyarrow==20.0.0; extra == \"staged\""
+    ]
+  },
+  "current_full_21_results": false,
+  "updated_elo": null,
+  "metadata_contract_repair": {
+    "tests_passed": 22,
+    "predictive_parameters_changed": false,
+    "receipt": "generic-staged-pilot-admissions.tar.gz:source-amendment.json"
+  },
+  "date": "2026-10-31",
+  "version": "0.2.0",
+  "graphreduce_version": "1.10.18",
+  "kurversc_clean_source_tests": {
+    "passed": 710,
+    "skipped": 1
+  },
+  "official_task_completions": 4,
+  "official_task_count": 21,
+  "authorized_pilot_tasks": 6,
+  "full_21_task_reproduction_passed": false,
+  "current_harness_full_21_task_reproduction": false,
+  "maintainer_reproduction_pending": true,
+  "package_publication_performed": false,
+  "historical_score_substitutions": false,
+  "current_relarena_adapter_tests": {
+    "passed": 19
+  },
+  "installed_wheel_smoke": {
+    "status": "passed",
+    "actual_current_core_splits": true,
+    "cases": {
+      "classification": {
+        "status": "passed",
+        "rows": 48,
+        "harness": true,
+        "elapsed_seconds": 133.8186773750058,
+        "hidden_targets_supplied": false,
+        "unregistered_schema": true
+      },
+      "regression": {
+        "status": "passed",
+        "rows": 48,
+        "harness": true,
+        "elapsed_seconds": 129.9409031249961,
+        "hidden_targets_supplied": false,
+        "unregistered_schema": true
+      }
+    },
+    "unregistered_schema": true,
+    "hidden_targets_supplied": false,
+    "full_generic_staged_procedure": true,
+    "fresh_optional_dependency_resolution": false
+  }
+}

@@ -1,87 +1,105 @@
-# Complete staged pipeline: KurveRSC 0.2.0
+# Generic staged pipeline — October 29 revision
 
-This release packages the complete staged prediction procedure separately from
-the lower-level `fit` / `predict` interfaces. The frozen fresh campaign has
-**21/21 tasks completed**, with no failed tasks or historical score
-substitutions. See the [final results](kurversc-staged-results.md) and the
-[technical report](kurversc-staged-technical-report.md).
+The runnable submission has been narrowed following maintainer review. The
+previous October 27 results and resource tables describe a superseded pipeline;
+they do not establish performance or Elo for this revision. Fresh evaluation is
+in progress.
 
-## Installation and entry point
+## Retained procedure
 
-The review branch uses KurveRSC **0.2.0** and GraphReduce **1.10.18**. Exact
-companion Git commits are pinned in the RelArena PR until the corresponding
-versions are published. An older PyPI artifact sharing an experimental version
-does not identify the qualified code. Build both companion repositories with
-`python -m build`, install the GraphReduce wheel, then the KurveRSC wheel with
-its `staged` extra. RelArena's locked workspace supplies the exact review commits.
+1. Schema-derived graph search with successive fidelity, CDF/base representations,
+   peer context, and bounded graph/path/feature budgets.
+2. Full-fidelity graph reranking and the bounded production-faithful finalist
+   comparison using the native fit/refit lifecycle.
+3. Historical temporal-training-policy selection on up to three origins and
+   seeds 0, 1, and 2; deployment seed 0.
+4. A single generic candidate menu: parent text heads, three/five-frame ensembles,
+   target-domain projection, zero-aware distributional readout, and object breadth.
+5. Validation-locked final fitting and keyed prediction replay.
 
-The staged extra pins NumPy 1.26.4, pandas 2.3.3, DuckDB 1.2.2, CatBoost 1.2.10,
-scikit-learn 1.6.1, PyArrow 20.0.0, RelBench 2.1.2, PyTorch 2.13.0 and
-Transformers 4.57.6. Use the CPU PyTorch index for CPU-only installation.
-The qualified Linux runtime uses Python 3.11.17. Use an isolated environment;
-in particular the qualified pandas version is 2.3.3, not pandas 3.
+The optional menu uses one implementation of `select_temporal_policy`, with the
+same three-seed grid, recent-origin criterion, older-origin safety veto, paired
+entity-cluster temporal uncertainty, and menu-size multiplicity correction.
+Candidate eligibility depends on required inputs and declared capacity, independently
+of earlier candidate admissions. Text identification has one shared definition.
+
+The global defaults use 600 bootstrap draws and alpha 0.05; older-origin practical
+loss limits are 0.005 AUC or 1% relative MAE. The admitted deployed seed must improve
+on the most recent origin and all latest-origin seeds must agree. The temporal
+lower bound must be positive. The separately reported recent-only interval is
+diagnostic for every candidate. These are selection safeguards, not a guarantee
+of improved future performance or a claim to correct all development overfitting.
+
+Blend weights, quantile levels and model budgets are bounded global settings,
+shared across schemas. They are recorded in candidate manifests before evaluation.
+A fresh evaluation reports their actual effect; historical benchmark development
+is not described as untouched test evaluation.
+
+## Removed from the submitted runtime
+
+- Exposure-role reconstruction and specialized exposure-quality transforms.
+- Recurrence/semantic teacher and offset corrections.
+- Conditional-count recovery.
+- Production-sequence recovery.
+- Bounded-view recovery.
+- Benchmark test-win campaign gates.
+
+Historical research snapshots are preserved. None of these removed stage modules
+is in the current wheel's transitive execution closure. The wheel contains 32
+stage modules. Its staged extra no longer requests PyTorch, Transformers or
+Safetensors for the removed semantic encoder.
+
+## Data boundaries
+
+Explicit strict source tables use event time `< query cutoff` and `< phase cutoff`.
+Independent availability clocks use `<= phase cutoff`. RelBench timed-table
+adapters declare strict event boundaries. A legacy compatibility offset cannot
+relax an explicit strict boundary. Filtering precedes annotation/materialization,
+and phase exports are censored before provider discovery.
+
+Forecast requests survive when a strict cutoff makes their root payload
+unavailable; they receive missing features. Existing request keys/order are kept.
+Training labels remain subject to horizon maturity and declared availability.
+Held-out answers are absent from prediction contexts and are scored externally
+only after selection and predictions have been saved.
+
+## Entry point
 
 ```python
 import kurversc
 
-# A TaskContext, or an exported context.json, supplied by the caller.
 result = kurversc.run_staged_task(
-    context, output="artifacts/task", task_hours=23.75,
+    context,
+    output="artifacts/task",
+    task_hours=23.75,
     minimum_available_memory_gib=8,
 )
 predictions = result.predictions
 ```
 
-```bash
-kurversc-staged --context input/context.json --output artifacts/task --hours 23.75
-```
+`TaskContext.from_tables` accepts declared keys, clocks and observed labels for
+an unregistered schema. `TaskContext.from_protocol_splits` accepts caller-owned
+censored phases and masked prediction requests. Resumes retain the original
+absolute task deadline; incomplete resource-stopped runs are not scored.
 
-`TaskContext.from_tables` declares keys, event/availability clocks, observed
-labels and target-free forecast requests for an unregistered schema, including
-string/composite keys. `TaskContext.from_protocol_splits` preserves caller-owned
-censored databases and masked requests. The caller owns held-out scoring.
+## Current validation and local pilot
 
-## Procedure
+The clean review checkout passes 710 tests with one skip. The current RelArena
+adapter/discovery checks pass 19 tests. Installed-wheel classification and
+regression smokes each complete the revised procedure on a fresh, unregistered
+48-request schema through the current registered class and actual core split
+types. No hidden targets are supplied. These checks use an existing dependency
+environment; they are not a cold resolution or a full benchmark reproduction.
+The wheel contains 46 native and 32 stage modules, verified against the frozen
+pilot sources apart from release-version stamping and import/path relocation.
 
-- Bounded schema-derived 10K/50K graph screening and full-source finalist
-  evaluation retain alternative depth/family/history/topology representations.
-- Full-fidelity comparisons use the production fitting lifecycle and freeze
-  the selected feature-operation plan for replay. Base CDF sketches are enabled
-  in this frozen recipe; they are not an exhaustive CDF on/off search dimension.
-- Temporal support and bounded optional readouts are selected using eligible
-  retrospective validation origins and fixed seeds 0/1/2. Deployment seed is 0.
-- An original absolute deadline below 24 hours includes preparation, search,
-  training and prediction; resuming does not reset it. Resource stops preserve
-  checkpoints and raise, rather than returning a partial prediction as complete.
-- Source, feature, model-input and runtime identities remain checked. Retaining
-  an incumbent is a selection safeguard, not a universal no-regression guarantee.
+The local frozen run is `results/generic-staged-local-20261029`. Six representative
+tasks are admitted: F1 driver-dnf/driver-position, Avito user-clicks, Trial
+study-adverse/study-outcome, and Stack user-engagement. The other fifteen tasks
+are held. Each task records a fresh score, selection evidence, runtime and peak
+process-tree RSS. The machine retains an 8 GiB RAM reserve.
 
-The wheel contains **46 native modules and 108 transitive stage modules** under
-`kurversc._staged`. It does not need the independent research checkout, model
-checkpoints or benchmark data. The sdist contains the source closure needed to
-rebuild the wheel. Scripts retain their source names for a direct audit against
-the qualified execution; packaging relocates imports and paths only.
+No replacement 21-task result or updated Elo is claimed until measured.
 
-## Execution qualification
-
-The source payload matches the score-producing frozen 0.1.1/GraphReduce 1.10.17
-candidate, except release-version metadata. That private candidate is identified
-by wheel SHA-256 values `04d066bb09185bed1bc687e1bcf30bfcc0349afdcc5800540f391e1e6a890692`
-and `dbf00d70a340e3707f6315ffb350caf746a040b738a0c1b60d60120c913450fc`.
-Version changes create new artifact/cache identities; old identities are not
-forged to reuse fitted state across releases.
-
-The qualified changes reduce unnecessary work: disk-backed historical capture,
-bounded normalization/concatenation, detached routing headers, narrow text and
-exposure projections, equivalent cache comparisons and scoped wide-aggregate
-SQL thread use. Feature budgets, training evidence and validation rules are
-preserved. The earlier cache-consistency/resource failures remain documented
-historically; fresh completed tasks use the repaired installed-wheel runtime.
-
-The optional semantic encoder is `sentence-transformers/all-MiniLM-L6-v2`, pinned
-to revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. It uses fixed weights,
-no remote model code and safetensors. Its external pretraining includes
-StackExchange data; this remains an explicit benchmark-review disclosure.
-
-See the [resource report](kurversc-staged-resources.md) for every task's runtime,
-memory and coverage, and for parallel admission on larger machines.
+See the [review changes](generic-staged-review.md), [current pilot table](generic-staged-pilot.md),
+and [checksummed pilot admission bundle](generic-staged-pilot-admissions.tar.gz).

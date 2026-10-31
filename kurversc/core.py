@@ -1926,7 +1926,7 @@ def _build_graph(
     # native cutoff.  Target history is never allowed onto the compatibility
     # path because it requires a strict join against the unshifted cutoff.
     graph_cut_date = pd.Timestamp(cut_date)
-    explicit_clock_boundaries = any(table.available_at is not None and
+    explicit_clock_boundaries = any(table.date is not None and
         table.cutoff_boundary in {"strict","inclusive","exact"} for table in tables.values())
     if (config.published_cutoff_compatibility and graph_labels is None
             and not explicit_clock_boundaries):
@@ -1958,7 +1958,7 @@ def _build_graph(
         # cap semantics without changing GraphReduce itself.
         uncapped_budget = 2_147_483_647
         node_source = root_source if name == root_name else workspace.views[name]
-        if table.available_at is not None:
+        if table.available_at is not None or (table.date and table.cutoff_boundary in {"strict", "inclusive"}):
             if table.available_at and table.available_at not in available:
                 raise ValueError(f"Table {name!r} lacks declared availability clock {table.available_at!r}")
             # Availability is independent of event age/windows and is never a
@@ -2368,6 +2368,23 @@ def _materialize_at_cutoff(
         right_on=label_keys,
         validate="one_to_many",
     )
+    if not train:
+        # A strict cutoff can make a requested root's payload unavailable.
+        # Keep the request with missing features instead of exposing a future
+        # source row or silently dropping its prediction.
+        missing = ordered_labels.loc[
+            ~ordered_labels[order_column].isin(materialized[order_column])
+        ]
+        if not missing.empty:
+            unavailable = features.iloc[:0].merge(
+                missing, how="right", left_on=feature_keys,
+                right_on=label_keys, validate="one_to_many",
+            )
+            payload = set(features.columns) - set(feature_keys) - set(ordered_labels.columns)
+            for column in payload:
+                if pd.api.types.is_integer_dtype(materialized[column].dtype) or pd.api.types.is_bool_dtype(materialized[column].dtype):
+                    materialized[column] = materialized[column].astype(object)
+            materialized = pd.concat([materialized, unavailable], ignore_index=True)
     return with_peer_context(
         materialized.sort_values(order_column, kind="stable")
         .drop(columns=order_column)

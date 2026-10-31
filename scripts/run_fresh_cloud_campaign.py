@@ -188,8 +188,10 @@ def stage_main(args, remaining):
 
         engine_limit = (limit(os.environ["KURVERSC_DUCKDB_MEMORY_LIMIT"])
             if "KURVERSC_DUCKDB_MEMORY_LIMIT" in os.environ else limit(memory_limit))
+        temp_limit = (limit(os.environ["KURVERSC_DUCKDB_MAX_TEMP_DIRECTORY_SIZE"])
+            if "KURVERSC_DUCKDB_MAX_TEMP_DIRECTORY_SIZE" in os.environ else limit(max_temp_directory_size))
         with original_scope(connection, memory_limit=engine_limit,
-                            max_temp_directory_size=limit(max_temp_directory_size)) as con:
+                            max_temp_directory_size=temp_limit) as con:
             yield con
 
     core._connection_scope = unbounded_scope
