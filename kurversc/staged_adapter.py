@@ -118,12 +118,15 @@ else:
                 raise ValueError("Staged inner selection is required before a portable outer replay")
             config = _runtime_config()
             config["full_training_frames"] = selection.training_frames or config["full_training_frames"]
+            from .schema_blueprint import replay_limits
+            source_depth,source_occurrences=replay_limits(selection.execution_plan,
+                depth=self.schema_depth,occurrences=int(os.environ.get("KURVERSC_MAX_BASE_TABLE_OCCURRENCES","1")))
             problem = kurversc.relbench_problem_from_objects(task,db,train_table,val_table,
                 dataset_name=self.run_identity.dataset,task_name=self.run_identity.task,
                 sample_rows=config["sample_rows"],search_full_data=config["search_full_data"],
                 search_training_frames=config["search_training_frames"],
-                max_train_timestamps=config["full_training_frames"],schema_depth=self.schema_depth,
-                max_base_table_occurrences=int(os.environ.get("KURVERSC_MAX_BASE_TABLE_OCCURRENCES","1")),
+                max_train_timestamps=config["full_training_frames"],schema_depth=source_depth,
+                max_base_table_occurrences=source_occurrences,
                 include_target_history=os.environ.get("KURVERSC_INCLUDE_TARGET_HISTORY","1").lower() not in {"0","false","no"},
                 random_state=seed)
             kwargs = {**problem.fit_kwargs(),**config,"random_state":seed,

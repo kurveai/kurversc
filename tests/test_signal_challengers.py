@@ -12,21 +12,20 @@ from scripts.schema_exposure_challenger import discover_exposure_path
 
 
 def test_menu_is_bounded_and_disabled_categories_add_nothing():
-    assert len(challenger_menu()) == 8
+    assert len(challenger_menu()) == 4
     assert challenger_menu(text=False, exposure=False, support=False) == ()
-    assert len({p.name for p in challenger_menu()}) == 8
+    assert len({p.name for p in challenger_menu()}) == 4
 
 
-def test_exposure_blends_are_opt_in_and_add_no_fitted_heads_or_graphs():
-    legacy = challenger_menu()
-    expanded = challenger_menu(exposure_blends=True)
-    assert len(expanded) == 12
-    assert len({p.name for p in expanded}) == 12
-    assert {challenger_fit_key(p) for p in expanded} == {challenger_fit_key(p) for p in legacy}
-    assert challenger_menu(text=False, exposure=False, support=False, exposure_blends=True) == ()
+def test_removed_exposure_cannot_be_enabled_through_the_public_menu():
+    for kwargs in ({"exposure":True},{"exposure_blends":True}):
+        with pytest.raises(ValueError,match="removed"):
+            challenger_menu(**kwargs)
+    with pytest.raises(ValueError,match="supported challenger"):
+        SignalChallenger("old_exposure","exposure")
 
 
-@pytest.mark.parametrize("kind", ["text", "exposure", "support"])
+@pytest.mark.parametrize("kind", ["text", "support"])
 def test_every_readout_honors_its_declared_weight_exactly_once(kind):
     spec = SignalChallenger("partial", kind, weight=.5)
     native, head = np.array([.2,.8]), np.array([.4,.6])

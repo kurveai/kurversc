@@ -6,7 +6,8 @@ import pytest
 
 from kurversc.signal_challengers import BoundedTextReadout, SignalChallenger, mature_support_mask
 from kurversc.temporal_policy import TemporalFitPolicy
-from scripts import benchmark_signal_challengers as runner
+from scripts import benchmark_generic_readouts as runner
+from scripts.generic_staged_helpers import routing_headers
 from scripts.schema_exposure_challenger import ExposurePath, SchemaExposureQuality
 
 
@@ -20,7 +21,8 @@ def test_text_projection_preserves_mature_population_and_exact_predictions(task,
     if task == "regression":
         y = y.astype(float)*3 + np.arange(n)/100
     times = pd.Series(np.repeat(pd.date_range("2024-01-01", periods=4, freq="7D"), 40), index=x.index)
-    metadata = dict(metric="roc_auc" if task == "classification" else "mae", label_horizon="1D", validation_cutoffs=1)
+    metadata = dict(metric="roc_auc" if task == "classification" else "mae", label_horizon="1D", validation_cutoffs=1,
+        feature_schema=dict(categorical_columns=["parent_text", "child_text"]))
     base = TemporalFitPolicy("incumbent")
     origin = pd.Timestamp("2024-01-25")
     mask, support = mature_support_mask(times, origin=origin, horizon="1D", refit_frames=1, policy=base)
@@ -41,8 +43,8 @@ def test_text_projection_preserves_mature_population_and_exact_predictions(task,
         return before(self, features, labels, **kwargs)
 
     monkeypatch.setattr(BoundedTextReadout, "fit", bounded_fit)
-    prediction, audit = runner.fit_candidate(SignalChallenger("text", "text"), base, x, y, times, query,
-        origin=origin, metadata=metadata, categorical=[0, 1], root="parent", seed=0, threads=1)
+    prediction, audit = runner.fit_signal(SignalChallenger("text", "text"), base, x, y, times, query,
+        origin=origin, meta=metadata, root="parent", seed=0, threads=1, raw={})
     np.testing.assert_array_equal(prediction, expected)
     assert audit == {**reference.audit, "support": support}
     assert observed == [int(mask.sum())]
@@ -54,7 +56,7 @@ def test_routing_headers_keep_order_and_own_their_numeric_storage():
         "__event_entity": [17, 21], "__event_cutoff": pd.to_datetime(["2024-01-01", "2024-01-02"]),
         "__position": [8, 3], "__order": [1, 0]})
     original = frame.copy(deep=True)
-    result = runner.routing_headers(frame, dict(columns=["numeric_payload"]))
+    result = routing_headers(frame, dict(columns=["numeric_payload"]))
     pd.testing.assert_frame_equal(result, original.drop(columns="numeric_payload"))
     assert not np.shares_memory(result.target.to_numpy(), frame.target.to_numpy())
     result.iloc[0, result.columns.get_loc("target")] = -1

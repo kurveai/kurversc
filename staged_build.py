@@ -8,6 +8,7 @@ This module intentionally imports only the build backend and stdlib.
 import ast
 from pathlib import Path
 import re
+import shutil
 
 from setuptools.command.build_py import build_py
 
@@ -51,6 +52,10 @@ class BoundedStagedBuild(build_py):
     def run(self):
         super().run()
         destination = Path(self.build_lib)/"kurversc"/"_staged"
+        # Reusing a build directory must not retain modules removed from the
+        # submitted dependency closure.
+        if destination.exists():
+            shutil.rmtree(destination)
         destination.mkdir(parents=True,exist_ok=True)
         (destination/"__init__.py").write_text('"""Private complete staged execution runtime."""\n')
         for file in stage_sources(Path.cwd()):

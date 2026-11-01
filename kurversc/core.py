@@ -375,6 +375,10 @@ def _connection_scope(
 
 def _freeze_execution_plan(graph: Any, cut_date: datetime) -> dict[str, Any]:
     plan = graph.freeze_execution_plan()
+    blueprint = getattr(graph, "_kurversc_source_blueprint", None)
+    if blueprint is not None:
+        from .schema_blueprint import PLAN_KEY
+        plan[PLAN_KEY] = copy.deepcopy(blueprint)
     plan["kurversc_ts_periods"] = {
         node.prefix: tuple(getattr(node, "ts_periods", ()) or ())
         for node in graph.nodes()
@@ -421,6 +425,10 @@ def _execution_plan_fingerprint(plan: Mapping[str, Any]) -> str:
             )
         )
     ]
+    from .schema_blueprint import PLAN_KEY
+    if PLAN_KEY in plan:
+        import json
+        records.append((PLAN_KEY, json.dumps(plan[PLAN_KEY], sort_keys=True)))
     if plan.get("kurversc_date_rebinding") == "atomic":
         records.append(("kurversc_date_rebinding", "atomic"))
     for record in plan.get("records", []):
@@ -1838,6 +1846,7 @@ def _build_graph(
     from graphreduce.node import DuckdbNode, GraphReduceNode
     from graphreduce.enum import SQLOpType
 
+    from .schema_blueprint import source_blueprint, verify_replay
     tables, relationships = _topology_for_config(tables, relationships, config)
 
     if config.published_cutoff_compatibility and any(
@@ -1860,6 +1869,9 @@ def _build_graph(
             if relationship.parent != TARGET_HISTORY_TABLE
             and relationship.child != TARGET_HISTORY_TABLE
         )
+
+    blueprint = source_blueprint(tables, relationships, root_name)
+    verify_replay(execution_plan, blueprint)
 
     # GraphReduce owns cutoff-boundary semantics. Keep KurveRSC runnable with
     # released GraphReduce versions from before that node argument existed by
@@ -1926,7 +1938,7 @@ def _build_graph(
     # native cutoff.  Target history is never allowed onto the compatibility
     # path because it requires a strict join against the unshifted cutoff.
     graph_cut_date = pd.Timestamp(cut_date)
-    explicit_clock_boundaries = any(table.available_at is not None and
+    explicit_clock_boundaries = any(table.date is not None and
         table.cutoff_boundary in {"strict","inclusive","exact"} for table in tables.values())
     if (config.published_cutoff_compatibility and graph_labels is None
             and not explicit_clock_boundaries):
@@ -1958,7 +1970,7 @@ def _build_graph(
         # cap semantics without changing GraphReduce itself.
         uncapped_budget = 2_147_483_647
         node_source = root_source if name == root_name else workspace.views[name]
-        if table.available_at is not None:
+        if table.available_at is not None or (table.date and table.cutoff_boundary in {"strict", "inclusive"}):
             if table.available_at and table.available_at not in available:
                 raise ValueError(f"Table {name!r} lacks declared availability clock {table.available_at!r}")
             # Availability is independent of event age/windows and is never a
@@ -2123,6 +2135,7 @@ def _build_graph(
         train=train,
         **config.graphreduce_kwargs(),
     )
+    graph._kurversc_source_blueprint = blueprint
     for node in nodes.values():
         graph.add_node(node)
     for relationship in relationships:
@@ -2368,6 +2381,23 @@ def _materialize_at_cutoff(
         right_on=label_keys,
         validate="one_to_many",
     )
+    if not train:
+        # A strict cutoff can make a requested root's payload unavailable.
+        # Keep the request with missing features instead of exposing a future
+        # source row or silently dropping its prediction.
+        missing = ordered_labels.loc[
+            ~ordered_labels[order_column].isin(materialized[order_column])
+        ]
+        if not missing.empty:
+            unavailable = features.iloc[:0].merge(
+                missing, how="right", left_on=feature_keys,
+                right_on=label_keys, validate="one_to_many",
+            )
+            payload = set(features.columns) - set(feature_keys) - set(ordered_labels.columns)
+            for column in payload:
+                if pd.api.types.is_integer_dtype(materialized[column].dtype) or pd.api.types.is_bool_dtype(materialized[column].dtype):
+                    materialized[column] = materialized[column].astype(object)
+            materialized = pd.concat([materialized, unavailable], ignore_index=True)
     return with_peer_context(
         materialized.sort_values(order_column, kind="stable")
         .drop(columns=order_column)

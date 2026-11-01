@@ -107,8 +107,11 @@ class ContextDatabase:
         tables = {}
         for name, table in self.table_dict.items():
             mask = pd.Series(True, index=table.df.index)
-            for column in dict.fromkeys(c for c in (table.time_col, table.available_col) if c):
-                mask &= _clock(table.df[column]).le(boundary)
+            if table.time_col:
+                clock = _clock(table.df[table.time_col])
+                mask &= clock.lt(boundary) if table.cutoff_boundary == "strict" else clock.le(boundary)
+            if table.available_col:
+                mask &= _clock(table.df[table.available_col]).le(boundary)
             tables[name] = ContextTable(table.df.loc[mask].copy(), table.pkey_col,
                 dict(table.fkey_col_to_pkey_table), table.time_col, table.available_col,table.cutoff_boundary)
         result = ContextDatabase(tables, exclude_structural_aliases=self.exclude_structural_aliases)

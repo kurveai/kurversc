@@ -20,9 +20,9 @@ import time
 
 import numpy as np
 
-from scripts.engagement_local_comparison import freeze
+from scripts.generic_staged_helpers import freeze
 from scripts.run_gap_followup_queue import digest, dump
-from scripts.benchmark_small_finalist_readout import small_finalist
+from scripts.generic_finalist_helpers import small_finalist
 
 
 CONTRACT = dict(maximum_additional_graphs=1, metric="mae", origins=3,
@@ -134,7 +134,7 @@ def read_cases(root):
 def independent_repeat(root, *, output=None):
     """Repeat recent seed zero through the ordinary estimator and serialization."""
     from kurversc.temporal_policy import TemporalFitPolicy
-    from scripts.benchmark_recovered_readouts import phase_frames, prepared, fit_prediction
+    from scripts.generic_staged_helpers import phase_frames, prepared, fit_prediction
     import pandas as pd
 
     root = Path(root)
@@ -159,7 +159,7 @@ def independent_repeat(root, *, output=None):
 
 
 def arm_stage(args):
-    from scripts import benchmark_small_finalist_readout as small
+    from scripts import generic_finalist_helpers as small
     arm = args.output / "arms" / args.arm
     values = argparse.Namespace(output=arm, dataset=args.dataset, task=args.task)
     if args.stage == "materialize":
@@ -256,45 +256,9 @@ def verify_existing(args):
                 raise ValueError("Independent production replay failed")
     dump(args.output / "results.json", dict(**result, independent_replay_completed=result["selected"] == "challenger",
         official_test_accessed=False, starts_new_search_on_launch=True))
-    if args.launch_qualified_output is not None and result["selected"] == "challenger":
-        command = [sys.executable, "-u", "-m", "scripts.run_production_finalist_cloud",
-            "--dataset", args.dataset, "--task", args.task, "--output", str(args.launch_qualified_output)]
-        with (args.output / "launch.log").open("a") as log:
-            code = subprocess.call(command, cwd=ROOT, env=__import__("os").environ.copy(),
-                stdout=log, stderr=subprocess.STDOUT)
-        dump(args.output / "launch-status.json", dict(status="launched" if code == 0 else "launch_failed",
-            returncode=code, output=str(args.launch_qualified_output)))
-        if code:
-            raise RuntimeError(f"Fresh qualified reproduction launch failed: {code}")
+    if args.launch_qualified_output is not None:
+        raise ValueError("Automatic research-campaign launch is not part of the generic submitted recipe")
 
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("run", "arm", "verify"), default="run")
-    parser.add_argument("--stage", choices=("materialize", "snapshots", "native", "repeat"))
-    parser.add_argument("--arm", choices=("incumbent", "challenger"))
-    parser.add_argument("--graph-root", type=Path, required=True)
-    parser.add_argument("--search-result", type=Path, required=True)
-    parser.add_argument("--dataset", required=True)
-    parser.add_argument("--task", required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--hours", type=float, default=4.)
-    parser.add_argument("--incumbent-task-root", type=Path)
-    parser.add_argument("--challenger-task-root", type=Path)
-    parser.add_argument("--launch-qualified-output", type=Path)
-    args = parser.parse_args()
-    args.output = args.output.resolve()
-    args.output.mkdir(parents=True, exist_ok=True)
-    if args.hours <= 0 or args.hours >= 24:
-        parser.error("Positive bounded finalist audit under 24 hours required")
-    if args.mode == "arm":
-        if args.arm is None or args.stage is None:
-            parser.error("Arm and stage required")
-        arm_stage(args)
-    elif args.mode == "verify":
-        verify_existing(args)
-    else:
-        run(args)
 
 
 if __name__ == "__main__":

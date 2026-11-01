@@ -157,18 +157,18 @@ def test_prediction_export_follows_the_admitted_procedure_not_file_discovery(tmp
     count = task/"conditional-count"
     count.mkdir(parents=True)
     (count/"admission.json").write_text(json.dumps(dict(admitted=False)))
-    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"recovered-readouts/predictions.npz"
+    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"generic-readouts/predictions.npz"
     (count/"admission.json").write_text(json.dumps(dict(admitted=True)))
-    assert prediction_artifact(tmp_path,"arbitrary_task")==count/"official/predictions.npz"
+    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"generic-readouts/predictions.npz"
     sequence = task/"production-sequence"
     sequence.mkdir()
     (sequence/"admission.json").write_text(json.dumps(dict(admitted=False)))
-    assert prediction_artifact(tmp_path,"arbitrary_task")==count/"official/predictions.npz"
+    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"generic-readouts/predictions.npz"
     (sequence/"admission.json").write_text(json.dumps(dict(admitted=True)))
-    assert prediction_artifact(tmp_path,"arbitrary_task")==sequence/"official/predictions.npz"
+    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"generic-readouts/predictions.npz"
     bounded = task/"bounded-views"
     bounded.mkdir()
     (bounded/"admission.json").write_text(json.dumps(dict(admitted=False)))
-    assert prediction_artifact(tmp_path,"arbitrary_task")==sequence/"official/predictions.npz"
+    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"generic-readouts/predictions.npz"
     (bounded/"admission.json").write_text(json.dumps(dict(admitted=True)))
-    assert prediction_artifact(tmp_path,"arbitrary_task")==bounded/"official/predictions.npz"
+    assert prediction_artifact(tmp_path,"arbitrary_task")==task/"generic-readouts/predictions.npz"

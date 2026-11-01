@@ -19,7 +19,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from scripts import benchmark_production_finalists as previous
-from scripts.engagement_local_comparison import freeze
+from scripts.generic_staged_helpers import freeze
 from scripts.run_gap_followup_queue import digest, dump
 
 
@@ -117,7 +117,7 @@ def compatible_audits(left,right):
 
 def independent_repeat(root):
     from kurversc.temporal_policy import TemporalFitPolicy
-    from scripts.benchmark_recovered_readouts import phase_frames, prepared, fit_prediction
+    from scripts.generic_staged_helpers import phase_frames, prepared, fit_prediction
     root=Path(root)
     raw=audit_manifest(root)
     last=len(raw["folds"])-1

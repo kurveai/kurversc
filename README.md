@@ -1,13 +1,13 @@
 # KurveRSC
 
-> Version `0.2.0` packages the complete staged procedure as
-> `kurversc.run_staged_task(...)` / `kurversc-staged`. The existing `fit` and
-> `predict` APIs remain available. See [staged reproduction](docs/staged-release.md)
-> for installation, protocol boundaries, and outstanding qualification work.
-> The [fresh 21-task results](docs/kurversc-staged-results.md),
-> [resources](docs/kurversc-staged-resources.md), and
-> [new technical report](docs/kurversc-staged-technical-report.md) document this
-> pipeline. Earlier reference tables are preserved in the dated archive.
+> The narrowed staged submission is prepared for independent maintainer
+> reproduction. `kurversc.run_staged_task(...)` / `kurversc-staged` retains graph
+> search, finalist and temporal-policy selection, and one generic readout menu.
+> See [the revised procedure](docs/staged-release.md) and
+> [reproduction revision](docs/generic-staged-review.md#source-graph-replay-correction).
+> The [six-task pilot](docs/generic-staged-pilot.md) measures the preceding
+> narrowed revision. Fresh full-panel results and a verified Elo remain pending.
+> The October 27 tables and technical report describe the superseded recipe.
 
 KurveRSC is an integrated relational representation and model-selection
 system. It uses [GraphReduce](https://github.com/wesmadrigal/graphreduce) as
@@ -17,7 +17,8 @@ across temporal frames, and selects them by downstream validation performance.
 <p align="center">
   <a href="https://kurve.ai/research">Kurve Research</a> ·
   <a href="https://kurve.ai/blog/kurversc-learning-the-shape-of-relational-signal">KurveRSC Article</a> ·
-  <a href="docs/kurversc-staged-technical-report.pdf">Technical Report</a> ·
+  <a href="docs/staged-release.md">Current Procedure</a> ·
+  <a href="docs/kurversc-staged-technical-report.pdf">Historical Report</a> ·
   <a href="#citation">Citation</a> ·
   <a href="https://pypi.org/project/kurversc/">PyPI</a>
 </p>
@@ -88,15 +89,15 @@ The complete staged procedure is available through `TaskContext`,
 production-faithful finalist checks, temporal support/readout selection and
 final refitting. Native `fit` / `predict` remain component interfaces.
 
-See [installation and the full procedure](docs/staged-release.md) and the
-[measured resource report](docs/kurversc-staged-resources.md). The release is
-under review; final fresh benchmark score tables will follow the last task.
+See [the revised procedure and validation status](docs/staged-release.md).
+Historical resource measurements describe the earlier recipe. Revised full-run
+performance and resource requirements have not yet been established.
 
 ## Quickstart
 
-The native graph-fitting API is one function. The performance tables below
-use the [complete staged procedure](docs/staged-release.md), which adds temporal
-policy and readout selection. For the native API, give `fit` an entity table, a
+The native graph-fitting API is one function. The historical performance tables
+below use the superseded staged procedure. The current [staged procedure](docs/staged-release.md)
+adds temporal policy and readout selection. For the native API, give `fit` an entity table, a
 label table, their join keys, target, and authoritative train/validation split:
 
 ```bash
@@ -126,7 +127,11 @@ GraphReduce feature-operation plan, downstream learner, feature schema, and
 validation metadata. Pass it to `kurversc.predict(...)` to replay the exact
 learned relational program at new cutoff dates.
 
-## RelArena performance
+## Historical RelArena performance
+
+These are the superseded October 27 author-run measurements. The current
+accepted-component revision is undergoing fresh evaluation and has no revised
+21-task Elo result. Earlier strict-cutoff compliance was not established.
 
 The frozen complete staged procedure finished **all 21 official RelBench v1
 tasks**, with **no failures or historical score substitutions**. The final
