@@ -2,6 +2,10 @@
 
 Completed: 6/6. Profile: `kurversc-generic-staged-v1`.
 
+Measured source: `b2cbeea0c7ee26d22e7076c7424c7ab108b2d060` and its recorded pilot receipts.
+These scores predate the November 1 source-graph replay correction; current
+full-panel reproduction is pending.
+
 | Task | Metric | Revised | Oct 27 pipeline | Captured client | Generic admission | Peak RSS GiB |
 |---|---|---:|---:|---:|---|---:|
 | rel-f1/driver-dnf | roc_auc | 0.737247 | 0.740482 | 0.727809 | incumbent | 8.84 |

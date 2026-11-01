@@ -83,14 +83,20 @@ absolute task deadline; incomplete resource-stopped runs are not scored.
 
 ## Current validation and local pilot
 
-The clean review checkout passes 710 tests with one skip. The current RelArena
-adapter/discovery checks pass 19 tests. Installed-wheel classification and
-regression smokes each complete the revised procedure on a fresh, unregistered
-48-request schema through the current registered class and actual core split
-types. No hidden targets are supplied. These checks use an existing dependency
-environment; they are not a cold resolution or a full benchmark reproduction.
-The wheel contains 46 native and 32 stage modules, verified against the frozen
-pilot sources apart from release-version stamping and import/path relocation.
+The November 1 reproduction candidate retains the narrowed generic recipe and
+adds the [source-graph replay correction](generic-staged-review.md#source-graph-replay-correction).
+Qualification is recorded in [the validation receipt](generic-staged-validation.json):
+716 source tests pass with one skip, and 14 current RelArena adapter/discovery
+checks pass. Installed-wheel classification and regression smokes each complete
+the entire procedure on fresh unregistered 48-request schemas through the current
+registered class and actual core split types. No hidden targets are supplied.
+Wheel/sdist contents and source parity pass. These checks use existing numerical
+dependencies and the exact pinned GraphReduce source; they do not establish cold
+installation or a full-panel reproduction.
+
+The new wheel contains 47 native and 32 stage modules. The extra native module
+stores and verifies source bindings; it does not add a prediction head. Earlier
+wheel hashes and predictive-source parity describe the preceding pilot revision.
 
 The local frozen run is `results/generic-staged-local-20261029`. Six representative
 tasks are admitted: F1 driver-dnf/driver-position, Avito user-clicks, Trial

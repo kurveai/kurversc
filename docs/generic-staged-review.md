@@ -58,3 +58,28 @@ regressions. These results do not erase the development history or establish
 untouched-test generalization. This revision follows the narrower accepted
 component set; it does not seek to retain the disputed components on the basis
 of the earlier transfer experiments.
+
+## Source-graph replay correction
+
+The November 1 reproduction candidate additionally repairs a schema-generic
+search/replay defect: the candidate menu could offer two occurrences of a base
+table while the adapter constructed its source graph with the one-occurrence
+default. A candidate could prune that source graph but could not recover its
+missing paths. The adapter now derives source occurrence bounds from the offered
+menu. Frozen programs retain those bounds together with source-instance aliases,
+keys, clocks and relationships; replay reconstructs and verifies the same
+bindings, and the execution fingerprint includes them. Legacy plans without this
+metadata retain their earlier contract.
+
+This correction adds no feature generator, task-specific trigger, learner or
+admission rule. Regression checks cover menu-derived bounds, a smaller selected
+graph replayed from an expanded source graph, alias mismatch rejection, and
+unchanged cyclic feature frames/predictions after adding exact-cutoff, future
+and not-yet-available source rows.
+
+The six scored pilot tasks above predate this source-graph correction and remain
+identified with their original source receipts. Their scores are not reassigned
+to the new reproduction candidate. Experimental source-frequency, target-dynamics,
+object-recurrence, semantic and peer-context research is excluded from this
+submission. The maintainer's fresh harness run will establish its current
+21-task results.

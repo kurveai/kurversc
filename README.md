@@ -1,11 +1,13 @@
 # KurveRSC
 
-> The staged submission is being narrowed after maintainer review. The current
-> `kurversc.run_staged_task(...)` / `kurversc-staged` recipe retains graph search,
-> finalist and temporal-policy selection, and a shared menu of generic readouts.
-> See [the revised procedure](docs/staged-release.md). The October 27 tables and
-> technical report describe the superseded recipe; they do not measure this
-> revision. The [six-task pilot](docs/generic-staged-pilot.md) is complete; full-panel evaluation remains pending.
+> The narrowed staged submission is prepared for independent maintainer
+> reproduction. `kurversc.run_staged_task(...)` / `kurversc-staged` retains graph
+> search, finalist and temporal-policy selection, and one generic readout menu.
+> See [the revised procedure](docs/staged-release.md) and
+> [reproduction revision](docs/generic-staged-review.md#source-graph-replay-correction).
+> The [six-task pilot](docs/generic-staged-pilot.md) measures the preceding
+> narrowed revision. Fresh full-panel results and a verified Elo remain pending.
+> The October 27 tables and technical report describe the superseded recipe.
 
 KurveRSC is an integrated relational representation and model-selection
 system. It uses [GraphReduce](https://github.com/wesmadrigal/graphreduce) as

@@ -375,6 +375,10 @@ def _connection_scope(
 
 def _freeze_execution_plan(graph: Any, cut_date: datetime) -> dict[str, Any]:
     plan = graph.freeze_execution_plan()
+    blueprint = getattr(graph, "_kurversc_source_blueprint", None)
+    if blueprint is not None:
+        from .schema_blueprint import PLAN_KEY
+        plan[PLAN_KEY] = copy.deepcopy(blueprint)
     plan["kurversc_ts_periods"] = {
         node.prefix: tuple(getattr(node, "ts_periods", ()) or ())
         for node in graph.nodes()
@@ -421,6 +425,10 @@ def _execution_plan_fingerprint(plan: Mapping[str, Any]) -> str:
             )
         )
     ]
+    from .schema_blueprint import PLAN_KEY
+    if PLAN_KEY in plan:
+        import json
+        records.append((PLAN_KEY, json.dumps(plan[PLAN_KEY], sort_keys=True)))
     if plan.get("kurversc_date_rebinding") == "atomic":
         records.append(("kurversc_date_rebinding", "atomic"))
     for record in plan.get("records", []):
@@ -1838,6 +1846,7 @@ def _build_graph(
     from graphreduce.node import DuckdbNode, GraphReduceNode
     from graphreduce.enum import SQLOpType
 
+    from .schema_blueprint import source_blueprint, verify_replay
     tables, relationships = _topology_for_config(tables, relationships, config)
 
     if config.published_cutoff_compatibility and any(
@@ -1860,6 +1869,9 @@ def _build_graph(
             if relationship.parent != TARGET_HISTORY_TABLE
             and relationship.child != TARGET_HISTORY_TABLE
         )
+
+    blueprint = source_blueprint(tables, relationships, root_name)
+    verify_replay(execution_plan, blueprint)
 
     # GraphReduce owns cutoff-boundary semantics. Keep KurveRSC runnable with
     # released GraphReduce versions from before that node argument existed by
@@ -2123,6 +2135,7 @@ def _build_graph(
         train=train,
         **config.graphreduce_kwargs(),
     )
+    graph._kurversc_source_blueprint = blueprint
     for node in nodes.values():
         graph.add_node(node)
     for relationship in relationships:

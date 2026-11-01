@@ -64,6 +64,9 @@ class Table:
     base_predicate_windows: tuple[int, ...] = (7, 14, 30, 60)
     base_predicates: tuple[EqualityPredicate, ...] | None = None
     path_base_tables: tuple[str, ...] = ()
+    # Adapter source-superset bounds survive candidate topology pruning.
+    # They are routing metadata, not another graph-search dimension.
+    path_source_bounds: tuple[int, int] | None = None
     # Optional second clock: event time controls windows; availability time
     # independently controls whether a source row can be observed at all.
     available_at: str | None = None
@@ -85,6 +88,11 @@ class Table:
         if any(not value for value in path):
             raise ValueError("Table.path_base_tables must contain non-empty names")
         object.__setattr__(self, "path_base_tables", path)
+        if self.path_source_bounds is not None:
+            bounds=tuple(self.path_source_bounds)
+            if len(bounds)!=2 or any(isinstance(value,bool) or not isinstance(value,int) or value<1 for value in bounds):
+                raise ValueError("Table.path_source_bounds requires positive depth and occurrence bounds")
+            object.__setattr__(self,"path_source_bounds",bounds)
         if self.cutoff_boundary not in {None, "strict", "inclusive", "exact"}:
             raise ValueError(
                 "Table.cutoff_boundary must be 'strict', 'inclusive', 'exact', or None"

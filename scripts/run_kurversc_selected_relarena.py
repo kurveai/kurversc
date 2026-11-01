@@ -312,6 +312,9 @@ class AuditWinnerSystem(KurveRSCSystem):
                     config["temporal_estimator_mode"],
                 )
                 identity = self.run_identity
+                from kurversc.schema_blueprint import replay_limits
+                source_depth, source_occurrences = replay_limits(selection.execution_plan,
+                    depth=self.schema_depth, occurrences=int(os.environ.get("KURVERSC_MAX_BASE_TABLE_OCCURRENCES", "1")))
                 problem = kurversc.relbench_problem_from_objects(
                     task,
                     db,
@@ -325,10 +328,8 @@ class AuditWinnerSystem(KurveRSCSystem):
                     search_full_data=bool(config["search_full_data"]),
                     search_training_frames=int(config["search_training_frames"]),
                     max_train_timestamps=full_training_frames,
-                    schema_depth=self.schema_depth,
-                    max_base_table_occurrences=int(
-                        os.environ.get("KURVERSC_MAX_BASE_TABLE_OCCURRENCES", "1")
-                    ),
+                    schema_depth=source_depth,
+                    max_base_table_occurrences=source_occurrences,
                     include_target_history=(
                         os.environ.get("KURVERSC_INCLUDE_TARGET_HISTORY", "1")
                         .lower()
@@ -582,6 +583,9 @@ class AuditWinnerSystem(KurveRSCSystem):
         adapter_fidelity_training_frames = (
             fidelity_promotion_training_frames or search_training_frames
         )
+        from kurversc.schema_blueprint import occurrence_bound
+        source_occurrences = occurrence_bound(configs=graph_configs,
+            options=max_base_table_occurrence_options)
         problem = kurversc.relbench_problem_from_objects(
             task,
             db,
@@ -600,6 +604,7 @@ class AuditWinnerSystem(KurveRSCSystem):
             fidelity_training_frames=adapter_fidelity_training_frames,
             max_train_timestamps=adapter_train_timestamps,
             schema_depth=self.schema_depth,
+            max_base_table_occurrences=source_occurrences,
             random_state=seed,
         )
         if self.peer_context_mode is not None:
