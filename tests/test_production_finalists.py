@@ -81,18 +81,30 @@ def test_rejects_missing_seed_or_nonfinite_prediction():
         compare_cases(*pair(), cases(), alt)
 
 
-def test_only_schema_generic_current_run_finalists_enter_pair(tmp_path):
+@pytest.mark.parametrize("metric", ["mae", "roc_auc"])
+def test_only_schema_generic_current_run_finalists_enter_pair(tmp_path, metric):
+    current, alternate = pair()
+    current.metric = alternate.metric = metric
+    root = tmp_path / "checkpoints/profile/dataset_task/run/trials"
+    root.mkdir(parents=True)
+    for name, value in [("current", current), ("alternate", alternate)]:
+        (root / f"{name}.pkl").write_bytes(pickle.dumps({"trial":value}))
+    row = tmp_path / "search.json"
+    row.write_text(json.dumps(dict(metric=metric, config=json.dumps(asdict(current.config)))))
+    selected = choose_pair(tmp_path, row, "dataset", "task")
+    assert [value.feature_count for _, value in selected] == [1200, 450]
+
+
+def test_finalist_metric_must_match_the_current_search(tmp_path):
     current, alternate = pair()
     root = tmp_path / "checkpoints/profile/dataset_task/run/trials"
     root.mkdir(parents=True)
     for name, value in [("current", current), ("alternate", alternate)]:
         (root / f"{name}.pkl").write_bytes(pickle.dumps({"trial":value}))
     row = tmp_path / "search.json"
-    row.write_text(json.dumps(dict(metric="mae", config=json.dumps(asdict(current.config)))))
-    selected = choose_pair(tmp_path, row, "dataset", "task")
-    assert [value.feature_count for _, value in selected] == [1200, 450]
     row.write_text(json.dumps(dict(metric="roc_auc", config=json.dumps(asdict(current.config)))))
-    assert choose_pair(tmp_path, row, "dataset", "task") is None
+    with pytest.raises(ValueError, match="Exactly one"):
+        choose_pair(tmp_path, row, "dataset", "task")
 
 
 def test_changed_graph_never_inherits_its_predecessors_official_score():

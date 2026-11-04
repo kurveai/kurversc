@@ -9,7 +9,8 @@ they do not establish performance or Elo for this revision. The six-task pilot i
 1. Schema-derived graph search with successive fidelity, CDF/base representations,
    peer context, and bounded graph/path/feature budgets.
 2. Full-fidelity graph reranking and the bounded production-faithful finalist
-   comparison using the native fit/refit lifecycle.
+   comparison for both binary classification and regression using the native
+   fit/refit lifecycle. Its shared 1% relative-loss cap uses `1 - AUC` or MAE.
 3. Historical temporal-training-policy selection on up to three origins and
    seeds 0, 1, and 2; deployment seed 0.
 4. A single generic candidate menu: parent text heads, three/five-frame ensembles,
@@ -81,11 +82,26 @@ an unregistered schema. `TaskContext.from_protocol_splits` accepts caller-owned
 censored phases and masked prediction requests. Resumes retain the original
 absolute task deadline; incomplete resource-stopped runs are not scored.
 
-## Current validation and local pilot
+## November 4 finalist-check revision
+
+The S2 check now applies to both supported task types with the same 1% relative
+validation-loss cap, using MAE or `1 - AUC`. Native metric uncertainty, matching
+origins/seeds and unanimous seed selection are shared. Thirty MAE comparisons
+exactly reproduce the reviewed decisions and evidence; regression behavior is
+unchanged. No research heads or downstream learner settings were added.
+
+Current qualification: **727 source tests passed, one skipped; 19 RelArena
+adapter/discovery tests passed**. Installed-wheel classification and regression
+runs each completed the full registered procedure on a fresh unregistered
+48-request schema with actual core split types and no hidden targets. Source
+and wheel Python payloads match. See [the current qualification receipt](generic-staged-validation.json).
+The maintainer's fresh 21-task reproduction remains the reference result.
+
+## Prior qualification and local pilot
 
 The November 1 reproduction candidate retains the narrowed generic recipe and
 adds the [source-graph replay correction](generic-staged-review.md#source-graph-replay-correction).
-Qualification is recorded in [the validation receipt](generic-staged-validation.json):
+Its preceding qualification is recorded in [the archived receipt](archive/generic-staged-validation-20261101.json):
 716 source tests pass with one skip, and 14 current RelArena adapter/discovery
 checks pass. Installed-wheel classification and regression smokes each complete
 the entire procedure on fresh unregistered 48-request schemas through the current

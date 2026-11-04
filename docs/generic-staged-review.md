@@ -17,6 +17,21 @@ Core S1–S3 remains: schema-derived graph search, production-faithful finalist
 comparison, and temporal training-policy selection. The retained optional menu
 contains the generic components identified in the review:
 
+The bounded S2 finalist comparison applies to **both supported task types**:
+binary ROC AUC and regression MAE. It considers at most one completed finalist
+with at most half the incumbent's columns. Candidate screening and per-fold
+safety use the same 1% relative validation-loss cap: loss is MAE for regression
+and `1 - AUC` (positive/negative pair ranking error) for classification. For
+example, AUC 0.80 permits at most 0.002 AUC loss, and AUC 0.98 permits at most
+0.0002. This expresses the existing MAE cap in comparable classification units;
+the regression behavior is unchanged.
+
+Both finalists replay the same native initial-fit/observed-refit lifecycle on
+two or three origins and seeds 0/1/2. The existing core graph selector and its
+native metric-uncertainty estimate run for each seed. Replacement requires
+unanimous seed selection and the relative-loss safety cap on every seed/fold.
+Task names, previous admissions and official scores are not consulted.
+
 | Component | Inputs and global bounds | Validation candidates |
 |---|---|---|
 | Parent text | Mature training strings; mean nonempty length ≥32 and ≥20 distinct values under one field-selection definition; at most 8 fields, 2,048 characters per field, 16,384 TF-IDF terms and 100,000 training rows. Logistic or ridge head according to task type. | 0.25 or 0.5 blend. |

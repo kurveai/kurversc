@@ -1,11 +1,11 @@
 """Bounded, production-faithful comparison of two already-surviving finalists.
 
-The ordinary search remains unchanged. For MAE, compare its winner with at most
+For each supported task type, compare the ordinary search winner with at most
 one smaller, recent-competitive completed finalist. Replay the same recent
 origins, mature labels, initial fit plus observed-validation refit, and three
 seeds. Use the existing graph selector unchanged, with an additional unanimous
 seed decision and per-fold practical safety cap. Never inspect official scores.
-This is an opt-in experiment, not a change to the registered defaults.
+The staged pipeline uses the multi-cutoff version of this comparison.
 """
 
 import argparse
@@ -22,13 +22,16 @@ import numpy as np
 
 from scripts.generic_staged_helpers import freeze
 from scripts.run_gap_followup_queue import digest, dump
-from scripts.generic_finalist_helpers import small_finalist
+from scripts.generic_finalist_helpers import (
+    SUPPORTED_FINALIST_METRICS, finalist_case_score, finalist_loss, small_finalist,
+)
 
 
-CONTRACT = dict(maximum_additional_graphs=1, metric="mae", origins=3,
+CONTRACT = dict(maximum_additional_graphs=1, metrics=list(SUPPORTED_FINALIST_METRICS), origins=3,
     seeds=[0, 1, 2], compare_native_production_lifecycle=True,
     initial_training_frames=1, observed_validation_refit=True,
     recent_relative_loss_cap=.01, older_relative_loss_cap=.01,
+    comparison_loss={"mae":"mae", "roc_auc":"1 - roc_auc"},
     selection="existing_core_temporal_graph_selector",
     require_unanimous_seed_selection=True, independent_recent_replay=True,
     historical_winner_lookup=False, official_targets_used_for_selection=False)
@@ -41,13 +44,14 @@ def load_trial(path):
 
 def choose_pair(graph_root, search_result, dataset, task):
     row = json.loads(Path(search_result).read_text())
-    if row["metric"] != "mae":
+    if row["metric"] not in SUPPORTED_FINALIST_METRICS:
         return None
     wanted = json.loads(row["config"])
     trials = [(p, load_trial(p)) for p in sorted((Path(graph_root) / "checkpoints").glob(
         f"*/{dataset}_{task}/*/trials/*.pkl"))]
     selected = [(p, t) for p, t in trials if t.stage == "rerank"
-        and t.status == "completed" and json.loads(json.dumps(asdict(t.config))) == wanted]
+        and t.status == "completed" and t.metric == row["metric"]
+        and json.loads(json.dumps(asdict(t.config))) == wanted]
     if len(selected) != 1:
         raise ValueError("Exactly one completed current-run rerank winner is required")
     alternative = small_finalist(trials, selected[0][1].config)
@@ -63,8 +67,9 @@ def compare_cases(incumbent, challenger, control, candidate):
     expected = {(fold, seed) for fold in range(3) for seed in range(3)}
     if set(control) != expected or set(candidate) != expected:
         raise ValueError("Complete three-origin/three-seed evidence is required")
-    if incumbent.metric != "mae" or challenger.metric != "mae":
-        raise ValueError("This optional bounded comparison is MAE-only")
+    metric = incumbent.metric
+    if metric not in SUPPORTED_FINALIST_METRICS or challenger.metric != metric:
+        raise ValueError("Finalists must share a supported validation metric")
     if challenger.feature_count * 2 > incumbent.feature_count:
         return dict(selected="incumbent", reason="no_drastic_complexity_reduction")
     decisions, safety, summaries = {}, True, {}
@@ -80,16 +85,11 @@ def compare_cases(incumbent, challenger, control, candidate):
                     np.testing.assert_array_equal(a[field], b[field])
                 if a["origin"] != b["origin"]:
                     raise ValueError("Finalists were evaluated at different origins")
-                y, prediction = np.asarray(cases[key]["truth"]), np.asarray(cases[key]["prediction"])
-                if not y.size or y.shape != prediction.shape or not np.isfinite(prediction).all():
-                    raise ValueError("Complete finite aligned validation vectors required")
-                loss = np.abs(y - prediction)
-                if not np.isfinite(loss).all():
-                    raise ValueError("Finite mature validation targets required")
-                scores.append(float(loss.mean()))
-                errors.append(float(loss.std(ddof=1) / np.sqrt(len(loss))) if len(loss) > 1 else 0.)
+                score, error = finalist_case_score(metric, cases[key]["truth"], cases[key]["prediction"])
+                scores.append(score)
+                errors.append(error)
                 labels.append(cases[key]["origin"])
-            objective, se = _rerank_objective("mae", float(np.mean(scores)),
+            objective, se = _rerank_objective(metric, float(np.mean(scores)),
                 float(np.std(scores)), len(scores), .25)
             records.append(replace(trial, model=None, stage="rerank", validation_score=float(np.mean(scores)),
                 objective_score=objective, validation_standard_error=se,
@@ -105,7 +105,7 @@ def compare_cases(incumbent, challenger, control, candidate):
             complexity_uncertainty_multiplier=1., complexity_selector=True,
             practical_recent_ties=True)[-1]
         decisions[str(seed)] = "challenger" if chosen.config == challenger.config else "incumbent"
-        safety = safety and all(b <= a * 1.01 + 1e-12
+        safety = safety and all(finalist_loss(metric,b) <= finalist_loss(metric,a) * 1.01 + 1e-12
             for a, b in zip(records[0].cutoff_scores, records[1].cutoff_scores))
     admitted = safety and all(v == "challenger" for v in decisions.values())
     return dict(selected="challenger" if admitted else "incumbent",

@@ -8,21 +8,75 @@ import pickle
 import sys
 from scripts.generic_staged_helpers import freeze,digest,dump
 
+SUPPORTED_FINALIST_METRICS = ("mae", "roc_auc")
+
+
+def finalist_loss(metric, score):
+    """Put both supported validation metrics on a lower-is-better loss scale.
+
+    MAE is already a loss. For binary ranking, 1 - AUC is the probability of
+    misordering a positive/negative pair, counting tied predictions by half.
+    A relative loss cap therefore has the same meaning for both task types.
+    """
+    score = float(score)
+    if not math.isfinite(score):
+        raise ValueError("A finite finalist validation score is required")
+    if metric == "mae" and score >= 0:
+        return score
+    if metric == "roc_auc" and 0 <= score <= 1:
+        return 1. - score
+    raise ValueError("Finalist checks require MAE or binary ROC AUC with a valid score")
+
+
+def finalist_case_score(metric, truth, prediction):
+    """Use the native metric and sampling-uncertainty estimator for a fold."""
+    import numpy as np
+    import pandas as pd
+    from kurversc.core import _prediction_standard_error, _score_prediction_chunks
+    from kurversc.modeling import _binary_classes
+
+    truth, prediction = np.asarray(truth), np.asarray(prediction, dtype=float)
+    if (truth.ndim != 1 or prediction.shape != truth.shape or not truth.size
+            or not np.isfinite(prediction).all() or pd.isna(truth).any()):
+        raise ValueError("Complete finite aligned validation vectors required")
+    if metric == "mae":
+        truth = pd.to_numeric(pd.Series(truth)).to_numpy(dtype=float)
+        if not np.isfinite(truth).all():
+            raise ValueError("Finite mature validation targets required")
+        task, classes = "regression", ()
+    elif metric == "roc_auc":
+        classes = tuple(_binary_classes(pd.Series(truth)))
+        if len(classes) != 2:
+            raise ValueError("Both binary classes are required for finalist ROC AUC")
+        if pd.api.types.is_numeric_dtype(truth.dtype) and not np.isfinite(truth).all():
+            raise ValueError("Finite mature validation targets required")
+        task = "classification"
+    else:
+        raise ValueError("Finalist checks support MAE and binary ROC AUC")
+    actual, score = _score_prediction_chunks([truth], [prediction], task=task, target_classes=classes)
+    if actual != metric:
+        raise ValueError("Native validation metric differs from the declared task metric")
+    error = _prediction_standard_error([truth], [prediction], task=task, target_classes=classes)
+    return score, error
+
+
 def small_finalist(trials, incumbent, *, relative_recent_loss_cap=.01):
     if not 0 <= relative_recent_loss_cap <= .01:
-        raise ValueError("A bounded recent MAE loss cap is required")
+        raise ValueError("A bounded recent relative validation-loss cap is required")
     completed = [(path, t) for path, t in trials if t.status == "completed"
-        and t.stage == "rerank" and t.metric == "mae" and t.execution_plan
+        and t.stage == "rerank" and t.metric in SUPPORTED_FINALIST_METRICS and t.execution_plan
         and len(t.cutoff_scores) >= 2
         and all(v is not None and math.isfinite(v) for v in t.cutoff_scores)]
     same = [t for _, t in completed if t.config == incumbent]
     if not same:
         raise ValueError("The deployed graph must have complete full-fidelity evidence")
+    metric = same[0].metric
+    completed = [(p, t) for p, t in completed if t.metric == metric]
     width = same[0].feature_count
-    newest = min(t.cutoff_scores[-1] for _, t in completed)
+    newest = min(finalist_loss(metric, t.cutoff_scores[-1]) for _, t in completed)
     candidates = [(p, t) for p, t in completed if t.config != incumbent
         and t.feature_count < width
-        and t.cutoff_scores[-1] <= newest * (1 + relative_recent_loss_cap) + 1e-12]
+        and finalist_loss(metric, t.cutoff_scores[-1]) <= newest * (1 + relative_recent_loss_cap) + 1e-12]
     return min(candidates, key=lambda pair: (pair[1].feature_count,
         pair[1].config.complexity, json.dumps(asdict(pair[1].config), sort_keys=True),
         str(pair[0])), default=None)
