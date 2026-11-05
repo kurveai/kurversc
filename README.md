@@ -1,13 +1,12 @@
 # KurveRSC
 
-> The narrowed staged submission is prepared for independent maintainer
-> reproduction. `kurversc.run_staged_task(...)` / `kurversc-staged` retains graph
-> search, finalist and temporal-policy selection, and one generic readout menu.
-> See [the revised procedure](docs/staged-release.md) and
-> [reproduction revision](docs/generic-staged-review.md#source-graph-replay-correction).
-> The [six-task pilot](docs/generic-staged-pilot.md) measures the preceding
-> narrowed revision. Fresh full-panel results and a verified Elo remain pending.
-> The October 27 tables and technical report describe the superseded recipe.
+> **Published 0.2.0 procedure:** the narrowed staged submission retains graph
+> search, symmetric finalist checks, temporal-policy selection, and one generic
+> readout menu. See the [current technical report](docs/kurversc-staged-technical-report.md)
+> and [release specification](docs/staged-release.md). Fresh full-panel results
+> and a verified Elo remain pending. The October 27 tables below and
+> [archived report](docs/archive/kurversc-staged-technical-report-20261027.md)
+> describe the superseded recipe.
 
 KurveRSC is an integrated relational representation and model-selection
 system. It uses [GraphReduce](https://github.com/wesmadrigal/graphreduce) as
@@ -18,7 +17,7 @@ across temporal frames, and selects them by downstream validation performance.
   <a href="https://kurve.ai/research">Kurve Research</a> ·
   <a href="https://kurve.ai/blog/kurversc-learning-the-shape-of-relational-signal">KurveRSC Article</a> ·
   <a href="docs/staged-release.md">Current Procedure</a> ·
-  <a href="docs/kurversc-staged-technical-report.pdf">Historical Report</a> ·
+  <a href="docs/kurversc-staged-technical-report.pdf">Technical Report</a> ·
   <a href="#citation">Citation</a> ·
   <a href="https://pypi.org/project/kurversc/">PyPI</a>
 </p>
@@ -82,6 +81,13 @@ The [original KurveRSC technical report](https://github.com/kurveai/kurversc/blo
 GraphReduce algorithm, relational feature families, learner-guided graph search,
 point-in-time guarantees, frozen-plan lifecycle, and evaluation protocol.
 
+The [current technical report](docs/kurversc-staged-technical-report.md)
+([PDF](docs/kurversc-staged-technical-report.pdf)) specifies published 0.2.0:
+retained generic components, removed recovery stages, shared selection rules,
+strict temporal boundaries and release qualification. The
+[October 27 report](docs/archive/kurversc-staged-technical-report-20261027.md)
+preserves the superseded procedure and measurements.
+
 ## Complete staged pipeline (0.2.0)
 
 The complete staged procedure is available through `TaskContext`,
@@ -133,19 +139,19 @@ These are the superseded October 27 author-run measurements. The current
 accepted-component revision is undergoing fresh evaluation and has no revised
 21-task Elo result. Earlier strict-cutoff compliance was not established.
 
-The frozen complete staged procedure finished **all 21 official RelBench v1
-tasks**, with **no failures or historical score substitutions**. The final
-server scorer ran on **October 27, 2026**. The packaged versions are **KurveRSC
-0.2.0 / GraphReduce 1.10.18**; the score-producing wheels used development
-labels 0.1.1 / 1.10.17. Their Python payloads match before version stamping;
-see the [source-parity receipt](docs/staged-source-parity.json).
+The archived complete procedure finished **all 21 RelBench v1 tasks** on
+**October 27, 2026**. Its score-producing wheels used development labels
+0.1.1 / 1.10.17; the [source-parity receipt](docs/staged-source-parity.json)
+describes those historical artifacts. They predate the narrowed published
+**KurveRSC 0.2.0 / GraphReduce 1.10.18** procedure and do not establish its scores.
 
-These results use the complete `kurversc.run_staged_task` procedure, exposed in
-RelArena as `kurversc-latest`. Native `fit` / `predict` alone run a narrower
-procedure. See the [reproduction instructions](docs/staged-release.md) and
-[technical report](docs/kurversc-staged-technical-report.md).
+See the [archived report](docs/archive/kurversc-staged-technical-report-20261027.md)
+for the earlier score-producing procedure. The
+[current technical report](docs/kurversc-staged-technical-report.md) and
+[release specification](docs/staged-release.md) describe the revised pipeline
+submitted for fresh reproduction.
 
-### Current per-task comparison
+### Historical per-task comparison
 
 The comparator is **`tabpfn-rel-client-2026-09-28`**, captured with the other
 RelArena results on October 25. Previous KurveRSC means its rows in that same
@@ -305,8 +311,11 @@ parallel-admission guidance for larger machines.
 The [September 2 README performance snapshot](docs/archive/relarena-performance-20260902.txt)
 and [original technical report](docs/kurversc-technical-report.md) remain historical
 references. They describe earlier pipelines and comparison panels. The
-[current staged report](docs/kurversc-staged-technical-report.md) documents the
-new implementation and final reproduction.
+[current staged report](docs/kurversc-staged-technical-report.md) specifies the
+published generic 0.2.0 procedure, removed components, temporal boundaries and
+release qualification. Revised full-panel scores and Elo remain pending; the
+[October 27 report](docs/archive/kurversc-staged-technical-report-20261027.md)
+preserves the superseded measurements.
 
 ## Native API details
 
@@ -738,15 +747,15 @@ score/feature count/timing, and the selected configuration.
 ## Citation
 
 If you use KurveRSC in research, please cite the
-[KurveRSC technical report](docs/kurversc-technical-report.pdf):
+[KurveRSC technical report](docs/kurversc-staged-technical-report.pdf):
 
 ```bibtex
 @techreport{madrigal2026kurversc,
-  title       = {KurveRSC: Validation-Guided Relational Signal Compression with a Downstream Learner in the Loop},
+  title       = {KurveRSC 0.2.0: Generic Staged Relational Signal Compression},
   author      = {Madrigal, Wes},
   institution = {Kurve AI},
   year        = {2026},
-  month       = sep,
-  url         = {https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.pdf}
+  month       = nov,
+  url         = {https://github.com/kurveai/kurversc/blob/main/docs/kurversc-staged-technical-report.pdf}
 }
 ```
