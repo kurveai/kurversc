@@ -18,6 +18,7 @@ toc: true
 toc-depth: 1
 numbersections: true
 bibliography: kurversc-staged-references.bib
+csl: assets/ieee.csl
 link-citations: true
 header-includes:
   - |
@@ -397,7 +398,7 @@ Binary ranking and numeric regression use a common lower-is-better scale:
 $$
 L(s)=
 \begin{cases}
-1-s, & s=\operatorname{ROC\!\!-\!AUC},\\
+1-s, & s=\text{ROC-AUC},\\
 s, & s=\operatorname{MAE}.
 \end{cases}
 $$
@@ -992,9 +993,10 @@ repository history is not an implicit source of runtime winners.
 
 # References {.unnumbered}
 
-The bibliography covers the implementation, protocol, relational feature
-construction, learned representations, search allocation, statistical methods
-and proposed planner-data sources. Product/deployment references describe
+References are numbered in order of first citation. The bibliography covers
+the implementation, protocol, relational feature construction, learned
+representations, search allocation, statistical methods and proposed planner-data
+sources. Compact source labels remain linked to the complete original URLs. Product/deployment references describe
 capabilities rather than benchmark results. Software and revised online sources
 were checked on November 5, 2026; unchanged research-paper metadata is retained
 from the earlier report.
