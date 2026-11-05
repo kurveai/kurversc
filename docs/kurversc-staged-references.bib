@@ -11,8 +11,8 @@
   title = {{GraphReduce}},
   author = {Madrigal, Wes},
   url = {https://github.com/wesmadrigal/graphreduce},
-  urldate = {2026-10-26},
-  note = {Results in this report require the privately patched candidate identified in Appendix A.}
+  urldate = {2026-11-05},
+  note = {GraphReduce 1.10.18 is published on PyPI; release source 21aff2e9ad83d69d7fc468d01e3d56a0dc6ca976.}
 }
 
 @inproceedings{robinson2024relbench,
@@ -28,8 +28,8 @@
   title = {{RelArena: Open and Reproducible Benchmarking for Relational Learning}},
   author = {{Prior Labs}},
   url = {https://github.com/PriorLabs/relarena},
-  urldate = {2026-10-26},
-  note = {This report uses a separately checksummed captured panel; baseline_results/SOURCES.md distinguishes reproduced results from paper-reference rows.}
+  urldate = {2026-11-05},
+  note = {The maintainer reproduced all 21 tasks with KurveRSC 0.2.0 and GraphReduce 1.10.18; merged November 5, 2026.}
 }
 
 @inproceedings{prokhorenkova2018catboost,
@@ -136,8 +136,8 @@
   eprint = {2604.12596},
   archivePrefix = {arXiv},
   url = {https://arxiv.org/html/2604.12596v1},
-  urldate = {2026-10-26},
-  note = {Section 1 contains the quoted criticism of generic task-agnostic aggregation.}
+  urldate = {2026-11-05},
+  note = {Section 1 discusses limits of task-agnostic aggregation; this report paraphrases the argument without claiming a matched empirical comparison.}
 }
 
 @misc{hayler2026relarena,
@@ -285,8 +285,8 @@
   title = {{Relational Deep Learning}},
   author = {{NVIDIA Kumo}},
   url = {https://docs.nvidia.com/sdgm/research/concepts-models/relational-deep-learning},
-  urldate = {2026-10-26},
-  note = {Accessed October 26, 2026; current explanatory documentation is distinguished from the original ICML paper.}
+  urldate = {2026-11-05},
+  note = {Accessed November 5, 2026; explanatory documentation is distinguished from the original ICML position paper.}
 }
 
 @misc{jaeger2026tabpfn35,
@@ -296,8 +296,8 @@
   eprint = {2609.17895},
   archivePrefix = {arXiv},
   url = {https://arxiv.org/abs/2609.17895},
-  urldate = {2026-10-26},
-  note = {Distinct from the earlier TabPFN-3 technical report.}
+  urldate = {2026-11-05},
+  note = {Revision 3, November 3, 2026. Distinct from the earlier TabPFN-3 technical report.}
 }
 
 @misc{gu2026relbenchv2,
@@ -308,7 +308,7 @@
   archivePrefix = {arXiv},
   url = {https://arxiv.org/abs/2602.12606v2},
   urldate = {2026-10-26},
-  note = {Corpus expansion and access to external relational databases; these resources are proposed planner inputs, not additional tasks in the reported 21-task scorecard.}
+  note = {Corpus expansion and access to external relational databases; these resources are proposed planner inputs, not a completed external-data evaluation of this release.}
 }
 
 @misc{wang2024dbinfer,
@@ -337,7 +337,7 @@
   title = {{Kurve Product and Deployment}},
   author = {{Kurve AI}},
   url = {https://kurve.ai/},
-  urldate = {2026-10-26},
+  urldate = {2026-11-05},
   note = {Primary product source for warehouse integrations, Snowflake Native App, customer-controlled deployment and existing ML/MLOps workflows; product statements are distinct from benchmark results.}
 }
 
@@ -345,6 +345,33 @@
   title = {{Kurve Product Documentation}},
   author = {{Kurve AI}},
   url = {https://kurveai.github.io/kurvedocs/},
-  urldate = {2026-10-26},
+  urldate = {2026-11-05},
   note = {Primary documentation for private deployment and operational graph workflows.}
+}
+
+@misc{relarena20261105results,
+  title = {{RelArena: Maintainer-Reproduced KurveRSC 0.2.0 Results}},
+  author = {{Prior Labs}},
+  year = {2026},
+  url = {https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/baseline_results/results.csv},
+  urldate = {2026-11-05},
+  note = {Selected seed-0 rows for all 21 RelBench v1 tasks; snapshot fcab8fb46b82299321c101b9a921d9a3f7c72263.}
+}
+
+@misc{relarena20261105leaderboard,
+  title = {{RelArena: Models and Systems Leaderboard, November 5, 2026}},
+  author = {{Prior Labs}},
+  year = {2026},
+  url = {https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/README.md#-leaderboards},
+  urldate = {2026-11-05},
+  note = {Sixteen complete methods, 21 tasks, seed 0; 100 task-bootstrap samples; constant-global Elo anchor 1000.}
+}
+
+@misc{relarena20261105resources,
+  title = {{RelArena: KurveRSC Maintainer Reproduction Resources}},
+  author = {{Prior Labs}},
+  year = {2026},
+  url = {https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/docs/models/kurversc-staged-resources.md},
+  urldate = {2026-11-05},
+  note = {Successful Slurm jobs; host classes, wall time, MaxRSS, engine limits and earlier resource retries.}
 }

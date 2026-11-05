@@ -1,8 +1,12 @@
-# Generic staged pipeline — October 29 revision
+# Generic staged pipeline — published 0.2.0
 
 The runnable submission has been narrowed following maintainer review. The
 previous October 27 results and resource tables describe a superseded pipeline;
-they do not establish performance or Elo for this revision. The six-task pilot is complete; full-panel evaluation remains pending.
+they do not establish performance or Elo for this revision. RelArena maintainers
+have now reproduced all 21 tasks with the public packages and merged the
+system. The [reproduced table](kurversc-reproduced-results.md) is the reference:
+1913.4 Elo, second overall and first among systems in the November 5 combined
+16-method snapshot, with 11/21 wins against the latest TabPFN-Rel client.
 
 ## Retained procedure
 
@@ -95,7 +99,8 @@ adapter/discovery tests passed**. Installed-wheel classification and regression
 runs each completed the full registered procedure on a fresh unregistered
 48-request schema with actual core split types and no hidden targets. Source
 and wheel Python payloads match. See [the current qualification receipt](generic-staged-validation.json).
-The maintainer's fresh 21-task reproduction remains the reference result.
+The maintainer's completed 21-task reproduction is the reference result;
+see the [published scores and provenance](kurversc-reproduced-results.md).
 
 ## Prior qualification and local pilot
 
@@ -120,7 +125,9 @@ study-adverse/study-outcome, and Stack user-engagement. The other fifteen tasks
 are held. Each task records a fresh score, selection evidence, runtime and peak
 process-tree RSS. The machine retains an 8 GiB RAM reserve.
 
-No replacement 21-task result or updated Elo is claimed until measured.
+The November 5 maintainer reproduction supersedes this earlier pilot as the
+current performance reference. The dated qualification receipts remain
+pre-release records, not retroactively rewritten result claims.
 
 See the [review changes](generic-staged-review.md), [current pilot table](generic-staged-pilot.md),
 and [checksummed pilot admission bundle](generic-staged-pilot-admissions.tar.gz).

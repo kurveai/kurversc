@@ -1,0 +1,514 @@
+{
+  "source": {
+    "repository": "https://github.com/PriorLabs/relarena",
+    "snapshot_commit": "fcab8fb46b82299321c101b9a921d9a3f7c72263",
+    "merged_pull_request": "https://github.com/PriorLabs/relarena/pull/80",
+    "merged_at": "2026-11-05T17:14:08Z",
+    "results_url": "https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/baseline_results/results.csv",
+    "leaderboard_url": "https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/README.md#-leaderboards",
+    "resources_url": "https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/docs/models/kurversc-staged-resources.md",
+    "model_documentation_url": "https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/docs/models/kurversc-staged.md",
+    "source_files": [
+      {
+        "path": "README.md",
+        "sha256": "168320a52b45dc33151114c30fe69ee51f4a117f516634143c9d495a54e0a189",
+        "git_blob_sha": "539a75aa907dc0fcb07a6c473629e81c4c22db6d"
+      },
+      {
+        "path": "baseline_results/results.csv",
+        "sha256": "a9232f9526ad6e71ba641635cd2cec78b0e380eaff1dec26e8b4739695eac23d",
+        "git_blob_sha": "8dcfd3e2a8bc14d4585003c9e1b9fd777d2b508b"
+      },
+      {
+        "path": "docs/models/kurversc-staged-resources.md",
+        "sha256": "8eaea8d4707e946afc7ac2c1a3eadc71541d03fd9139d85b973e30522480b259",
+        "git_blob_sha": "26fb843fafe2db2709291b42cffda3dabd3c710b"
+      },
+      {
+        "path": "docs/models/kurversc-staged.md",
+        "sha256": "07ec297e5f6a3a8edfde79c4aab921d6e9c1498be0dde7ec06839830c1f27634",
+        "git_blob_sha": "53010b04d54392422023435fa3dd0ad965f52482"
+      },
+      {
+        "path": "baseline_results/README.md",
+        "sha256": "8df9050207f52fa1d56d70a22b1f25685cbf61757376edf9fb062ad0558178ac",
+        "git_blob_sha": "6895206c5f8e5b61a8e274610a28ed45aed0c07d"
+      }
+    ],
+    "model_ids": {
+      "current": "kurversc-2026-10-22",
+      "earlier": "kurversc-2026-09-03",
+      "client": "tabpfn-rel-client-2026-09-28"
+    },
+    "versions": {
+      "kurversc": "0.2.0",
+      "graphreduce": "1.10.18"
+    },
+    "score_filter": {
+      "selected": true,
+      "seed": 0,
+      "errors_allowed": false
+    },
+    "resources_accounting": "Successful Slurm job wall time and MaxRSS; not a first-attempt/no-OOM claim",
+    "bootstrap": {
+      "samples": 100,
+      "unit": "task",
+      "interval_percentiles": [
+        2.5,
+        97.5
+      ],
+      "anchor": "constant-global=1000"
+    },
+    "maintainer_reproduced": true,
+    "complete_final_task_rows": true
+  },
+  "summary": {
+    "tasks": 21,
+    "databases": 7,
+    "seed": 0,
+    "wins": {
+      "KurveRSC": 11,
+      "Client": 10
+    },
+    "earlier_changes": {
+      "improved": 15,
+      "regressed": 6
+    },
+    "combined_rank": 2,
+    "combined_methods": 16,
+    "elo": 1913.4,
+    "client_elo": 1933.6,
+    "elo_gap": 20.2,
+    "application_hours_sum": 88.80722450093249,
+    "application_hours_min": 0.6966901950716667,
+    "application_hours_max": 10.588538613444168,
+    "slurm_wall_hours_sum": 89.1,
+    "slurm_maxrss_gib_max": 370
+  },
+  "leaderboard": [
+    {
+      "rank": 1,
+      "method": "tabpfn-rel-client-latest",
+      "kind": "Model",
+      "elo": 1933.6,
+      "low": 1864.7,
+      "high": 2033.5
+    },
+    {
+      "rank": 2,
+      "method": "kurversc-latest",
+      "kind": "System",
+      "elo": 1913.4,
+      "low": 1832.3,
+      "high": 2050.6
+    },
+    {
+      "rank": 3,
+      "method": "tabpfn-rel-local-latest",
+      "kind": "Model",
+      "elo": 1887.7,
+      "low": 1831.3,
+      "high": 1974.8
+    },
+    {
+      "rank": 4,
+      "method": "rt-j",
+      "kind": "System",
+      "elo": 1842.2,
+      "low": 1721.9,
+      "high": 1997.8
+    },
+    {
+      "rank": 5,
+      "method": "tabpfn-rel-client-2026-08-15",
+      "kind": "Model",
+      "elo": 1799.0,
+      "low": 1740.7,
+      "high": 1886.9
+    },
+    {
+      "rank": 6,
+      "method": "rt-plurel",
+      "kind": "System",
+      "elo": 1787.7,
+      "low": 1695.9,
+      "high": 1889.4
+    },
+    {
+      "rank": 7,
+      "method": "kurversc-2026-09-03",
+      "kind": "System",
+      "elo": 1773.8,
+      "low": 1709.9,
+      "high": 1849.6
+    },
+    {
+      "rank": 8,
+      "method": "nori-rel",
+      "kind": "Model",
+      "elo": 1732.3,
+      "low": 1660.5,
+      "high": 1844.7
+    },
+    {
+      "rank": 9,
+      "method": "tabpfn-rel-local-2026-08-15",
+      "kind": "Model",
+      "elo": 1702.0,
+      "low": 1613.7,
+      "high": 1771.7
+    },
+    {
+      "rank": 10,
+      "method": "graphsage",
+      "kind": "Model",
+      "elo": 1660.3,
+      "low": 1550.8,
+      "high": 1747.2
+    },
+    {
+      "rank": 11,
+      "method": "relgt",
+      "kind": "Model",
+      "elo": 1562.7,
+      "low": 1430.3,
+      "high": 1664.5
+    },
+    {
+      "rank": 12,
+      "method": "rdblearn",
+      "kind": "Model",
+      "elo": 1529.8,
+      "low": 1437.8,
+      "high": 1610.5
+    },
+    {
+      "rank": 13,
+      "method": "relgnn-es",
+      "kind": "Model",
+      "elo": 1525.0,
+      "low": 1421.2,
+      "high": 1636.6
+    },
+    {
+      "rank": 14,
+      "method": "lightgbm",
+      "kind": "Model",
+      "elo": 1363.9,
+      "low": 1168.9,
+      "high": 1501.1
+    },
+    {
+      "rank": 15,
+      "method": "constant-per-entity",
+      "kind": "Model",
+      "elo": 1266.5,
+      "low": 1082.8,
+      "high": 1408.5
+    },
+    {
+      "rank": 16,
+      "method": "constant-global",
+      "kind": "Model",
+      "elo": 1000.0,
+      "low": 838.5,
+      "high": 1076.9
+    }
+  ],
+  "tasks": [
+    {
+      "dataset": "rel-amazon",
+      "task": "item-churn",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.8287117346305146,
+      "earlier": 0.8272563078304169,
+      "client": 0.8286527397830145,
+      "winner": "KurveRSC",
+      "application_seconds": 11815.249469396,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 3.32,
+      "slurm_maxrss_gib": 364
+    },
+    {
+      "dataset": "rel-amazon",
+      "task": "item-ltv",
+      "metric": "mae",
+      "seed": 0,
+      "current": 42.38280230606438,
+      "earlier": 42.27307965112372,
+      "client": 45.27051479241541,
+      "winner": "KurveRSC",
+      "application_seconds": 23194.56865252,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 6.48,
+      "slurm_maxrss_gib": 202
+    },
+    {
+      "dataset": "rel-amazon",
+      "task": "user-churn",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.712558316585568,
+      "earlier": 0.7103474725269594,
+      "client": 0.7116975645100978,
+      "winner": "KurveRSC",
+      "application_seconds": 17810.085208923,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 4.98,
+      "slurm_maxrss_gib": 262
+    },
+    {
+      "dataset": "rel-amazon",
+      "task": "user-ltv",
+      "metric": "mae",
+      "seed": 0,
+      "current": 13.989373814374646,
+      "earlier": 14.020545396703737,
+      "client": 13.877122272542712,
+      "winner": "Client",
+      "application_seconds": 31748.077117689,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 8.86,
+      "slurm_maxrss_gib": 327
+    },
+    {
+      "dataset": "rel-avito",
+      "task": "ad-ctr",
+      "metric": "mae",
+      "seed": 0,
+      "current": 0.0332579327330482,
+      "earlier": 0.033440256656712096,
+      "client": 0.0312577106101518,
+      "winner": "Client",
+      "application_seconds": 2508.084702258,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 0.71,
+      "slurm_maxrss_gib": 34
+    },
+    {
+      "dataset": "rel-avito",
+      "task": "user-clicks",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.6600620141472097,
+      "earlier": 0.6584055821311408,
+      "client": 0.6916305637150609,
+      "winner": "Client",
+      "application_seconds": 4332.381158614,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 1.21,
+      "slurm_maxrss_gib": 51
+    },
+    {
+      "dataset": "rel-avito",
+      "task": "user-visits",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.6725148185857683,
+      "earlier": 0.6747209700197735,
+      "client": 0.6724526674467126,
+      "winner": "KurveRSC",
+      "application_seconds": 4077.199016031,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 1.14,
+      "slurm_maxrss_gib": 64
+    },
+    {
+      "dataset": "rel-event",
+      "task": "user-attendance",
+      "metric": "mae",
+      "seed": 0,
+      "current": 0.2349336057201225,
+      "earlier": 0.25866836280179156,
+      "client": 0.2416516763269844,
+      "winner": "KurveRSC",
+      "application_seconds": 12016.577409087,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 3.35,
+      "slurm_maxrss_gib": 46
+    },
+    {
+      "dataset": "rel-event",
+      "task": "user-ignore",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.8508882825003166,
+      "earlier": 0.8326275430900486,
+      "client": 0.7840373965205578,
+      "winner": "KurveRSC",
+      "application_seconds": 6536.128278851,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 1.83,
+      "slurm_maxrss_gib": 283
+    },
+    {
+      "dataset": "rel-event",
+      "task": "user-repeat",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.7821524064171124,
+      "earlier": 0.7796791443850267,
+      "client": 0.7604946524064171,
+      "winner": "KurveRSC",
+      "application_seconds": 6149.6873293710005,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 1.72,
+      "slurm_maxrss_gib": 44
+    },
+    {
+      "dataset": "rel-f1",
+      "task": "driver-dnf",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.7220172741911872,
+      "earlier": 0.7464841653247452,
+      "client": 0.727809495925438,
+      "winner": "Client",
+      "application_seconds": 21158.075639104,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 5.88,
+      "slurm_maxrss_gib": 6
+    },
+    {
+      "dataset": "rel-f1",
+      "task": "driver-position",
+      "metric": "mae",
+      "seed": 0,
+      "current": 4.060516036229772,
+      "earlier": 3.863205039685559,
+      "client": 3.757398343379037,
+      "winner": "Client",
+      "application_seconds": 17547.898077491,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 4.88,
+      "slurm_maxrss_gib": 4
+    },
+    {
+      "dataset": "rel-f1",
+      "task": "driver-top3",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.8341542119565218,
+      "earlier": 0.6649574101170569,
+      "client": 0.7917015050167224,
+      "winner": "KurveRSC",
+      "application_seconds": 14139.075269677,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 3.93,
+      "slurm_maxrss_gib": 4
+    },
+    {
+      "dataset": "rel-hm",
+      "task": "item-sales",
+      "metric": "mae",
+      "seed": 0,
+      "current": 0.0336361620114809,
+      "earlier": 0.032167650743673504,
+      "client": 0.0364787779830473,
+      "winner": "KurveRSC",
+      "application_seconds": 12448.226088787998,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 3.47,
+      "slurm_maxrss_gib": 27
+    },
+    {
+      "dataset": "rel-hm",
+      "task": "user-churn",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.707174275484104,
+      "earlier": 0.6969156246407915,
+      "client": 0.7060214083108701,
+      "winner": "KurveRSC",
+      "application_seconds": 5869.763953152,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 1.64,
+      "slurm_maxrss_gib": 21
+    },
+    {
+      "dataset": "rel-stack",
+      "task": "post-votes",
+      "metric": "mae",
+      "seed": 0,
+      "current": 0.0628639615171873,
+      "earlier": 0.0632428620476629,
+      "client": 0.0627329871405511,
+      "winner": "Client",
+      "application_seconds": 38118.739008399,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 10.6,
+      "slurm_maxrss_gib": 257
+    },
+    {
+      "dataset": "rel-stack",
+      "task": "user-badge",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.8760203632226691,
+      "earlier": 0.8776261751436912,
+      "client": 0.8834433132787123,
+      "winner": "Client",
+      "application_seconds": 37338.60176963,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 10.38,
+      "slurm_maxrss_gib": 370
+    },
+    {
+      "dataset": "rel-stack",
+      "task": "user-engagement",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.9038607378849706,
+      "earlier": 0.9030269609869758,
+      "client": 0.9076619476134612,
+      "winner": "Client",
+      "application_seconds": 15666.06457787,
+      "host_ram_gb": 739,
+      "slurm_wall_hours": 4.36,
+      "slurm_maxrss_gib": 219
+    },
+    {
+      "dataset": "rel-trial",
+      "task": "site-success",
+      "metric": "mae",
+      "seed": 0,
+      "current": 0.3987491677647647,
+      "earlier": 0.40384203911881095,
+      "client": 0.377614991319574,
+      "winner": "Client",
+      "application_seconds": 6209.437968886999,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 1.73,
+      "slurm_maxrss_gib": 89
+    },
+    {
+      "dataset": "rel-trial",
+      "task": "study-adverse",
+      "metric": "mae",
+      "seed": 0,
+      "current": 33.17502647602773,
+      "earlier": 41.270228944983955,
+      "client": 34.401374330614345,
+      "winner": "KurveRSC",
+      "application_seconds": 22883.244111787,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 6.36,
+      "slurm_maxrss_gib": 30
+    },
+    {
+      "dataset": "rel-trial",
+      "task": "study-outcome",
+      "metric": "roc_auc",
+      "seed": 0,
+      "current": 0.7604760694005545,
+      "earlier": 0.7121305679658083,
+      "client": 0.7645563183320621,
+      "winner": "Client",
+      "application_seconds": 8138.843395831999,
+      "host_ram_gb": 190,
+      "slurm_wall_hours": 2.27,
+      "slurm_maxrss_gib": 23
+    }
+  ]
+}

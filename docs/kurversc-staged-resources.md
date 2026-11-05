@@ -1,105 +1,67 @@
-> **Historical recipe.** This document records the superseded October 27
-> pipeline. The [current accepted-component revision](staged-release.md)
-> removes the disputed recovery stages and is being evaluated afresh.
-> These scores, resources and qualification claims do not describe that
-> revision. Strict temporal compliance of the earlier scores was not established.
+# KurveRSC: maintainer reproduction resources
 
-# KurveRSC complete staged reproduction: resources
+These are the successful jobs in the November 5, 2026 maintainer reproduction,
+using `kurversc==0.2.0` and `graphreduce==1.10.18`, one task per CPU host.
+[Immutable source](https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/docs/models/kurversc-staged-resources.md) ·
+[Scores](kurversc-reproduced-results.md) ·
+[Full-precision extract](assets/kurversc-relarena-reproduction-20261105.json).
 
-Snapshot: 2026-10-27T13:34:35.809800+00:00. **21/21 tasks completed** in the fresh
-installed-wheel campaign. All task resource receipts are finalized, with no
-failed tasks or historical score substitutions. The final performance/Elo
-table is in the [results report](kurversc-staged-results.md).
-These are measured resources, not hypothetical scores or minimum-hardware claims.
+## Host and engine settings
 
-The observed host has **495.77 GiB RAM, 64 logical CPUs
-(32 physical cores), and a 992.2-GiB filesystem**.
-The pipeline uses CPU; no GPU was used. The predictive recipe fixes eight
-learner threads per task, graph-search parallelism 1 and temporal-seed workers 1.
+Eight tasks ran on 96-vCPU, 739-GB hosts with
+`KURVERSC_DUCKDB_MEMORY_LIMIT=160GiB` and
+`KURVERSC_DUCKDB_MAX_TEMP_DIRECTORY_SIZE=100GiB`.
+Thirteen ran on 48-core, 190-GB hosts with `48GiB` and `20GiB`, respectively.
+Host RAM is GB; Slurm `MaxRSS` is GiB. Peaks grow with engine limits and are
+observations under these settings, not minimum-memory requirements.
 
-## Per-task measurements
+## Per-task successful-job measurements
 
-| Task | Status | Hours | Peak RAM GiB | Peak tree RSS GiB | Peak busy CPUs | Task disk GiB |
-|---|---|---:|---:|---:|---:|---:|
-| rel-amazon/item-churn | completed | 3.25 | 132.87 | 123.53 | 8.03 | 21.18 |
-| rel-amazon/item-ltv | completed | 5.68 | 182.17 | 161.33 | 8.03 | 22.52 |
-| rel-amazon/user-churn | completed | 3.65 | 203.72 | 194.17 | 8.07 | 21.64 |
-| rel-amazon/user-ltv | completed | 5.60 | 152.40 | 143.01 | 10.52 | 21.02 |
-| rel-avito/ad-ctr | completed | 0.72 | 67.24 | 66.71 | 9.09 | 1.43 |
-| rel-avito/user-clicks | completed | 1.14 | 52.03 | 51.42 | 8.69 | 1.59 |
-| rel-avito/user-visits | completed | 1.75 | 89.02 | 88.37 | 8.62 | 1.55 |
-| rel-event/user-attendance | completed | 2.10 | 116.77 | 116.20 | 8.02 | 0.55 |
-| rel-event/user-ignore | completed | 1.45 | 33.04 | 31.37 | 8.06 | 0.70 |
-| rel-event/user-repeat | completed | 1.58 | 32.54 | 32.69 | 8.03 | 0.58 |
-| rel-f1/driver-dnf | completed | 5.68 | 6.70 | 6.98 | 8.06 | 0.24 |
-| rel-f1/driver-position | completed | 4.61 | 4.14 | 4.51 | 8.03 | 0.19 |
-| rel-f1/driver-top3 | completed | 3.55 | 2.88 | 3.34 | 8.04 | 0.10 |
-| rel-hm/item-sales | completed | 4.90 | 26.53 | 24.40 | 8.03 | 2.10 |
-| rel-hm/user-churn | completed | 3.39 | 44.95 | 44.87 | 8.06 | 4.08 |
-| rel-stack/post-votes | completed | 5.64 | 61.63 | 58.24 | 11.90 | 11.80 |
-| rel-stack/user-badge | completed | 14.17 | 333.51 | 319.19 | 8.01 | 13.35 |
-| rel-stack/user-engagement | completed | 4.82 | 91.00 | 86.89 | 8.05 | 11.52 |
-| rel-trial/site-success | completed | 4.37 | 91.67 | 89.96 | 8.05 | 2.50 |
-| rel-trial/study-adverse | completed | 8.94 | 26.09 | 24.54 | 8.02 | 2.63 |
-| rel-trial/study-outcome | completed | 2.69 | 26.90 | 25.54 | 8.03 | 2.65 |
+| Task | Host RAM, GB | Job wall time, h | Peak RSS, GiB |
+|:---------------------------|------------:|----------------:|--------------:|
+| Amazon / item-churn | 739 | 3.32 | 364 |
+| Amazon / item-ltv | 739 | 6.48 | 202 |
+| Amazon / user-churn | 739 | 4.98 | 262 |
+| Amazon / user-ltv | 739 | 8.86 | 327 |
+| Avito / ad-ctr | 190 | 0.71 | 34 |
+| Avito / user-clicks | 190 | 1.21 | 51 |
+| Avito / user-visits | 190 | 1.14 | 64 |
+| Event / user-attendance | 190 | 3.35 | 46 |
+| Event / user-ignore | 739 | 1.83 | 283 |
+| Event / user-repeat | 190 | 1.72 | 44 |
+| F1 / driver-dnf | 190 | 5.88 | 6 |
+| F1 / driver-position | 190 | 4.88 | 4 |
+| F1 / driver-top3 | 190 | 3.93 | 4 |
+| H&M / item-sales | 190 | 3.47 | 27 |
+| H&M / user-churn | 190 | 1.64 | 21 |
+| Stack / post-votes | 739 | 10.60 | 257 |
+| Stack / user-badge | 739 | 10.38 | 370 |
+| Stack / user-engagement | 739 | 4.36 | 219 |
+| Trial / site-success | 190 | 1.73 | 89 |
+| Trial / study-adverse | 190 | 6.36 | 30 |
+| Trial / study-outcome | 190 | 2.27 | 23 |
 
-The [CSV](kurversc-staged-resources.csv) preserves full precision and coverage.
-RAM is the full-task kernel cgroup-v2 `memory.peak`, including descendants,
-charged file cache and kernel memory. Tree RSS is sampled once per second and
-can count shared pages more than once. Busy CPUs are sampled cgroup CPU-time
-increments per wall second; thread reservations are not affinity limits.
-Task disk is sampled allocated storage for owned outputs, temporary files,
-logs and metrics, excluding shared datasets, model weights and the environment.
-Allow additional storage for those shared inputs and for concurrent tasks.
+Successful job wall time spans **0.71-10.60 h**, and MaxRSS spans **4-370 GiB**.
+The score CSV's separate application `time_total` spans 0.70-10.59 h and sums
+to **88.81 task-hours**. This sum is not elapsed campaign time and excludes
+failed earlier attempts; job and application clocks are reported separately.
 
-The CPU/disk observer attached after user-badge had started. Its earlier CPU
-and disk peaks are unknown; its full-task cgroup RAM peak and elapsed time are
-recorded by the original task monitor. Other attachment delays are in the CSV.
-Sampled disk/CPU values can miss short peaks.
+## Retries and execution guidance
 
-## Parallel reproduction on a larger machine
+User-ignore and user-engagement ran out of memory on 190-GB hosts with the
+48-GiB DuckDB limit; post-votes reached 140 GiB there before being moved.
+All three completed on 739-GB hosts. This is a complete final reproduction,
+not a claim of first-attempt success for every task.
 
-Tasks are independent. Run separate `(dataset, task)` CLI processes or batch
-jobs with distinct result files, scratch directories and task-owned caches.
-The original absolute sub-24-hour budget applies independently to every task,
-including preprocessing, selection, refits and prediction.
+DuckDB working-memory limits control spill behavior rather than total task RAM.
+Slurm MaxRSS is not the earlier author-run cgroup peak or sampled process-tree
+RSS; those values should not be substituted into this table. The published
+record does not include every temporary-storage peak or utilization trace.
 
-Preserve **eight learner threads, one graph-search worker and one temporal-seed
-worker per task** for the qualified recipe. Parallelize across tasks to use a
-larger host. Increasing internal search concurrency is not part of this measured
-configuration and can multiply wide SQL/materialization memory.
+Concurrent tasks require separate output/scratch/cache directories and host
+headroom. Preserve the procedure's internal worker/thread settings, and size
+admission from measured demand and spill behavior. The absolute task deadline
+remains below 24 h across resumes; incomplete execution is not a scored success.
 
-Use admission based on future task demand, rather than today's low RSS. One
-conservative planning rule is:
-
-```text
-task reservation GiB = max(16, ceil(1.25 * max(measured cgroup peak, tree RSS peak) + 8))
-host reserve GiB     = max(64, ceil(0.10 * host RAM GiB))
-admit only if:
-    sum(task reservations) <= host RAM - host reserve
-    8 * active task count <= available logical CPUs
-    simultaneous scratch/output demand fits disk with headroom
-```
-
-For example, a **1.5-TiB (1,536-GiB), 192-logical-CPU** host has a 1,382-GiB
-task reservation budget under that rule. It can run several large tasks plus
-smaller tasks concurrently when their reservations fit. A multi-node scheduler
-can bin-pack the same independent tasks across nodes. A fixed all-21 launch
-without checking the reservation sum is not the suggested reproduction plan.
-
-For the measured campaign, the declared DuckDB working-memory ceilings were
-123 GiB for 19 tasks, 224 GiB for user-badge and 256 GiB for Amazon user-churn.
-The CSV records these resource allocations. Set `KURVERSC_DUCKDB_MEMORY_LIMIT`
-explicitly to reproduce a measured allocation on comparable hardware; the
-public entry point preserves this resource override. These settings govern
-aggregation/spilling and can affect runtime and observed RAM. They do not
-reduce source rows, feature budgets or validation evidence.
-
-DuckDB working-memory limits control one engine's aggregation/spilling; they
-are not total-process RSS caps. The measured campaign has no hard per-task RAM
-kill ceiling. On the measured roughly 496-GiB host, the final large tasks run
-sequentially because their conservative reservations do not fit together.
-
-For a straightforward first reproduction, use a comparable 512-GiB-class
-machine and retain headroom above the largest observed task. This is the
-measured deployment class, not proof that smaller hardware cannot run it.
+The [October 27 resource record](archive/kurversc-staged-resources-20261027.md)
+belongs to the superseded procedure.
