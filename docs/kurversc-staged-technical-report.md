@@ -1,17 +1,11 @@
-> **Historical recipe.** This document records the superseded October 27
-> pipeline. The [current accepted-component revision](staged-release.md)
-> removes the disputed recovery stages and is being evaluated afresh.
-> These scores, resources and qualification claims do not describe that
-> revision. Strict temporal compliance of the earlier scores was not established.
-
 ---
-title: "KurveRSC: The Staged Pipeline"
-subtitle: "Relational Representations, Production-Faithful Selection, and Reproducible Temporal Prediction"
+title: "KurveRSC 0.2.0: Generic Staged Relational Signal Compression"
+subtitle: "Schema-Derived Representations, Temporal Selection, and Reproducible Prediction"
 author: |
   Wes Madrigal  
   Kurve AI
 author-meta: "Wes Madrigal"
-date: "October 27, 2026 | Complete frozen 21-task reproduction"
+date: "November 5, 2026 | Published generic procedure"
 lang: en-US
 papersize: letter
 fontsize: 10.5pt
@@ -23,6 +17,8 @@ urlcolor: blue
 toc: true
 toc-depth: 1
 numbersections: true
+bibliography: kurversc-staged-references.bib
+link-citations: true
 header-includes:
   - |
     ```{=latex}
@@ -32,20 +28,21 @@ header-includes:
     \usepackage{microtype}
     \usepackage{fancyhdr}
     \usepackage{graphicx}
-    \usepackage{float}
-    \usepackage{xcolor}
+    \usepackage{xurl}
     \usepackage{fvextra}
     \usepackage{needspace}
     \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
     \pagestyle{fancy}
     \fancyhf{}
-    \lhead{KurveRSC: Staged Pipeline}
-    \rhead{October 2026}
+    \lhead{KurveRSC 0.2.0}
+    \rhead{November 2026}
     \cfoot{\thepage}
     \setlength{\headheight}{14pt}
     \setlength{\parskip}{0.4em}
     \setlength{\parindent}{0pt}
     \emergencystretch=3em
+    \clubpenalty=10000
+    \widowpenalty=10000
     ```
 ---
 
@@ -55,385 +52,243 @@ header-includes:
 
 # Abstract
 
-KurveRSC learns a relational representation by evaluating GraphReduce programs
-with a downstream supervised learner. The published reference procedure searched
-graph configurations, reranked a small finalist set, and fitted the selected
-representation with CatBoost. The new procedure retains that architecture and
-extends the object being selected: both the relational program and the temporal
-fitting/readout procedure must survive comparisons that reproduce deployment.
+KurveRSC selects a relational feature program with a supervised learner in the
+loop. GraphReduce executes that program, reducing timestamped, related records
+to an entity-level feature matrix; CatBoost evaluates and fits the resulting
+representation. The staged procedure allocates increasing fidelity to a bounded
+set of schema-derived candidates, checks finalists with the production fitting
+lifecycle, and compares temporal support policies and generic optional readouts
+before saving keyed predictions.
 
-This report specifies the frozen `staged-complete-reproducible-v1` implementation.
-Its main changes are bounded historical-target and peer signals, richer numeric
-and event-state representations, a staged graph search with explicit candidate
-budgets, production-faithful temporal comparisons, and validation-gated support
-and readout challengers. A benchmark-independent task context exposes the same
-complete procedure on a new database. Source identities, keyed prediction
-artifacts, phase-specific data snapshots, and an original cumulative deadline
-make the procedure auditable across interruptions and environments.
+This report specifies the published **KurveRSC 0.2.0 / GraphReduce 1.10.18**
+procedure.
 
-A fresh, single-freeze reproduction completed all 21 official task evaluations
-without failures or historical score substitutions. It gives 11 wins and 10
-losses against the captured September 28, 2026 TabPFN-Rel client. Replacing the
-published KurveRSC rows in the captured 15-method RelArena panel yields 1948.6
-Elo, compared with 1937.1 for that client. Mean rescaled loss is 0.073390 versus
-0.073884. This is a completed author-run comparison; independent maintainer
-reproduction and public leaderboard acceptance remain separate steps.
+The fixed profile is `kurversc-generic-staged-v1`. It replaces the October 27
+report after removal of specialized recovery components. The retained optional menu contains
+parent text heads, training-frame ensembles, target-domain projection, a
+zero-aware distributional readout, and object breadth. All optional candidates
+challenge the same incumbent with one temporal admission rule. Their eligibility
+depends on declared inputs and capacity, independently of previous admissions.
+The finalist check now treats binary classification and regression symmetrically,
+using a 1% relative-loss cap on `1 - AUC` and MAE, respectively.
 
-The observed gains have material computational costs. The 21 freshly completed
-tasks take 0.72 to 14.17 hours and peak at 2.88 to 333.51 GiB of task cgroup
-memory on the measured server. A separate, unregistered seven-table Olist task
-completes the same staged procedure locally in 46.16 minutes with 0.787512 test
-ROC-AUC. The report distinguishes implemented behavior, measured evidence, and
-remaining limitations; it does not attribute the aggregate gains to any one
-feature without a controlled ablation.
+The release is qualified by 727 passing source tests with one skip, 19 passing
+RelArena adapter/discovery checks, and complete installed-wheel classification
+and regression runs on fresh unregistered synthetic schemas. These are
+correctness and execution checks, not evidence of benchmark superiority. Earlier
+21-task scores, Elo values and resource measurements belong to the superseded
+procedure. **A full 21-task performance result for this revised release is not
+established in this report.** Independent reproduction through the submitted
+RelArena adapter will be the reference result.
 
-The result also bears on a broader architectural question. Strong performance
-from task-selected relational compression followed by CatBoost challenges the
-claim that a flat learner interface is inherently uncompetitive. It does not
-show that arbitrary aggregation is lossless, or replace a matched comparison
-with KumoRFM-2. We examine the actual published claims, relevant prior work and
-the distinction between representation limits and selection regret below.
+The architecture separates relational representation from the downstream
+learner and from the execution backend. It supports operational use through the
+Kurve product, while the evaluated open-source recipe uses DuckDB. Warehouse
+execution and customer-controlled deployment are architectural and product
+capabilities; they do not establish an unlimited scale or runtime guarantee for
+this complete search procedure. The main unresolved questions remain selection
+fidelity, computational cost, and predictive transfer to previously unseen
+databases.
 
-Production deployment is available through the Kurve product, which provides
-warehouse integration, operational compute graphs, model workflows and
-customer-controlled deployment for sovereign AI. Kurve integrates with existing
-ML and MLOps stacks [34](https://kurve.ai/), [35](https://kurveai.github.io/kurvedocs/). The experiments in this report use the frozen
-DuckDB-based open-source reference implementation; product deployment
-capabilities are distinct from the benchmark configuration.
+# Scope, release identity, and revision
 
-# Scope and relationship to the original report
+This document describes the fixed staged procedure rather than every native
+KurveRSC option. Its software dependencies are the public packages
+`kurversc[staged]==0.2.0` and `graphreduce==1.10.18`. The corresponding source
+identities are recorded in Appendix A for audit; installation uses package
+versions, not a Git dependency. The baseline relational-compression formulation
+is described in the [original report](kurversc-technical-report.md)
+[@madrigal2026kurversc].
 
-This is a companion to the [original technical report](kurversc-technical-report.md).
-That document remains intact. It explains GraphReduce's directional reductions,
-the original representation-search formulation, and earlier benchmark captures.
-Some of its method sections were updated during development and describe a
-12-cutoff pooled profile, while its main published results and the README's
-September 2 reference describe the earlier full-data, latest-cutoff procedure.
-Those profiles must not be conflated.
+The earlier [October 27 report](archive/kurversc-staged-technical-report-20261027.md)
+and its [PDF](archive/kurversc-staged-technical-report-20261027.pdf) are preserved
+as historical records. Their pipeline included additional, disputed recovery
+stages. Its scorecard cannot be relabeled as a measurement of the narrowed
+release. Strict temporal compliance of those earlier predictions was also not
+established. Neither source-level corrections nor transfer experiments
+retroactively establish their compliance.
 
-Here, **published reference procedure** means the earlier full-data graph search,
-three-finalist/three-fold rerank, and one initial production cutoff documented
-with the published results. **Frozen staged procedure** means the complete
-recipe identified above, including every later selection and readout stage.
-**Published scores** in the comparison tables mean the KurveRSC rows in the
-captured RelArena panel. That later panel has different values from the earliest
-table retained in the original report. The exact comparator is
-`tabpfn-rel-client-2026-09-28`, rather than an unspecified API or local version.
+## What changed
 
-The final official leaderboard was generated at 13:34 UTC on October 27, 2026,
-after every task completed. Final resource receipts were generated immediately
-afterward. The comparison panel was captured on October 25; no score in the new
-KurveRSC column is filled from an earlier run. Earlier October 26 evidence is
-retained separately and is not overwritten by this revision.
+| Area | Published generic procedure |
+|:-----------------------|:---------------------------------------------------|
+| Core stages | Schema-derived graph search, full-fidelity rerank, production-faithful finalist check, temporal training-policy selection. |
+| Generic optional menu | Text, frame ensembles, target-domain projection, zero-aware distributional readout, object breadth. |
+| Finalist symmetry | The same bounded comparison for MAE and binary ROC-AUC; regression decisions preserved. |
+| Optional admission | One selector, shared origins/seeds and incumbent, independent applicability, menu-size multiplicity adjustment. |
+| Source boundaries | Explicit strict event cutoffs, separately declared availability, phase-censored task contexts and verified replay bindings. |
+| Evidence | Release qualification and clearly attributed pilots; revised full-panel scores remain pending. |
+
+The runnable procedure removes exposure-role reconstruction, the
+recurrence/semantic teacher and offset-correction stack, conditional-count
+recovery, production-sequence recovery, bounded-view recovery, and benchmark
+test-win campaign gates. None is an optional fallback in the released staged
+execution closure. In particular, the procedure does not infer click, position,
+or prior-rate roles by alphabetic order or cardinality; it does not choose a
+rarest binary event column for a special head.
+
+These removals do not remove ordinary GraphReduce `sequence`, `conditional`,
+`context`, or `state` features. Those are schema-derived feature families inside
+the graph search. Nor do they remove mature historical labels or generic peer
+context. A family of SQL summaries and a later specialized prediction-recovery
+stack are different components.
+
+The fixed recipe retains globally specified model sizes, blend menus and capacity
+limits. They are shared defaults disclosed below, not values rediscovered on each
+database. Removing name-specific behavior does not prove predictive transfer;
+that remains an empirical question requiring new-database evaluation.
+
+## Interfaces
+
+| Interface | Responsibility |
+|:----------------------------|:------------------------------------------------|
+| `kurversc.fit()` / `predict()` | Native graph search, fitting, and frozen-plan replay. The caller chooses settings. |
+| `kurversc.run_staged_task()` | The complete fixed staged procedure described here. |
+| RelArena registered system | Converts harness-owned splits into the task context, invokes the packaged procedure, and returns keyed predictions for external scoring. |
+
+Calling native `fit()` with its defaults does not by itself reproduce every
+stage of the submitted benchmark procedure. The retained RelArena system name
+is `kurversc-2026-10-22`; the date is a registry identifier, not a claim that the
+October 22 research recipe remains in use.
+
+# Relational compression as a learned program
+
+Let a prediction request be $(e,t)$, identifying a root entity and query cutoff.
+A relational database supplies keyed tables, foreign keys, source clocks, and
+observed labels. A graph configuration $g$ selects paths, depth, reductions,
+feature families, and bounded annotation choices. GraphReduce computes
+
+$$
+z_{e,t}=\Phi_g(D_{<t},e,t), \qquad
+\widehat y_{e,t}=f_\theta(z_{e,t}).
+$$
+
+The notation $D_{<t}$ abbreviates the visibility contract in the next section;
+a source record may also have an independent availability clock. KurveRSC fits
+$f_\theta$ on eligible training examples and uses temporal validation to choose
+among programs. It therefore selects the compression procedure jointly with a
+bounded downstream fitting procedure, rather than creating a fixed flat table
+once and treating it as the entire database.
+
+A many-to-one relationship contributes child summaries at the parent grain.
+Those features may continue upward through additional joins and reductions.
+Path-specific aliases distinguish repeated occurrences of a base table.
+Structural keys route records; they are excluded from the CatBoost payload,
+along with the current target and routing columns. Entity history can still
+contribute through explicitly constructed, time-safe relations.
+
+The matrix is an interface to the learner. Information can be lost in the
+chosen representation, but a matrix interface does not imply that the features
+were computed from one original table. Conversely, adding columns cannot
+recover distinctions already erased by a reduction. Two entities with the same
+means and counts may have different event ordering, category-conditioned
+outcomes, or neighbor structure. The families below preserve some of these
+distinctions within a finite program budget.
+
+The benchmark learner is CatBoost [@prokhorenkova2018catboost]. Other native
+learner integrations are separate interfaces; this release does not substitute
+a foundation model during the staged benchmark search or final prediction.
+
+# Temporal and data contracts
+
+## Source time and knowledge time
+
+For a strict timed source row $r$, a request cutoff $t$, and a phase knowledge
+boundary $b$, source visibility requires
+
+$$
+\tau(r)<t, \qquad \tau(r)<b.
+$$
+
+When an independent availability clock $a(r)$ is declared, the phase export
+also requires $a(r)\leq b$. Event time and availability answer different
+questions: when an event occurred, and when the forecasting procedure could
+know it. Advancing a query clock must not advance a frozen phase's knowledge.
+RelBench timed-table adapters declare strict event boundaries. An explicit
+strict boundary cannot be relaxed by a legacy compatibility offset.
+
+Filtering precedes annotation, category discovery, and feature materialization.
+The task context creates censored phase exports before provider discovery.
+Prediction contexts contain request keys and permitted source data, without
+held-out answers. Validation truth is used at the declared validation phase;
+held-out test scoring happens outside the prediction procedure after selection
+and keyed predictions are saved.
+
+A source without clocks must be explicitly declared timeless. That declaration
+is a caller responsibility, not an inference that an undated mutable table was
+historically available. A source clock also does not reconstruct past versions
+of overwritten values. Correct point-in-time inputs remain necessary.
+
+## Historical target relations and peer context
+
+Observed targets can provide useful prior state when the entity key is removed
+from the learner. KurveRSC can expose mature training labels as a bounded child
+relation. A label's query timestamp being earlier than the current request is
+necessary but insufficient: its prediction horizon must have matured, and any
+declared label availability must satisfy the relevant training boundary.
+Held-out targets are never added to this relation.
+
+The history provider uses the observed-label source rather than the sampled
+CatBoost rows. Consequently, a model-row cap need not erase earlier known
+labels. The staged recipe also bounds peer-history discovery to 50,000 history
+rows. Counts, means, recency, and peer summaries are therefore bounded
+representations rather than a promise to expose every historical observation
+in every provider.
+
+Generic peer context uses declared relationships and visible history. It can
+summarize other entities attached to common objects while excluding the current
+root's own contribution where the peer definition requires it. Peer-label
+availability may be stricter than the general source-export rule; the provider
+applies its own conservative visibility checks. This is separate from the
+removed exposure and bounded-view heads.
+
+## Request preservation and replay
+
+A strict cutoff can hide the root row itself, for example when it was created
+exactly at the request time. The forecast request remains valid: its key and
+position are retained, and unavailable payload becomes missing. Dropping such
+requests would change the evaluation cohort.
+
+A frozen plan records source bindings, path instances, operations, feature
+schema, category choices, and applicable numeric cutpoints. Prediction restores
+and verifies those bindings rather than rediscovering a graph. The source
+superset must support every offered repeated-table configuration. The current
+implementation corrects a mismatch between the offered path space and the
+source graph and checks restored bindings during replay.
 
 ```{=latex}
-\Needspace{14\baselineskip}
+\Needspace{20\baselineskip}
 ```
 
-## Three interfaces with different contracts
+# Representation space
 
-| Interface | Contract |
-|----------------------------|------------------------------------------|
-| `kurversc.fit()` and `predict()` | Native graph search/fitting and frozen-plan prediction. Caller controls their settings. |
-| `kurversc.run_staged_task()` | Complete fixed staged procedure: graph search, finalist checks, temporal policy, signal/readout challengers, refitting, keyed prediction. |
-| RelArena `KurveRSC20261022System.run` | Submitted thin adapter to the packaged staged entry point; the harness retains responsibility for held-out scoring. |
+## GraphReduce feature families
 
-Installing a package with the old version number and calling bare `fit()` does
-not identify or reproduce the reported complete system. The candidate wheels
-still carry development version labels `kurversc==0.1.1` and
-`graphreduce==1.10.17`; their exact bytes and the runtime lock identify this
-implementation. Appendix A records the hashes. The review branches prepare release versions 0.2.0 and 1.10.18 with the same
-Python payload before version stamping. Exact Git commits and a workspace
-lock identify the review installation; neither version is claimed published
-to PyPI by this report.
+The fixed procedure builds candidates from applicable families and declared
+schema relationships. The following descriptions concern ordinary GraphReduce
+features, not the removed recovery heads [@graphreduce].
 
-# What changed
+| Family | Signal represented |
+|:----------------|:---------------------------------------------------------|
+| `base` | Standard numeric and categorical reductions, with bounded numeric distribution sketches in this recipe. |
+| `temporal` | Numeric magnitude, dispersion and change within historical windows. |
+| `state` | Latest values, ordered lags and summaries of the last several events, useful for irregular event cadence. |
+| `sequence` | Activity rates, recent shares, concentration, bursts and active spans. |
+| `conditional` | Counts, shares, presence and change under bounded categorical or annotated conditions. |
+| `episode` | Event opportunity through row and distinct-event counts, including windowed counts. |
+| `context` | Peer-group size and numeric deviations computed on child rows before reduction. |
 
-The essential difference is that representation selection, temporal support, and
-final inference now form one explicit, validated procedure. The following table
-compares the published reference procedure with the frozen staged procedure.
-Some capabilities appeared in intermediate versions; this table describes the
-net change rather than assigning each change to a particular release number.
+GraphReduce also accepts caller-declared semantic expressions and predicates.
+These are available natively; the fixed staged recipe does not automatically
+invent arbitrary semantic expressions or add the removed semantic correction
+stack. Parent/root payload and applicable annotations remain available, subject
+to the same source visibility and payload budgets.
 
-| Component | Published reference procedure | Frozen staged procedure |
-|------------------|-------------------------------|---------------------------------------------------|
-| Graph evidence | Complete latest-cutoff graph search | Bounded 10K/50K screening and confirmation, historical promotion, then full-source temporal reranking |
-| Search admission | Small finalist set after graph scoring | Structural coverage and confidence-frontier retention, with explicit per-stage ceilings |
-| Finalists | Three graphs, three sequential cutoff folds | Up to 12 reranked graphs; an additional bounded MAE comparison can test one smaller surviving finalist |
-| Topology | Path-specific acyclic expansion | Bounded repeated-table paths, represented by distinct aliases in an acyclic execution graph |
-| Observed outcomes | Target and entity keys excluded from learner payload | Keys remain structural; observed labels can return through an availability-aware historical child relation |
-| Peer signal | Ordinary child aggregates | Separate time-filtered peer-label moments and recency-weighted summaries, excluding the query entity's own outcomes |
-| Numeric distributions | Primarily scalar reductions | Bounded empirical-CDF sketches inside `base`; frozen recipe enables them |
-| Event state | Aggregate counts and window summaries | Searchable ordered lags, latest values, and trailing event-count windows via `state` |
-| Source columns | Bounded source-column funnel | Explicit intelligent selection, detailed feature audit, and bounded categorical tie refinement after promotion |
-| Temporal fitting | One initial production cutoff | Preserve that incumbent; test pooled/support alternatives separately using the production lifecycle |
-| Readout | Direct CatBoost output | Bounded text, exposure, domain, zero-aware, recurrence, semantic, count and complementary-view challengers, subject to applicability and admission |
-| Temporal validation | Graph-fold score and stability | Recent-fold safety plus older-fold stability; paired entity-aware evidence for later procedure changes |
-| New databases | Library/benchmark-specific assembly | Explicit task context with source keys, clocks, horizons, observed labels and target-free requests |
-| Reproduction | Frozen graph and fitted learner | Checksummed complete procedure, phase snapshots, model/member identity, keyed outputs and resumable stages |
-| Execution cost | Smaller graph-only workflow | More post-search comparisons; disk-backed historical capture and reduced copies control avoidable cost |
+## CDF sketches inside `base`
 
-The downstream estimator remains a conventional CPU learner. The reported
-complete recipe uses CatBoost, with bounded linear or other CatBoost readouts
-where declared by a challenger. It does not invoke TabPFN or TabFM to produce
-these benchmark predictions. Optional foundation-model backends in the native
-library are a separate capability.
-
-## Division of responsibility
-
-GraphReduce implements relational execution: table/edge operations, time-aware
-filtering, annotations, type-aware reductions, feature families, and replayable
-plans. KurveRSC supplies the prediction task, observed-label relation, peer
-provider, candidate search, learner fitting, temporal policy and challenger
-selection. The source adapter declares availability and exports the correct
-phase of the database. The benchmark harness owns held-out answers and scoring.
-
-This division keeps reusable representation primitives in GraphReduce while
-keeping supervised selection and task-label semantics in KurveRSC. A peer-label
-provider is different from GraphReduce's `context` family: the latter computes
-within-source peer comparisons on ordinary rows, whereas the former uses mature
-historical outcomes from other entities.
-
-# Relational compression and claims about flattening
-
-## What the published criticism says
-
-The criticism deserves a precise response. Fey et al.'s ICML 2024 position paper
-argues that manual relational feature engineering is laborious and can select
-suboptimal features; it proposes end-to-end learning on temporal heterogeneous
-graphs [10](https://proceedings.mlr.press/v235/fey24a.html). KumoRFM-2's introduction specifically criticizes
-"generic, task-agnostic feature aggregation schemes" that
-"fail to exploit task-specific relational structure" [15, Section 1](https://arxiv.org/html/2604.12596v1#S1).
-Kumo's explanatory documentation uses the heading "Why flat tables fail" and
-identifies multi-hop relationships, temporal sequences, topology and combinatorial
-interactions as information that ordinary flattening can discard [29](https://docs.nvidia.com/sdgm/research/concepts-models/relational-deep-learning).
-
-Those are substantial objections to a fixed or manually restricted
-representation. They are not a theorem that every representation materialized
-as an entity-by-feature matrix must be predictively inferior. In particular,
-the KumoRFM-2 passage distinguishes the expense of feature engineering from the
-limitations of task-agnostic aggregation; it does not establish a universal
-noncompetitiveness result for task-adaptive relational programs.
-
-## A tabular interface can contain a relational representation
-
-KurveRSC operates on tables, paths, timestamps, historical outcomes and peer
-memberships before producing the learner's matrix. The task's validation
-objective selects which relational program survives. Ordered state, conditional
-histories, CDF sketches, repeated-table paths and peer outcomes provide concrete
-examples of relational information that can reach that matrix. The graph
-operators need not be differentiable for their selection to depend on the task.
-
-The substantive distinction is therefore **how relational information is
-compressed and adapted to the task**, rather than simply whether the final
-learner consumes rows and columns. A fixed mean/count table and a selected
-relational program can have the same output shape while retaining very different
-predictive information. Task-level program selection is still different from
-learning the aggregation weights end to end; our results do not make those
-mechanisms equivalent.
-
-Compression also need not preserve every source detail to preserve a prediction.
-If a representation $\phi_q(\mathcal D,e,t)$ satisfies
-
-$$
-P(Y\mid\mathcal D,e,t)
-=P(Y\mid\phi_q(\mathcal D,e,t)),
-$$
-
-then it retains the task's conditional outcome distribution despite discarding
-other database information. This is a sufficiency criterion, not a claim that
-the current finite feature families satisfy it. Work on invariant set functions
-shows why aggregation must be judged by its transformations and assumptions;
-work on GNN expressivity likewise shows that learned neighborhood aggregation
-has representational limits [20](https://proceedings.neurips.cc/paper_files/paper/2017/hash/f22e4747da1aa27e363d86d40ff442fe-Abstract.html), [21](https://arxiv.org/abs/1810.00826). Neither result proves universality for
-GraphReduce's bounded scalar features or an equivalence to a relational GNN.
-
-## What the current results challenge
-
-The fresh 21-task scorecard places this compression-plus-learner procedure
-first by point Elo on the captured 15-method panel, which includes relational
-GNN and foundation-model systems. That is empirical counterevidence to a blanket
-claim that relational compression followed by a conventional tabular learner
-cannot be competitive. The particular panel and uncertainty matter:
-the lead is 11.5 Elo and the bootstrap intervals overlap. The completed
-author-run reproduction is not yet a confirmed public leaderboard submission
-or evidence of superiority on every task.
-
-The conclusion also has independent context. RDBLearn and TabPFN-Rel materialize
-relational features for a tabular foundation learner [17](https://arxiv.org/abs/2602.18495), [16](https://arxiv.org/abs/2608.16319v2). The RelArena
-report explicitly presents this approach as evidence that such representations
-remain competitive with specialized relational architectures [16](https://arxiv.org/abs/2608.16319v2). KurveRSC
-adds evidence for task-selected relational programs with a conventional CPU
-learner, rather than establishing the general idea of automated relational
-feature construction for the first time.
-
-Our captured panel does not contain a matched KumoRFM-2 result. Consequently,
-these experiments do not establish a direct win over KumoRFM-2. A comparison
-would need matched database availability, task coverage, splits and scoring,
-with external pretraining, training time and inference cost disclosed. RelArena
-also separates reproduced leaderboard rows from paper-reference results with
-different provenance [4](https://github.com/PriorLabs/relarena). Nor do our hours-long searches refute Kumo's claims
-about the convenience or latency of in-context prediction, or establish
-billion-row scalability. The defensible conclusion concerns the competitiveness
-of the architecture on this measured task panel.
-
-## Selection fidelity is a separate source of headroom
-
-The unresolved search problem is meaningful precisely because it is distinct
-from a representational ceiling. Let $J_{\mathrm{full}}(q;p)$ be a common
-full-fidelity temporal-validation score for graph/plan $q$, holding fitting
-procedure $p$ fixed. Use AUC or negative MAE so larger is better. For a declared
-candidate set $\mathcal Q$ and selected $\hat q$, define
-
-$$
-q^*=\arg\max_{q\in\mathcal Q}J_{\mathrm{full}}(q;p),\qquad
-\operatorname{Regret}_{\mathrm{selection}}
-=J_{\mathrm{full}}(q^*;p)-J_{\mathrm{full}}(\hat q;p).
-$$
-
-A positive value means that the existing candidate space already contains a
-better full-fidelity validation configuration. It would motivate a selector
-improvement without requiring another feature family. A second failure mode
-occurs within a graph shape: the plan discovered from a capped cohort can omit
-rare categories or interactions that a richer, still time-eligible discovery
-sample would expose. A graph surviving promotion therefore does not prove its
-frozen plan captured every useful source pattern.
-
-These are testable opportunities, not measured guarantees of extra Elo. The
-current report has not established an exhaustive oracle for every task, and a
-validation winner need not improve future test performance. The next controlled
-audit should separately measure candidate retention and plan-discovery loss:
-compare the same programs and fitting policies at 10K, 50K and full fidelity;
-measure winner retention and selection regret; and then compare capped versus
-full-source plan discovery for the same retained shapes. These comparisons must
-use training/validation data, preserve temporal boundaries, and leave the final
-test for locked evaluation. The objective is better allocation of evidence to
-existing relational hypotheses under the runtime budget, rather than an
-unbounded expansion of the graph lattice.
-
-# Representation and temporal contract
-
-Let a task predict outcome $y_{e,t}$ for entity $e$ at time $t$, with label
-horizon $h$. Let $\tau$ be the information boundary of the current validation or
-forecast phase. A graph program $q$ produces
-
-$$
-x_q(e,t;\tau)=\operatorname{GraphReduce}
-  (q,\mathcal D_{\mathrm{visible}}(t,\tau),\mathcal H_{\mathrm{observed}}(t,\tau)).
-$$
-
-The program records path instances, depth, families, annotations, payload
-budgets, target-history participation, categorical decisions and temporal
-semantics. A second policy $p$ specifies eligible label cohorts, estimator mode,
-readout, blend and member identities. The fitted predictor is $f_{q,p}$.
-KurveRSC selects these in bounded stages. It does not exhaustively optimize
-every pair in the full Cartesian product of graph and readout choices.
-
-## Source visibility and label maturity
-
-Event time and observation time are separate declarations. With ordinary strict
-event semantics, a source row contributes only before its query cutoff; an
-explicit inclusive declaration admits rows known at the cutoff. An optional
-`available_at` clock additionally constrains arrival. Both the row's query
-boundary and the phase's frozen availability boundary apply. Timestamp precision
-is retained; subday events do not require rounding a query down to a day.
-
-For labels, the default portable contract sets availability to $t+h$. A caller
-may supply a later or row-specific observation clock. The complete portable
-entry point rejects labels declared observable before their horizon finishes.
-An initial-fit label must already be mature before the first observed-refit
-cohort; refit labels must be mature by the corresponding forecast origin.
-
-Historical-target joins use the label's observation clock when supplied. Such
-explicit known-by-time clocks are inclusive; the legacy bare `Labels` contract
-without an observation clock uses a strict historical timestamp. Peer-history
-contributions are stricter: availability must be strictly before the query cutoff.
-These distinctions are part of the input contract, not choices selected on test
-performance. The active peer provider bounds its pool before applying each
-query's maturity filter, as detailed below.
-
-Every retrospective origin receives its own eligible source snapshot. Replaying
-an old query against an uncensored future database would leave automatic
-category selection, text bases and peer construction exposed to future data,
-even if a final aggregate applied a timestamp predicate. Phase freezing covers
-those preparation steps as well as learner rows.
-
-## Held-out boundaries and routing
-
-The complete portable context receives observed training and validation labels,
-and forecast requests containing entity/time keys without a target column. It
-does not load a benchmark task registry to recover missing information. Inner
-selection and outer forecast contexts are distinct; a forecast's later timestamp
-does not authorize source arrivals beyond the caller's frozen phase.
-
-Predictions carry entity/time keys through each stage and are joined to the
-original request order. An array of the right length is insufficient evidence
-of correct alignment. Structural keys route joins, peer exclusion, folds and
-output alignment; they are excluded from learner payloads.
-
-Row timestamps cannot reconstruct overwritten database attributes. The caller
-must supply historical versions or snapshots for mutable fields. Declaring a
-current mutable table `timeless=True` does not establish historical correctness.
-Likewise, excluding held-out task labels does not establish that an external
-pretrained encoder has never encountered related public source text.
-
-# Relational signal construction
-
-## Historical targets and peer outcomes
-
-KurveRSC can attach the full unsampled observed training-label pool as the
-reserved `__kurversc_target_history__` relation, with entity keys, an observation
-timestamp and a numeric target value. The history pool is independent of the
-10K/50K search cohorts. During inner validation it contains training outcomes;
-later prediction may additionally use observed validation outcomes subject to
-their availability. Ordinary GraphReduce reductions then expose prior counts,
-means, recency and other permitted history summaries for an entity. A candidate
-can omit this relation entirely.
-
-Peer context captures a different question: how have other entities sharing a
-declared relational neighborhood behaved? Memberships are derived from the
-schema. The active provider first bounds the observed history pool with a
-target-blind hash of entity/time identities. Each query then filters that pool
-for maturity, uses latest eligible outcomes, and excludes its own entity's
-contribution. The frozen recipe requests both ordinary and recency-weighted
-summaries, with at most 50,000 historical rows. Ordinary limits are eight paths,
-128 neighbors and 10,000-row query batches; large histories use four paths and
-32 neighbors.
-
-Sampling before query-local maturity can reduce usable historical support:
-rows unavailable to an older query can occupy slots in the bounded pool. A
-separate maturity-first sampler exists in `peer_sampling.py`, but it is not
-wired into the active frozen graph provider. This report does not attribute
-that experimental sampling correction to the reported default. The optional
-latest-completed peer view is a separate later challenger with its own contract.
-
-For example, the signal can distinguish a user's own past activity from the
-past outcomes of users connected to the same objects. This is supervised,
-time-aware relational signal, so its maturity and leave-own-entity-out rules
-are essential. It is not equivalent to sending an entity ID to CatBoost.
-
-## Feature families and bounded numeric distributions
-
-| GraphReduce family | Information retained |
-|----------------|------------------------------------------------------------------------------------|
-| `base` | Counts and type-aware reductions; recency, relationship diversity/repetition, bounded predicate history, exposure-normalized activity and numeric distribution sketches |
-| `temporal` | Numeric magnitude, variation and change inside historical time windows |
-| `state` | Latest values, ordered lags and summaries of the last $N$ events, suitable for irregular event cadence |
-| `sequence` | Activity rates, recent shares, concentration, bursts and active spans |
-| `conditional` | Counts, shares, presence and changes under categorical/annotated conditions |
-| `episode` | Event opportunity through row counts and distinct-event counts, including windows |
-| `context` | Peer-group size and numeric deviations on ordinary child rows before reduction |
-| `semantic` | Caller-declared expressions and predicates; available in GraphReduce, outside automatic generic family discovery |
-
-Automatic annotation may expose bounded categorical predicates and gated numeric
-values. Root/parent columns also remain eligible inputs, with applicable
-annotations such as parent age. This should not be confused with fitting an
-AutoGluon model on every parent field; that is not part of this recipe.
-
-CDF means cumulative distribution function. For selected numeric column $v$,
-GraphReduce fits up to seven quantile cutpoints on an eligible training sample
-of at most 20,000 rows. At entity grain it emits the finite-value coverage and
-bounded empirical fractions
+For an eligible numeric payload $v$, bounded training-only quantile cutpoints
+$c_j$ summarize more than a single mean. For entity $e$ at cutoff $t$, the
+empirical fraction is
 
 $$
 \widehat F_{e,t}(c_j)=
@@ -441,1066 +296,551 @@ $$
      {\sum_{r\in R(e,t)}\mathbf 1[v_r\text{ finite}]}.
 $$
 
-Empty support remains missing. Constant, binary and entirely unobserved columns
-do not create these sketches. Cutpoints are frozen as SQL literals in the plan;
-validation and forecast values do not refit them. This preserves distinctions
-such as a broad distribution versus a concentrated distribution with the same
-mean. It remains a bounded sketch, not an arbitrary empirical distribution or
-learned row-level message-passing representation.
+GraphReduce fits up to seven cutpoints from at most 20,000 eligible training
+rows and also records finite-value coverage. Empty support stays missing;
+constant, binary and entirely unobserved columns do not create these sketches.
+Cutpoints are frozen in the execution plan and are not refitted on validation
+or forecast data.
 
-CDF features belong to `base`, not a new family. The current complete recipe
-sets `base_cdf=True`. Native configuration and matched diagnostic interfaces
-can compare CDF on/off, but this frozen all-21 recipe does **not** double every
-graph into an on/off pair. That is an important difference between available
-configuration knobs and the actual reported defaults.
+CDF is part of `base`, not an additional family. **The fixed staged recipe sets
+`base_cdf=True`.** Native and diagnostic interfaces can compare CDF on/off, but
+the published recipe does not double its entire graph menu into both forms.
+A bounded sketch preserves some distributional differences; it does not retain
+the complete empirical distribution or every cross-column dependency.
 
-## Bounded repeated-table paths
+## Depth, repeated tables, and payload limits
 
-A relational walk may revisit a base table while the executable compute graph
-remains acyclic. KurveRSC creates separate table instances for separate paths.
-An occurrence limit of one reproduces acyclic path discovery; a limit of two
-admits bounded self/peer paths, for example entity to association to another
-entity of the same type. The staged search includes these topology alternatives
-as bounded challengers. Depth remains at most four. It does not traverse
-unbounded cycles, nor run a Graph Neural Network over every database row.
+Candidates can reach depth four. An occurrence limit of one gives paths without
+repeated base tables; a limit of two admits bounded self/peer constructions.
+The executable graph remains a DAG because repeated tables have distinct path
+instances. This permits bounded walks through a cyclic relational schema
+without unbounded traversal.
 
-## Payload budgets and categorical refinement
+The staged source-column budget is four payload columns per family/node, up to
+32 derived features per selected source column, and one continuation function
+per propagated derived column. Structural keys, dates and context keys remain
+outside the payload budget. Deterministic column ranking uses coverage,
+entropy, spread, cardinality and identifier redundancy. The feature audit stores
+utility rank, selection rank, strategy and budget eligibility.
 
-The reference source-column budget is four columns per family/node, with up to
-32 derived features per selected source column and one continuation function
-per propagated derived column. Structural join keys, dates and context keys
-remain outside the payload-column budget. A deterministic metadata ranking uses
-coverage, entropy, spread, cardinality and identifier redundancy; the feature
-audit records both utility rank and actual selection order. Disabling
-`intelligent_column_selection` preserves configured/source order for ablation.
+After promotion, categorical refinement tests bounded tie choices for up to two
+parent shapes. Available tie seeds are 0 through 7; the stage permits eight
+evaluations in total. These are distinct from the three model seeds used in
+procedure validation. Modern high-cardinality handling and a compatible anchor
+provide bounded alternatives; no payload policy exposes an unlimited set of
+identifiers or free-text features.
 
-Categorical ties can change which frequent values reach a bounded annotation.
-After stronger graph shapes survive promotion, a small refinement stage tests
-seeded deterministic category tie decisions for up to two parent shapes. Seeds
-0 through 7 define the available tie variants; a total stage budget of eight
-limits evaluations. These are categorical tie seeds, distinct from CatBoost
-seeds 0, 1 and 2 used in procedure validation.
-
-The staged recipe uses modern high-cardinality handling (`skip`, with text
-categorical fallback disabled), alongside a published-compatible anchor in the
-search machinery. It does not globally force every graph to reproduce
-GraphReduce 1.10.14's top-category behavior. Compatibility semantics, annotation
-operations and ordering are recorded in the chosen configuration and plan.
-Graph-level `auto_text_features` remains disabled; the bounded text readouts
-described below are tested after graph promotion.
-
-# Bounded graph search with increasing fidelity
-
-The system must retain useful higher-order candidates long enough to evaluate
-them fairly, while avoiding a full depth/family/history/topology Cartesian
-search. The frozen `staged-retention` profile does this with candidate ceilings,
-structural coverage, and promotion of uncertainty-competitive configurations.
-
-## Fidelity changes more than the number of learner rows
-
-The low-cost adapter constructs deterministic, cutoff-balanced task cohorts and
-their connected source rows. Cheap child sources can also be capped. A label
-cohort increase therefore changes the eligible connected subgraph as well as
-the estimator evidence. This is why a 10K screen is an approximation to a
-full-source evaluation, not an equivalent fit with fewer trees.
-
-Plan discovery and promoted evaluation use separate sources. Promotion replays
-the candidate's frozen operations/schema instead of silently discovering a
-different candidate as history expands. Full reranking uses uncapped eligible
-source tables for its selected cutoffs. Source completeness at this stage does
-not remove the separate 100,000-row budget per CatBoost fit.
-
-The initial search uses the smallest available window with adequate evidence:
-normally at least three and at most 12 training cutoffs, seeking at least 256
-labels and, for binary tasks, at least 24 examples in each class. Short histories
-use the available support. This window is selected from training evidence and
-does not change the independently configured initial production-frame count.
-
-## Reference stage ceilings
-
-| Stage | Candidate ceiling | Evidence or purpose |
-|---------------------------|-----------:|-------------------------------------------------------------|
-| Screening | 32 | 10,000-row screening fidelity; balanced structural coverage |
-| Individual challengers | 24 | Bounded additions such as history, state, context, topology and deeper paths |
-| Combined challengers | 12 | Bounded combinations supported by earlier evidence |
-| Confirmation | 40 | 50,000-row fidelity; retain score and confidence-frontier contenders |
-| Historical fidelity promotion | 8 | Stronger temporal support with the candidate's plan frozen |
-| Categorical refinement | 8 | Seeded tie variants after promotion, rather than multiplying the initial lattice |
-| Full temporal rerank | 12 | Full-source evaluation over up to three cutoff folds |
-
-These are upper bounds, not promised counts of unique graph configurations.
-Candidates repeat across fidelities; inapplicable shapes are pruned; cache hits
-do not require another fit. The sum of these stage ceilings is 136 evaluations
-before accounting for repeats, folds, estimator members and later procedure
-audits. It must not be described as 136 unique graphs or 136 total learner fits.
-
-Depths 1 through 4 are available subject to family/topology and capability
-limits. Expensive family combinations retain depth restrictions. Annotation
-on/off, historical targets, bounded repeated-table paths and compact versus
-richer family combinations receive coverage without exhaustive pairing of
-every axis. Static feature preflight rejects configurations estimated to exceed
-the 10,000-feature search ceiling. Estimated width is a planning constraint,
-not a rigorous bound on SQL working memory.
-
-## Full-fidelity comparison and complexity
-
-The latest fold defines the recent leader and an uncertainty-aware safe set.
-The selector rejects a candidate when recent evidence clears both a practical
-loss threshold and its uncertainty comparison. Within the surviving set, a
-stability-adjusted walk-forward objective breaks ties. For fold scores $s_k$,
-the objective rewards average quality and penalizes fold-score uncertainty;
-the reference stability multiplier is 0.25.
-
-With the complexity selector enabled, a graph can replace that winner only as a
-practical uncertainty-equivalent alternative with at least a twofold feature
-reduction. The complexity substitution loss is capped at 0.01 AUC or 1% relative
-MAE, using paired fold differences where available. This avoids letting a large
-uncertainty estimate justify an arbitrarily large accuracy loss for simplicity.
-The frozen registered metadata records `rerank_practical_recent_ties=False`;
-the complexity cap is not a blanket 1% bound on every stability-based choice.
-Nested-depth safety is also disabled in the complete graph command.
-
-An additional MAE-only production-finalist check can compare the selected graph
-with at most one already-surviving graph having at most half as many features.
-It replays the complete initial fit plus observed-validation refit over two or
-three available origins and three seeds. Replacement requires unanimous seed
-selection and per-fold practical safety. Target-blind capacity preflights
-retain the incumbent when a complete comparison cannot fit the declared budget;
-partial evidence cannot promote a challenger.
-
-# Matching selection to final fitting
-
-## Temporal support is selected after the graph
-
-The graph-stage incumbent keeps `full_training_frames=1` and
-`temporal_estimator_mode="frame_ensemble"`. Historical search confidence does
-not automatically add old equally weighted models to final inference.
-
-After graph selection, the basic temporal menu is:
-
-| Policy | Fitting procedure |
-|------------------------------------|----------------------------------------------------------------|
-| `incumbent` | One initial frame ensemble, followed by eligible observed-validation member fits |
-| `pooled12` | One estimator over up to 12 selected historical cohorts |
-| `floor1000` | Pooled support expanded to meet a minimum of 1,000 eligible labels where available |
-| `ordered_same_support` | Regression-only ordered-median readout on matched support |
-| `ordered12` | Regression-only ordered-median readout on broader historical support |
-
-The declared temporal blend grid adds 0.125 and 0.5 challenger weights using
-already-fitted paired predictions. A pooled fit divides a global 100,000-row
-budget across its cohorts. A frame ensemble instead gives each member its own
-bounded training sample, so adding members can increase total fit cost and
-training coverage. These are different procedures and must be compared as such.
-
-The base CatBoost policy remains 300 iterations, depth 6, learning rate 0.05 and
-L2 regularization 10. Search uses held-out evaluation/early stopping where
-declared. Final fitting uses the selected procedure without consulting forecast
-targets. Some bounded specialist/teacher heads have their own fixed budgets;
-it would be inaccurate to describe the complete system as one 300-tree model.
-
-## Retrospective origins, seeds and paired confidence
-
-Later procedure comparisons use up to three chronological origins and seeds
-0, 1 and 2. Available origins must provide complete matched predictions for a
-candidate to be admitted. Validation recreates the same initial support,
-label-maturity rules, observed-validation refit, sampling, feature schema and
-member aggregation that inference will use.
-
-Entity-clustered paired uncertainty accounts for repeated entities. The temporal
-gain calculation gives half the weight to the latest origin and shares the
-other half among older origins. Shared entity bootstrap multipliers preserve
-dependence across time. A positive recent deployment-seed gain, seed agreement,
-confidence and older-origin safety govern admission; unsupported comparisons
-retain the incumbent. Later readout gates additionally require the complete
-available origin/three-seed grid and, where specified, positive gains in every
-case. Multiplicity allowances are fixed by stage, not chosen after observing
-official scores.
-
-These safeguards reduce selection risk. They do not establish a no-regression
-guarantee under temporal shift, nor correct for every research hypothesis
-explored before freezing the pipeline. Three retrospective seeds are evidence
-for selection; the deployed procedure uses seed 0 rather than a test-selected
-seed or an automatic three-seed prediction ensemble.
-
-## What is ensembled at prediction time?
-
-Graph finalists compete to select **one graph program**; their predictions are
-not automatically averaged. Inside that graph, the admitted fitting policy may
-use multiple estimators. A frame-ensemble policy averages its initial-frame and
-eligible observed-validation member predictions. A pooled policy fits one
-estimator to its pooled sample. An admitted blend combines the declared
-challenger with the incumbent using the locked weight.
-
-Thus, "three training frames" is neither "three graphs" nor necessarily exactly
-three models at prediction: observed-validation member fits can add members.
-The saved fit audit records actual membership. It is the authoritative answer
-for a particular task.
-
-# Optional signal and readout stages
-
-Optional means **conditionally applicable and validation-admitted**. In the
-complete staged recipe these stages are checked automatically; a user need not
-manually select a known winner. They remain separate from the bare native
-`fit()` defaults. They also remain separate from the graph-family lattice,
-preventing each new downstream hypothesis from multiplying all graph candidates.
-
-| Stage | Candidate signal or procedure | Principal safeguard |
-|------------------|------------------------------------------------|----------------------------------|
-| Parent text | Train-only bounded TF-IDF with regularized linear readouts and 25%/50% blends | Eligible root text, matched temporal evidence |
-| Exposure quality | Schema-derived timestamped exposure/event/object paths, ordinary binary responses and other-entity priors | Cutoff checks, own-entity exclusion, matched support and regularization variants |
-| Extra support | Three/five initial-frame ensembles with the same observed-validation procedure | Exact support availability and full procedure comparison |
-| Target domain | Nonnegative projection or integer-count projection where mature labels support it | Training-only domain detection and validation admission |
-| Zero-aware regression | Separate zero/positive behavior with a distribution-aware readout | Actual sampled-cohort support; unavailable optional head retains comparator |
-| Object history | Phase-frozen object breadth and history | Source metadata, mature labels, bounded complete audit |
-| Recurrence | Activity timelines, dormant-return patterns and additional historical support | Same forecasting/refit lifecycle |
-| Joint semantic recurrence | Frozen parent-text embeddings with cross-fitted supervised propensity and recurrence information | Train-only projection, out-of-fold supervision, independent replay |
-| Conditional count | Count-specific downstream challenger after an admitted integer projection | Complete grid, fixed weights and native replay |
-| Production sequence | Sequence algebra and precise subday sequence heads | Qualified binary native lifecycle; preserve already-admitted procedures |
-| Complementary views | Bounded peer history, object co-occurrence coordinates and ordinary-response annotations in separate heads | Fixed three-view mean, locked blend grid, native parity and capacity preflight |
-
-The first signal menu has eight default recipes: two text blends, four exposure
-variants and two frame-support variants. Experimental partial-exposure blends
-available to standalone audits are not silently part of that frozen eight-arm
-menu. The recovered-readout stage has nine named candidates grouped by target
-domain, zero awareness, objects, recurrence and semantic recurrence. Subsequent
-count, sequence and complementary-view stages have narrower applicability.
-
-Capacity is explicit. Recovered optional readouts use a 500-million-feature-cell
-limit, with semantic limits of 500,000 rows and 200,000 documents. Sequence and
-complementary views use 125 million cells and 250,000 rows; complementary views
-add at most 112 columns. The MAE finalist check has its own one-billion-cell
-optional-fit and three-billion-cell audit-matrix limits. These are not caps on
-all graph materialization or total task RSS.
-
-Later stages preserve already-admitted procedures when their validation/inference
-adapter cannot reproduce that procedure exactly. For example, the current
-sequence stage qualifies an incumbent frame-ensemble lifecycle, while the
-complementary-view stage qualifies a direct pooled lifecycle. Explicitly
-inapplicable or over-capacity candidates yield an exact incumbent fallback.
-Unexpected numerical, provenance or control-replay failures remain errors;
-they are not silently reported as a successful weaker model.
-
-## External text representation disclosure
-
-The semantic challenger pins
-`sentence-transformers/all-MiniLM-L6-v2` to the following revision:
-
-```text
-1110a243fdf4706b3f48f1d95db1a4f5529b4d41
+```{=latex}
+\Needspace{18\baselineskip}
 ```
 
-It uses frozen 384-dimensional CPU embeddings and a training-only basis of at
-most 32 dimensions. Encoder weights
-are not fine-tuned on task labels. Its public training mixture includes
-StackExchange data; this is an external pretrained representation with possible
-source-domain overlap, not a database-trained encoder with a guaranteed
-chronological pretraining boundary. [Pinned model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md).
+# Staged graph search and increasing fidelity
 
-# Generalization to new databases
+Exhaustively fitting all depth, family, annotation and topology combinations at
+full fidelity is expensive. The `staged-retention` profile evaluates a bounded
+schema-derived menu, promotes survivors, then increases data fidelity. Search
+uses no saved task-to-winning-configuration lookup.
 
-The staged interface takes schema and task declarations, rather than a table of
-benchmark-specific winning graphs. `TaskContext.from_tables()` accepts source
-frames, primary/foreign keys, event and arrival clocks, observed labels, a
-prediction horizon, inner/outer boundaries and target-free requests. String and
-composite keys are canonicalized consistently for routing. The benchmark
-compatibility constructor, `from_protocol_splits()`, preserves the caller's
-already-censored tables, source order and temporal metadata so the benchmark
-handoff does not silently change the representation.
+| Stage | Max. | Purpose |
+|:-----------------------|:------:|:-------------------------------------------|
+| Screening | 32 | Initial comparison, nominally 10,000-example frames. |
+| Family/topology challengers | 24 | Applicable alternatives around retained candidates. |
+| Combined challengers | 12 | Bounded combinations of promising choices. |
+| Confirmation | 40 | Higher-fidelity comparisons, nominally 50,000-example frames. |
+| Historical promotion | 8 | Additional eligible historical-cutoff evidence. |
+| Categorical refinement | 8 | Deterministic categorical tie alternatives. |
+| Full rerank | 12 | Frozen-plan replay on full eligible source frames and up to three recent cutoffs. |
+
+These ceilings sum to 136 stage evaluations. They are neither a count of unique
+graphs nor a count of CatBoost fits. Applicability, duplicate configurations,
+available support and stage outcomes can reduce evaluations. Multiple cutoffs,
+seeds, temporal policies and optional heads can increase learner fits beyond
+that sum.
+
+Low-fidelity sampling can affect the connected source cohort as well as the
+examples scored by the learner. A 10K screening frame is therefore not always a
+cheap, otherwise identical estimate of the full-source graph. Rare categories
+and long relational paths can change. Frozen operations are replayed during
+promotion; full rerank removes the source-cohort sampling cap for its eligible
+frames. The downstream training-row limit remains separate.
+
+The staged recipe caps graph features at 10,000 and uses a 100,000-row learner
+fit limit. The fixed CatBoost budget is 300 iterations, depth six, learning rate
+0.05 and L2 regularization 10. These bounds control individual work items; they
+do not bound total materialized source data or total process-tree RAM.
+
+Search support is distinct from deployment support. The initial production
+policy remains `full_training_frames=1`, even when search or rerank evaluates
+several historical cutoffs. Wider production support must win as a complete
+training-policy candidate. Widening validation must not silently turn the final
+model into an equal-weight average of old models.
+
+The native graph selector uses recent-cutoff performance, older-cutoff stability,
+uncertainty and a bounded complexity preference. This is a heuristic for choosing
+among observed candidates. It cannot recover a graph discarded before full
+fidelity, nor guarantee the globally best program. The additional finalist
+comparison below specifically checks the production fitting lifecycle.
+
+# A symmetric production-faithful finalist check
+
+After full rerank, S2 considers at most one smaller completed finalist. It must
+have a frozen plan and complete evidence on at least two cutoffs. Screening
+compares recent validation loss with the best completed recent loss; the
+candidate must be within 1%. The bounded check proceeds only for an alternate
+with at most half the incumbent's feature count and sufficient evidence and
+capacity. Otherwise it retains the incumbent.
+
+Binary ranking and numeric regression use a common lower-is-better scale:
+
+$$
+L(s)=
+\begin{cases}
+1-s, & s=\operatorname{ROC\!\!-\!AUC},\\
+s, & s=\operatorname{MAE}.
+\end{cases}
+$$
+
+Here `1 - AUC` is pairwise ranking loss, counting a tied positive/negative pair
+as half an error. It is not classification error. At AUC 0.80, a 1% relative
+loss tolerance is 0.002 AUC; at AUC 0.98 it is 0.0002 AUC. The same rule therefore
+has comparable sensitivity on a relative loss scale rather than allowing a
+fixed 0.01 AUC loss near perfect ranking.
+
+Incumbent and candidate are compared on matching origins and seeds 0, 1 and 2,
+using the native initial-fit/observed-validation-refit lifecycle. The native
+metric, uncertainty estimate and graph selector are applied independently for
+each seed. Replacing the incumbent requires unanimous challenger selection and,
+for every compared seed and fold,
+
+$$
+L_{\mathrm{candidate}}\leq 1.01 L_{\mathrm{incumbent}}+10^{-12}.
+$$
+
+Incomplete comparisons do not promote a partially evaluated alternate. Capacity
+preflights and a nested stage timeout bound this extra work. This comparison is
+not another unrestricted graph search and does not change the downstream
+learner budget.
+
+Earlier versions applied S2 only to MAE. Version 0.2.0 extends it to both
+supported metrics using the same comparison mechanics. Thirty regression
+before/after comparisons reproduce the prior MAE decisions and evidence
+exactly. Classification has explicit acceptance and veto coverage. Neither
+check establishes that the smaller graph will generalize better in every case.
+
+# Temporal training policies and the generic optional menu
+
+## Training support and deployment lifecycle
+
+S3 evaluates complete temporal fitting policies against the selected graph on
+up to three eligible origins and seeds 0, 1 and 2. The initial incumbent uses
+the most recent complete training cutoff, with the declared observed-validation
+refit lifecycle. Alternatives include bounded pooled support, ordered regression
+readouts and temporal blends. The menu can consider up to twelve support
+cutoffs with a row floor of 1,000, subject to maturity and available history.
+
+Pooled training applies a shared model-row budget; frame ensembles can fit that
+budget per member. These have different computational and statistical meanings.
+Three validation seeds test repeatability of selection; they are not a default
+three-seed inference ensemble. Deployment uses seed zero. Nor does selecting
+three graph finalists imply that prediction averages three graphs: one graph
+is selected before temporal policy and optional readout selection.
+
+## One optional menu and one incumbent
+
+Each optional candidate challenges the same S3 incumbent, on the same phase
+exports and validation cases. Eligibility follows required inputs and declared
+capacity, independently of whether another optional candidate wins. There is
+no recovery cascade activated only when a preceding head keeps the incumbent.
+
+| Candidate group | Applicable inputs and globally shared action |
+|:--------------------|:-----------------------------------------------------|
+| Parent text | Eligible root categorical/text payload; bounded TF-IDF plus logistic or ridge readout, blended at 0.25 or 0.5. |
+| Frame ensembles | Mature historical support; complete three- or five-frame fitting procedure. |
+| Target domain | Regression targets observed to be nonnegative or integer counts; clip negative predictions or apply the integer-domain projection. |
+| Zero-aware | Nonnegative regression with adequate zero and positive examples; occurrence model plus positive-amount quantile readout, blended at 0.125, 0.5 or 1. |
+| Object breadth | Declared timed root-to-object relationships; object-history features with a fitted learner, full prediction or a 0.5 blend. |
+
+There are eleven named candidate recipes before applicability filtering. The
+menu is fixed globally, not chosen from a table of benchmark outcomes. The
+following settings define bounded implementations, not an assertion that these
+values are optimal for every database.
+
+The text head uses one shared text definition: at least 20 distinct values
+and mean nonempty length at least 32 characters. It uses at most eight
+root fields, truncates each to 2,048 characters, fits a training-only TF-IDF
+vocabulary of at most 16,384 word unigrams/bigrams, and samples at most 100,000
+training examples. Classification uses logistic regression with $C=1$;
+regression uses ridge regression with $\alpha=10$. This lexical head does not
+require MiniLM, PyTorch or Transformers. Character length is an imperfect proxy
+for language; admitting a column does not prove it contains semantic text.
+
+Target-domain projection uses eligible observed training targets, not test
+targets. The integer projection is distinct from the removed Poisson
+conditional-count head. The zero-aware candidate requires at least 20 zero and
+20 positive examples and fits positive-amount quantiles at
+$\{0.05,0.25,0.5,0.75,0.95\}$. Its readout approximates a predictive mixture
+with a mass at zero [@koenker1978quantiles].
+
+Object breadth considers timed declared paths to keyed objects with at least
+64 visible distinct objects, retaining the top two paths by distinct-object
+count. Its summaries cover object/event counts, new and singleton objects,
+maximum share and concentration over horizon-scaled windows. Source lookback
+is capped at 730 days. At most two paths produce 42 features. The cap can
+truncate a long-horizon window; using more eligible paths and scaling history
+limits with the task are remaining generality improvements, not changes in
+this release. The frozen aggregate query runs serially from the first query
+to avoid an unsafe native DuckDB parallel-combine path without changing the
+query, rows or features.
+
+## Shared temporal admission rule
+
+The optional selector requires at least two origins and three seeds. Every
+latest-origin seed must improve over the incumbent. Older origins supply a
+practical safety veto: no more than 0.005 AUC or 1% relative MAE degradation
+under the selector's older-origin checks. A paired, entity-cluster bootstrap
+uses 600 draws with $\alpha=0.05$ and a menu-size multiplicity adjustment; the
+temporal gain lower bound must be positive [@efron1979bootstrap]. If adequate
+support is unavailable, the incumbent stays selected.
+
+The recent-only lower bound is recorded as a diagnostic and is **not** a
+separate positive-bound requirement. This definition is shared by optional
+heads; there is no stricter, differently tuned gate for a selected recovery
+stage. S2's graph-complexity comparison is a separate operation with the
+explicit relative-loss rule above, not this optional admission test.
+
+These checks reduce unsupported promotions. They do not guarantee no future
+regression, account for every hypothesis examined during development, or prove
+transfer to an unrelated database. A global blend menu is still a finite search
+space; adequate fresh evaluation remains necessary.
+
+# Execution, portability, and production use
+
+## Explicit task context
+
+A task supplies source tables and keys, relationships, event/availability clocks,
+a root entity, a label horizon, observed labels, and masked forecast requests.
+`TaskContext.from_tables` supports caller-owned unregistered schemas;
+`TaskContext.from_protocol_splits` supports already censored protocol phases.
+Neither requires a RelBench dataset name or a saved winning graph.
+
+```bash
+python -m pip install "kurversc[staged]==0.2.0" "graphreduce==1.10.18"
+```
 
 ```python
-context = kurversc.TaskContext.from_tables(
-    tables=source_tables,
-    task=kurversc.PredictionTask(
-        "accounts", "account_id", "prediction_time", "churn", "30d",
-        kind="classification",
-        label_available_at="outcome_observed_at",
-    ),
-    training=observed_training,
-    validation=observed_validation,
-    requests=forecast_requests,
-    inner_cutoff=selection_boundary,
-    outer_cutoff=forecast_boundary,
-    dataset_name="new-database",
-)
-bundle = context.export("artifacts/churn-input")
+import kurversc
+
+# context declares the schema, observed labels, clocks, and masked requests.
 result = kurversc.run_staged_task(
-    bundle, output="artifacts/churn-run", task_hours=23.75,
+    context,
+    output="artifacts/task",
+    task_hours=23.75,
     minimum_available_memory_gib=8,
 )
 predictions = result.predictions
 ```
 
-Here `source_tables` is a mapping of names to `SourceTable` objects with explicit
-key and time declarations. The exported bundle is checksummed and does not
-contain forecast answers. The packaged wheel includes the transitive stage
-implementations, so portable inference does not depend on a research checkout
-or a RelArena registry. The frozen complete recipe supports binary
-classification and numeric regression at deployment seed 0; this is narrower
-than every mode exposed by the native library.
+Prediction artifacts preserve entity/cutoff keys and ordering. Manifests record
+context/source identities, selected graph and execution plan, temporal policy,
+optional admission and prediction fingerprints. Resume uses matching completed
+artifacts and retains the original absolute task deadline; it does not grant a
+new day for each restart. Incomplete resource-stopped tasks are not reported as
+successful scored tasks.
 
-Generality is architectural and conditional: discovery follows schema metadata,
-and inapplicable optional heads fall back. It does not establish universal
-performance or complete support for every source dialect, key domain, delayed
-arrival pattern or task type. Some optional timeline/view providers have
-additional eligibility limits. The portable context still handles the core
-task, with reasons recorded for optional exclusions.
+## Benchmark boundary
 
-# Production deployment through Kurve
+The RelArena adapter invokes the packaged staged entry point with an explicit
+portable context. The harness owns outer held-out scoring. A standalone
+research campaign that accesses a raw RelBench cache is a different execution
+path and cannot establish that a harness reproduction occurred. The reported
+release qualification uses the registered adapter and actual core split types;
+future benchmark claims must identify the adapter, packages, source boundaries
+and complete final artifacts [@relarena_software; @hayler2026relarena].
 
-**The Kurve product provides the production layer around relational signal
-compression.** It connects existing warehouses, discovers schema relationships,
-manages compute graphs, generates point-in-time training and production tables,
-and supports model training and prediction [34](https://kurve.ai/), [35](https://kurveai.github.io/kurvedocs/).
+The package's transitive staged execution closure includes 32 stage modules.
+It excludes the removed recovery stages. Historical scripts remain in source
+history for provenance, but are not implicit runtime choices. The staged extra
+no longer requests the removed semantic encoder's deep-learning dependencies.
 
-Kurve supports Snowflake, Databricks and Amazon Redshift, with deployment through
-a Snowflake Native App or within customer-controlled cloud and on-premises
-infrastructure. Relational computation can remain in the existing data platform,
-and outputs feed the customer's existing ML and MLOps workflows. These deployment
-options support sovereign AI by keeping data, models and execution under the
-operator's control [34](https://kurve.ai/), [35](https://kurveai.github.io/kurvedocs/).
+## Warehouse backends and the Kurve product
 
-The frozen DuckDB-based open-source implementation evaluated here is the
-reproducible benchmark reference. Warehouse integrations and production
-operationalization are available through the Kurve product; this report does
-not separately benchmark those product deployments.
+GraphReduce separates relational operations from execution, with backend support
+that includes production SQL environments such as Snowflake, Databricks and
+Redshift. SQL compilation and warehouse execution can place relational feature
+computation near governed source data. The frozen benchmark path uses DuckDB
+[@graphreduce; @raasveldt2019duckdb]. It does not demonstrate that every staged
+Python-side materialization and fit runs entirely inside every warehouse, or
+that any SQL engine is interchangeable without backend qualification.
 
-# Execution, memory and reproducibility
+The Kurve product provides schema/metadata graphs, parent-node and compute-graph
+workflows, execution and model workflows, and integration with existing ML/MLOps
+stacks. Customer-controlled deployment can keep data and model operation in the
+customer's environment, supporting sovereign-AI requirements
+[@kurve2026product; @kurve2026docs]. These are production delivery options;
+sovereignty also depends on deployment, access controls and external-service
+configuration. They are distinct from benchmark rank and from an unrestricted
+scale claim for this search implementation.
 
-## Preserving values while reducing unnecessary work
+# Qualification and empirical status
 
-The frozen implementation captures historical frames on disk and concatenates
-them in bounded batches. This reduces simultaneous full-frame retention while
-preserving cohort order, source sampling and model-visible values. Normalized
-feature preparation constructs columns without a whole-frame deep-copy cycle;
-temporal fitting uses shallow views where safe. Once normalization finishes,
-small routing/target headers are detached so a Series view does not keep a large
-raw numeric block alive.
+## What is established for this release
 
-Text heads select their few categorical columns before filtering training rows,
-and exposure queries project only the required routing/time columns. These
-changes remove unrelated payload copies rather than reducing feature counts or
-training budgets. Bootstrap acceleration caches score order and entity layouts
-while retaining the selector's declared resampling rule. Completed contract-
-matching trials and readout cases can be resumed without repeating their fits.
+| Check | Evidence and scope |
+|:---------------------------|:------------------------------------------------|
+| Source suite | 727 passed, one skipped, on the release source. |
+| Adapter/discovery suite | 19 passed against the current registered RelArena interface. |
+| Finalist regression parity | Thirty matched comparisons preserve prior MAE decisions and evidence. |
+| Classification finalist checks | Explicit positive/veto cases for ranking loss, uncertainty, origins and seeds. |
+| Installed classification run | Complete registered procedure on a fresh, unregistered 48-request synthetic schema; no hidden targets. |
+| Installed regression run | The same execution qualification for numeric regression on a different fresh schema. |
+| Package parity | Source and installed public-wheel Python payloads match: 80 KurveRSC and 22 GraphReduce modules. |
+| Dependency lock | RelArena's 215-package lock resolves both exact versions from PyPI. |
 
-GraphReduce additionally narrows thread use for very wide eager grouped queries
-with many distinct aggregates. Temporarily using one SQL thread for this
-specific operation avoids multiplying large per-thread aggregation states;
-the previous setting is restored afterward. Qualification compared numerical
-features, normalized learner inputs and predictions before accepting this
-execution repair. It is included in the private GraphReduce candidate bytes,
-not established by the version string alone.
+The two synthetic runs completed in approximately 161 and 156 seconds. Their
+small schemas do not exercise every possible head or guarantee an S2 alternate
+is eligible. They establish end-to-end execution, not meaningful predictive
+quality or a large-database resource envelope. Qualification reused existing
+numerical dependencies; it is not a cold installation of every dependency on
+every supported platform. Detailed source checks are recorded in the
+[qualification receipt](generic-staged-validation.json).
 
-These measures improve avoidable overhead. They do not make a wide graph cheap.
-Peak memory can still include phase source tables, intermediate SQL states,
-DuckDB buffers, wide normalized matrices, fitted models and temporary arrays.
-One-frame streaming is not a claim that only one frame-sized allocation exists
-anywhere in the complete procedure.
+## What must not be inferred
 
-## Parallelism and resource admission
+No current-release 21-task scorecard, updated Elo, first-place claim, or
+per-task runtime/RAM envelope is established here. The maintainers' fresh
+21-task reproduction through the submitted adapter will be the reference
+result. A changed dependency pin, correction or successful synthetic smoke is
+not a substitute for that evaluation.
 
-Task-level and graph-search parallelism are different knobs. The frozen run uses
-sequential graph candidates and sequential temporal seed workers within a task,
-with resource-aware parallel admission across tasks. The server permits up to
-eight task workers against a 64-thread scheduling budget and reserves 64 GiB
-for host headroom. Actual concurrent task count depends on their future memory
-reservations, rather than the currently observed low RSS alone.
+The [six-task narrowed pilot](generic-staged-pilot.md) includes wins, unchanged
+incumbents and regressions, and predates the source-replay and symmetric-finalist
+revision. It remains useful historical evidence with its own source identity;
+it is not the completed benchmark of version 0.2.0. Likewise, an earlier Olist
+experiment used a superseded procedure. Retaining its incumbent does not show
+positive transfer of every optional component to Olist
+[@priorlabs_olist]. No external-data transfer claim for the revised release is
+made from that experiment.
 
-Reservations derive from completed resource observations with headroom. They
-are not a 64-GiB per-task kill ceiling. A DuckDB working-memory setting governs
-that engine's spilling; it does not bound total Python/native RSS, and graph-
-search commands can explicitly run without an engine memory cap. CPU thread
-slots are scheduling reservations, not affinity limits.
+The archived report records the earlier author-run panel and resources. Those
+measurements must remain attached to the score-producing source and temporal
+semantics. Comparing their Elo to a moving leaderboard, or mixing historical
+carry-forward scores with new scores without labeling them, would misstate the
+current method's measured performance.
 
-Each task has one original 23.75-hour cumulative wall deadline. Preparation and
-interrupted elapsed time count; resume does not reset it. A resource stop
-preserves completed checkpoints without claiming a completed prediction. The
-current fresh campaign has no automatic pressure retries. This enforces a
-budget below 24 hours; it does not prove that every task will successfully
-complete on arbitrary hardware within that budget.
+# Cost, resources, and parallelization
 
-## Identity and artifacts
+The complete task budget is 23.75 hours, below RelArena's 24-hour limit. This is
+a deadline, not a guarantee that every schema can finish under it. Source size,
+join fan-out, emitted columns, historical cutoffs and optional learners all
+contribute to cost. A timeout or resource stop must remain visible in the
+results; it must not silently shorten the procedure and be called a complete
+reproduction.
 
-Checkpoints bind to task/context, configuration, feature audit, fidelity,
-implementation and runtime identities. Identical version labels are insufficient
-for reuse during editable development. Completed artifacts include frozen plans,
-feature schemas, temporal support/member audits, applicability records,
-per-origin/seed prediction evidence, locked selection/admission files and keyed
-final predictions. A changed context or procedure cannot silently resume an
-old run.
+Training-row and feature limits do not cap total RAM. SQL joins, annotations,
+frozen-frame caches, Python copies, CatBoost workspaces and concurrent graph
+workers may coexist. DuckDB working-memory settings govern spill thresholds,
+not the entire process tree. Several simultaneously active tasks can therefore
+require much more memory than the largest model matrix.
 
-Fresh reproduction starts with empty task model/search outputs. Sharing raw
-datasets or verified pretrained weights is allowed; importing an old graph,
-prediction or remembered official score is a different operation. The current
-all-21 campaign made no such substitutions. Every current-system score below
-comes from that same fresh campaign and frozen source identity.
+Current execution reuses matching plans and materializations rather than
+restarting a search after each later comparison. It separates source replay
+from model fitting where possible and avoids rediscovery during prediction.
+Such reuse must preserve phase, source identity, cutoff, operations and schema;
+a cache hit with mismatched bindings is a correctness error.
 
-# Evaluation and current evidence
+Task-level and graph-configuration concurrency are distinct. Increasing both
+multiplies overlapping materialization and learner memory. Parallel execution
+should be admitted from measured process-tree or cgroup demand with an explicit
+host reserve. Historical peaks from the removed-stage pipeline can inform
+capacity planning only provisionally; they are not published resource
+requirements for this release.
 
-## Protocol
+A reproducible full-panel resource report should record wall time, CPU/thread
+configuration, peak whole-task memory, SQL memory/spill settings, temporary
+storage peak, active concurrency, and completion status per task. Process-tree
+RSS and cgroup peaks have different accounting and must be labeled. An isolated
+retry must not replace a failed first attempt without disclosing both. This
+report does not promote unmeasured hardware estimates into maintainer
+replication requirements.
 
-The benchmark uses the 21 RelBench v1 entity classification/regression tasks in
-RelArena, official temporal splits and the official task evaluator. Classification
-reports test ROC-AUC; regression reports test MAE. Current-system task results
-have deployment seed 0. The core selection path does not receive held-out
-answers; the harness scores saved predictions after the selected procedure is
-locked. [RelBench](https://star-project.stanford.edu/relbench/),
-[RelArena](https://github.com/PriorLabs/relarena).
+# Related work and architectural claims
 
-Research involved repeated inspection of benchmark results while developing the
-recipe. A fresh deterministic rerun tests implementation reproducibility; it is
-not an untouched new statistical test set. The aggregate comparison also uses
-reported competitor results from the captured panel rather than rerunning all
-methods in a matched hardware/time experiment.
+## Relational feature construction and learned neighborhood representations
 
-```{=latex}
-\clearpage
-```
+Deep Feature Synthesis and OneBM automate relational feature construction
+[@kanter2015dfs; @lam2017onebm]. KurveRSC follows the broad idea of constructing
+entity-grain features from related records, with supervised program selection,
+explicit temporal phases and frozen execution as central requirements.
 
-## Fresh 21-task scorecard
+RelBench and its larger v2 repository supply relational prediction tasks
+[@robinson2024relbench; @gu2026relbenchv2]. GraphSAGE, relational deep learning,
+RelGNN and relational transformers instead learn representations through
+neighborhood/message-passing mechanisms
+[@hamilton2017graphsage; @fey2024rdl; @chen2025relgnn; @dwivedi2026relgt]. These
+can retain or learn interactions that a finite set of independent reductions
+erases. KurveRSC does not claim representational equivalence to those models.
 
-All current-system entries below are completed official scores from the same
-fresh campaign. Full-precision values, result/prediction hashes and the shared
-source identity accompany the report in
-[the score supplement](assets/kurversc-staged-scores-20261027.csv).
+Deep Sets and work on graph-neural-network expressivity motivate careful choice
+of aggregation functions [@zaheer2017deepsets; @xu2019gin]. They do not prove
+that this bounded, hand-specified feature library is universally sufficient.
+Equal compressed vectors are indistinguishable to any downstream learner; a
+stronger tabular model cannot reconstruct information absent from those
+vectors.
 
-<!-- BEGIN GENERATED SCORES -->
+TabPFN and subsequent tabular foundation models use pretrained inference rather
+than the same per-task CatBoost procedure
+[@hollmann2025tabpfn; @grinsztajn2026tabpfn3]. TabPFN-Rel, RDBLearn and KumoRFM
+explore different routes from relational structure to in-context prediction
+[@hayler2026relarena; @zhang2026rdblearn; @fey2025kumorfm]. The requested
+[TabPFN-3.5 technical report](https://arxiv.org/abs/2609.17895) is a separate
+reference, most recently revised November 3, 2026 at this writing
+[@jaeger2026tabpfn35]. No head-to-head result against that revision is asserted
+for KurveRSC 0.2.0.
 
-| Task | Metric | Published | Staged | Client | Winner |
-| --- | --- | --- | --- | --- | --- |
-| Amazon / item-churn | AUC | 0.827256 | 0.829162 | 0.828653 | Kurve |
-| Amazon / item-ltv | MAE | 42.273080 | 42.575857 | 45.270515 | Kurve |
-| Amazon / user-churn | AUC | 0.710347 | 0.711315 | 0.711698 | Client |
-| Amazon / user-ltv | MAE | 14.020545 | 14.005336 | 13.877122 | Client |
-| Avito / ad-ctr | MAE | 0.03344026 | 0.03281736 | 0.03125771 | Client |
-| Avito / user-clicks | AUC | 0.658406 | 0.647785 | 0.691631 | Client |
-| Avito / user-visits | AUC | 0.674721 | 0.673024 | 0.672453 | Kurve |
-| Event / user-attendance | MAE | 0.25866836 | 0.23748723 | 0.24165168 | Kurve |
-| Event / user-ignore | AUC | 0.832628 | 0.843941 | 0.784037 | Kurve |
-| Event / user-repeat | AUC | 0.779679 | 0.806016 | 0.760495 | Kurve |
-| F1 / driver-dnf | AUC | 0.746484 | 0.740482 | 0.727809 | Kurve |
-| F1 / driver-position | MAE | 3.863205 | 3.960206 | 3.757398 | Client |
-| F1 / driver-top3 | AUC | 0.664957 | 0.803766 | 0.791702 | Kurve |
-| H&M / item-sales | MAE | 0.03216765 | 0.03173097 | 0.03647878 | Kurve |
-| H&M / user-churn | AUC | 0.696916 | 0.711248 | 0.706021 | Kurve |
-| Stack / post-votes | MAE | 0.06324286 | 0.06273966 | 0.06273299 | Client |
-| Stack / user-badge | AUC | 0.877626 | 0.877817 | 0.883443 | Client |
-| Stack / user-engagement | AUC | 0.903027 | 0.907724 | 0.907662 | Kurve |
-| Trial / site-success | MAE | 0.40384204 | 0.39135221 | 0.37761499 | Client |
-| Trial / study-adverse | MAE | 41.270229 | 35.212072 | 34.401374 | Client |
-| Trial / study-outcome | AUC | 0.712131 | 0.755106 | 0.764556 | Client |
+## What this approach says about flattening
 
-<!-- END GENERATED SCORES -->
+KumoRFM-2 argues that task-agnostic aggregation can obscure useful relational
+structure, and motivates early task conditioning in relational prediction
+[@hudovernik2026kumorfm2]. NVIDIA Kumo's explanatory documentation likewise
+emphasizes losses of topology, temporal structure and multi-hop interactions
+when constructing flat features [@kumo_flat_tables]. These are substantive
+representation concerns. They are not a theorem that every learner consuming
+a matrix must be uncompetitive.
 
-Against the published KurveRSC column, the fresh procedure improves 16 tasks
-and declines on five. The largest clear changes include driver-top3, study-outcome,
-study-adverse and user-attendance. User-clicks, driver-position, user-visits,
-driver-dnf and item-ltv are worse than their captured published
-KurveRSC scores. Thus "no regression" is not an accurate description of the net
-change from the published system. The fresh repeat checks answer a narrower
-question: whether the frozen current pipeline reproduces its earlier current-
-pipeline scores after packaging and execution repairs.
+KurveRSC makes a different design choice: select a task-conditioned relational
+program before fitting the tabular learner. This addresses the gap between
+unselected summaries and supervised relational compression. It leaves open
+whether the available programs preserve the interactions a particular task
+needs. **The narrowed release's performance is not yet established by a full
+panel**, so the superseded first-place result cannot be used here to declare
+those architectural concerns empirically refuted. A matched comparison with
+KumoRFM-2 would require the same tasks, inputs, temporal visibility, external
+pretraining disclosure and compute protocol.
 
-Against the captured client, the current scorecard is 11 wins and 10 losses.
-Some wins are extremely narrow, notably user-engagement. Post-votes remains a
-loss at full precision despite close displayed values. A pairwise win is a point
-comparison, not proof of statistical separation.
+## Search allocation and uncertainty
 
-## Aggregate RelArena statistics
+Successive halving, Hyperband and BOHB study allocation of expensive evaluations
+[@jamieson2016successivehalving; @li2018hyperband; @falkner2018bohb]. The present
+stages use a related increasing-fidelity idea, but do not inherit a guarantee
+that 10K or 50K graph scores preserve full-source rankings. Their usefulness
+must be measured for this representation space and deployment lifecycle.
 
-The official `relarena.evaluation.compute_leaderboard` replaces the captured
-published KurveRSC rows with these 21 scores while retaining the other 14
-methods, the same tasks and the constant-global anchor at 1000. This is a
-recalculation on a fixed panel, not a claim that a public leaderboard has
-already accepted the candidate.
+Paired temporal comparisons and cluster resampling account for some correlated
+entity observations. They do not turn reused development tasks into untouched
+tests. Conservative admission is a selection mechanism, not proof that a
+specialized transform generalizes. Future claims should emphasize fresh-schema
+evaluations and controlled ablations alongside aggregate benchmark scores.
 
-<!-- BEGIN GENERATED LEADERBOARD -->
+# Limitations and next steps
 
-| Rank | Method | Elo | Reported + / - | Mean rescaled loss |
-| --- | --- | --- | --- | --- |
-| 1 | KurveRSC staged | 1948.6 | +101.5 / -76.2 | 0.073390 |
-| 2 | TabPFN-Rel client (Sep 28) | 1937.1 | +105.8 / -67.5 | 0.073884 |
-| 3 | TabPFN-Rel local (Sep 28) | 1893.5 | +92.6 / -62.2 | 0.075685 |
-| 4 | RT-J | 1839.7 | +145.5 / -118.9 | 0.153949 |
-| 5 | RT-PluRel | 1792.1 | +106.5 / -96.8 | 0.138969 |
+The most direct failure modes are representation loss, selection regret and
+cost. Bounded CDFs, category annotations, event windows and peer summaries do not
+retain every joint event or neighbor distinction. A frozen plan discovered on
+capped source cohorts can miss rare categories and fine temporal interactions.
+A stronger graph can exist in the space yet be screened out before comparable
+full-fidelity evidence is collected.
 
-<!-- END GENERATED LEADERBOARD -->
+The next search evaluation should measure rank correlation, winner retention
+and selection regret across 10K, 50K and full-source fidelity on identical
+candidate sets. Finalist comparisons should match deployment support and refit
+behavior. Reporting only the final winning score does not reveal whether an
+improvement came from richer signal or a better selection decision.
 
-The point Elo lead over the September 28 client is 11.5. The reported Elo
-uncertainty ranges overlap substantially. RelArena's leaderboard intervals
-describe task-bootstrap variation, rather than variation across training seeds.
-[Leaderboard protocol](https://github.com/PriorLabs/relarena#-leaderboards).
-Mean rescaled loss also favors KurveRSC on this final panel: 0.073390 versus
-0.073884 for the client. First on these aggregate point estimates does not
-imply superiority on every task. Head-to-head wins alone do not determine
-Elo against the complete panel.
+Generalization also depends on source metadata quality, historical data
+availability, eligibility limits and validation support. Top-two object paths,
+a fixed 730-day object-history cap, and heuristic text detection are disclosed
+restrictions. Enumerating more valid alternatives may improve generality, but
+can increase search cost and multiple-comparison burden. Changes should be
+qualified with the same public procedure on held-out databases, without
+benchmark-name switches or test-score campaign gates.
 
-## Fresh reproduction status
+## Amortizing graph selection with a pretrained planner
 
-All 21 tasks and final scorer/resource jobs completed, with no failed tasks,
-automatic pressure retries or historical score substitutions. Twenty tasks
-have an earlier comparable current-pipeline execution: 19 scores match exactly;
-H&M item-sales improves from 0.03234723 to 0.03173097 MAE. User-badge is this
-pipeline's first completed result and is not counted as an independent repeat.
+A future planner could propose graph configurations from a schema, relationship
+metadata, table/column statistics, root, horizon and target type. It could warm
+start a bounded search while retaining verified execution and validation.
+Zero-shot prediction of the universally optimal graph is a stronger claim and
+has not been demonstrated.
 
-The release review uses KurveRSC 0.2.0 and GraphReduce 1.10.18. All 177 installed
-Python modules (including the generated stage namespace initializer) match the
-score-producing frozen payload before version stamping. Full classification
-and regression runs through the current RelArena registered class and actual
-core split types reproduce the frozen wheels' keyed predictions exactly on a
-48-request unregistered schema. These checks reuse the qualified dependencies;
-they are not a cold resolution of every optional dependency, a cross-platform
-bitwise guarantee or an independent current-harness rerun of all 21 tasks.
+The limiting resource is a training corpus of phase-correct tasks, evaluated
+programs, fidelity/cost records, uncertainty and independent held-out outcomes.
+Schema metadata alone does not label predictive quality. RelBench v2, 4DBInfer
+and the CTU repository can seed collection
+[@gu2026relbenchv2; @wang2024dbinfer; @motl2015ctu], but sibling tasks do not
+provide independent databases. Permissioned operational traces and synthetic
+tasks could broaden coverage with appropriate licensing, privacy and temporal
+validity.
 
-# Measured computational cost
-
-## Hardware and measurement definitions
-
-The fresh server has 495.77 GiB usable RAM, 64 logical CPUs on 32 physical cores
-of an Intel Xeon Platinum 8488C, and a 992.15-GiB filesystem. The pipeline runs
-on CPU. Timings below cover the full task, including search, materialization,
-temporal checks, fitting and scoring under the campaign's concurrent load.
-
-The principal RAM measurement is the kernel's full-task cgroup-v2 `memory.peak`,
-covering descendants and charged file cache/kernel memory. A separate one-second
-sampled tree RSS sum can double-count shared pages and has different accounting.
-Peak busy CPUs come from sampled cgroup CPU-time increments per wall second.
-Disk is a 60-second sampled allocated task-owned footprint, including outputs,
-temporary directories, logs and metrics; short-lived peaks may be missed.
-
-The measured DuckDB working-memory ceilings are 123 GiB for 19 tasks,
-224 GiB for user-badge and 256 GiB for Amazon user-churn. These explicit
-resource allocations are recorded per task in the supplement and can be set
-through `KURVERSC_DUCKDB_MEMORY_LIMIT`. They govern SQL aggregation/spilling,
-not total process RSS, source-row sampling or feature/learner budgets.
-
-<!-- BEGIN GENERATED RESOURCES -->
-
-| Task | Hours | RAM GiB | RSS GiB | Busy CPUs | Disk GiB |
-| --- | --- | --- | --- | --- | --- |
-| Amazon / item-churn | 3.25 | 132.87 | 123.53 | 8.03 | 21.18 |
-| Amazon / item-ltv | 5.68 | 182.17 | 161.33 | 8.03 | 22.52 |
-| Amazon / user-churn | 3.65 | 203.72 | 194.17 | 8.07 | 21.64 |
-| Amazon / user-ltv | 5.60 | 152.40 | 143.01 | 10.52 | 21.02 |
-| Avito / ad-ctr | 0.72 | 67.24 | 66.71 | 9.09 | 1.43 |
-| Avito / user-clicks | 1.14 | 52.03 | 51.42 | 8.69 | 1.59 |
-| Avito / user-visits | 1.75 | 89.02 | 88.37 | 8.62 | 1.55 |
-| Event / user-attendance | 2.10 | 116.77 | 116.20 | 8.02 | 0.55 |
-| Event / user-ignore | 1.45 | 33.04 | 31.37 | 8.06 | 0.70 |
-| Event / user-repeat | 1.58 | 32.54 | 32.69 | 8.03 | 0.58 |
-| F1 / driver-dnf | 5.68 | 6.70 | 6.98 | 8.06 | 0.24 |
-| F1 / driver-position | 4.61 | 4.14 | 4.51 | 8.03 | 0.19 |
-| F1 / driver-top3 | 3.55 | 2.88 | 3.34 | 8.04 | 0.10 |
-| H&M / item-sales | 4.90 | 26.53 | 24.40 | 8.03 | 2.10 |
-| H&M / user-churn | 3.39 | 44.95 | 44.87 | 8.06 | 4.08 |
-| Stack / post-votes | 5.64 | 61.63 | 58.24 | 11.90 | 11.80 |
-| Stack / user-badge | 14.17 | 333.51 | 319.19 | 8.01* | 13.35* |
-| Stack / user-engagement | 4.82 | 91.00 | 86.89 | 8.05 | 11.52 |
-| Trial / site-success | 4.37 | 91.67 | 89.96 | 8.05 | 2.50 |
-| Trial / study-adverse | 8.94 | 26.09 | 24.54 | 8.02 | 2.63 |
-| Trial / study-outcome | 2.69 | 26.90 | 25.54 | 8.03 | 2.65 |
-
-<!-- END GENERATED RESOURCES -->
-
-An asterisk marks partial CPU/disk coverage. User-badge's CPU/disk observer
-attached 5.38 hours after task start, so those two figures are partial-coverage
-observations. Its RAM peak and runtime cover the
-whole task. The other 20 tasks were observed from near their start. Shared
-raw RelBench files occupy approximately 17.49 GiB; cached encoder weights 0.09
-GiB; and the frozen runtime 1.87 GiB. These shared allocations are outside the
-per-task disk column and should not be multiplied blindly by task count.
-
-These are observed requirements on this host, not certified minimum hardware.
-All 21 task resource receipts are finalized. The
-[resource supplement](assets/kurversc-staged-resources-20261027.csv) preserves
-full precision, measurement coverage and completion status. The largest observed
-task is user-badge at 333.51 GiB and 14.17 hours. A comparable 512-GiB-class
-host with headroom is the measured deployment class, rather than a certified
-minimum. Independent tasks can run concurrently on larger machines using
-memory/CPU/storage reservations; preserve the qualified eight learner threads,
-one graph-search worker and one seed worker per task.
-
-## Cost relative to the earlier system
-
-The staged procedure adds work after graph selection: materialized history,
-phase-frozen temporal audits, multiple seeds, optional heads and independent
-native replay. Smaller screening frames do not remove these costs. Candidate
-counts, cumulative fit counts, task wall time and total campaign wall time are
-different quantities. The final same-freeze timings establish the current full-task costs. A matched
-earlier-system execution is still needed to quantify incremental overhead or
-a clean optimization speedup, since hardware load and runtime lineage differ.
+Evaluation must hold out entire databases/schema families. It should measure
+full-fidelity winner retention, regret, execution validity and cost against the
+fixed staged search. No pretrained planner is part of this release.
 
 ```{=latex}
 \clearpage
 ```
 
-# Separate new-schema check: Olist seller churn
+# Appendix A: release and implementation provenance
 
-The frozen packaged procedure was also run on the curated seven-table Brazilian
-e-commerce example from the [pinned Prior Labs cookbook notebook](https://github.com/PriorLabs/tabpfn-cookbook/blob/32b8db26a20ead9073259ba2719e649ce9da0283/notebooks/relational_predictions_tabpfn_rel.ipynb).
-The task predicts whether a seller active in the preceding 30 days receives no
-order in $(t,t+30\text{ days}]$. The curated tables and column allowlists follow
-the notebook; post-purchase fields excluded by the example remain excluded.
-All 13,382 labels across 20 anchors were independently checked against the
-notebook SQL. The model context excludes held-out answers.
-
-| Quantity | Observed value |
-|------------------------------------|----------------------------------------------------------------|
-| Training | 11,135 examples across 18 cutoffs |
-| Validation | 1,159 sellers, May 15, 2018 |
-| Test | 1,088 sellers, June 15, 2018 |
-| KurveRSC held-out ROC-AUC | 0.787511565 |
-| Notebook's recorded TabPFN-Rel ROC-AUC | 0.784, rounded; API not rerun |
-| Reproduced per-entity baseline | 0.688185633 |
-| Successful complete-pipeline runtime | 46.16 minutes |
-| Sampled process-tree RSS peak | 3.84 GiB on a 48-GiB Mac |
-| Selected graph | Depth 2; base, temporal, sequence; 400 features |
-| Selected temporal policy | 50% pooled-12 learner / 50% incumbent frame ensemble |
-
-The small point advantage over the rounded notebook reference is not a fresh
-paired TabPFN comparison or a significance result. Source timestamp maxima in
-10,907 cached historical rows and 1,159 validation rows passed the cutoff check,
-with intraday precision retained. Olist is outside the 21-task Elo panel.
-
-An earlier local attempt with pandas 3.0.5 failed on a read-only mask after
-19.44 minutes. The successful cold attempt aligned its isolated environment to
-the server's pandas 2.3.3, reused no fitted graph/model, and retained the original
-task deadline. Total wall time including that failed attempt was 69.77 minutes.
-This is evidence for the qualified runtime; it also identifies an unresolved
-compatibility boundary in the package's broader dependency range.
-
-The successful run spends about eight minutes on graph search, 9.85 minutes on
-the temporal audit, 22 minutes on optional signal comparisons, and 3.84 minutes
-on recovered-readout checks. Therefore, even perfect graph proposals alone
-would remove only part of this workflow's runtime. The executable experiment is
-[provided as an example](../examples/olist_cookbook_staged.py).
-
-# Related work and methodological context
-
-## Automated relational feature construction
-
-Deep Feature Synthesis composes transformations along relational paths;
-One Button Machine also automates relational joining and feature discovery
-[8](https://groups.csail.mit.edu/EVO-DesignOpt/groupWebSite/uploads/Site/DSAA_DSM_2015.pdf), [9](https://arxiv.org/abs/1706.00327). These precedents are essential: automating relational feature creation
-is not itself new. KurveRSC's present focus is a temporally valid, bounded
-selection procedure over whole relational programs, with the downstream fitting
-policy included in the final comparison. GraphReduce supplies the executable
-relational operations [2](https://github.com/wesmadrigal/graphreduce). Its output matrix is an explicit interface between
-representation and estimation, not evidence that cross-table reasoning was
-absent.
-
-## Relational deep learning and foundation learners
-
-GraphSAGE learns sampled neighborhood aggregation [11](https://arxiv.org/abs/1706.02216). RelGNN introduces
-schema-aware composite message passing, while RelGT uses attention and
-relational positional/temporal structure [12](https://arxiv.org/abs/2502.06784), [13](https://arxiv.org/abs/2505.10960v2). RelBench supplies the shared
-predictive tasks [3](https://arxiv.org/abs/2407.20060). These methods are relevant alternatives because they
-learn representations within the relational architecture rather than choosing
-SQL reduction programs.
-
-KumoRFM and KumoRFM-2 extend relational representation learning through
-pretraining and in-context prediction [14](https://web.archive.org/web/20251219072245/https://kumo.ai/research/kumo_relational_foundation_model.pdf), [15](https://arxiv.org/html/2604.12596v1). Their cross-task amortization
-and deployment objectives are different from fitting a task-specific compression
-program and learner. TabPFN and the TabPFN-3 report establish the tabular
-foundation-model lineage [18](https://doi.org/10.1038/s41586-024-08328-6), [19](https://arxiv.org/abs/2605.13986v2). The subsequent TabPFN-3.5 technical report
-[30](https://arxiv.org/abs/2609.17895) also reports relational-harness results; it is a distinct paper with a
-distinct model/version scope. RDBLearn and TabPFN-Rel connect tabular learners
-to relational materialization [17](https://arxiv.org/abs/2602.18495), [16](https://arxiv.org/abs/2608.16319v2). They are independent support for the
-representation/learner boundary. This report does not turn comparisons with a
-particular captured TabPFN-Rel client into claims against every later model or
-pretraining regime.
-
-## Aggregation, readouts and supervision
-
-Deep Sets studies invariant functions over sets, and Xu et al. analyze the
-distinguishing power of neighborhood-aggregation GNNs [20](https://proceedings.neurips.cc/paper_files/paper/2017/hash/f22e4747da1aa27e363d86d40ff442fe-Abstract.html), [21](https://arxiv.org/abs/1810.00826). Together they
-motivate asking which distinctions survive a particular representation. They
-do not imply that a small fixed set of SQL moments preserves every graph
-property. Conversely, using learned aggregation does not by itself remove all
-compression or expressivity constraints.
-
-CatBoost supplies the main mixed-type learner [5](https://arxiv.org/abs/1706.09516). The semantic challenger uses
-a frozen sentence representation from the Sentence Transformers lineage [26](https://aclanthology.org/D19-1410/),
-with the actual MiniLM weights and training mixture identified separately [6](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md).
-Distribution-aware readouts are also conceptually separate from new relational
-inputs: absolute-error loss targets a conditional median, making quantile
-modeling relevant to the regression heads [27](https://people.eecs.berkeley.edu/~jordan/sail/readings/koenker-bassett.pdf). An improvement from a better
-readout is not automatically evidence that another graph path was discovered.
-
-## Multi-fidelity selection, statistics and execution
-
-Successive Halving, Hyperband and BOHB provide important precedents for
-allocating more resources to promising configurations [22](https://proceedings.mlr.press/v51/jamieson16.html), [23](https://jmlr.org/papers/v18/16-558.html), [24](https://proceedings.mlr.press/v80/falkner18a.html). The present
-staged policy is not an implementation of their algorithms or a beneficiary of
-their theoretical guarantees. Relational fidelity can alter connected source
-cohorts, categories and discovered operations, rather than merely extending a
-single learner's training curve. A frozen plan improves comparison consistency
-but also freezes discovery omissions. This makes measured rank fidelity and
-winner retention especially important.
-
-Bootstrap methods provide general resampling context [28](https://doi.org/10.1214/aos/1176344552). The entity-clustered
-temporal gate, completeness requirements and multiplicity allowances here are
-the implemented procedure's own choices, rather than a guarantee supplied by
-that reference. RelArena defines the benchmark comparison and aggregate
-statistics [4](https://github.com/PriorLabs/relarena), [16](https://arxiv.org/abs/2608.16319v2), and DuckDB provides the embedded analytical execution layer
-[25](https://duckdb.org/library/duckdb-sigmod-demo/). Reporting both predictive outcomes and resource cost is necessary when
-comparing task-specific search with pretrained inference.
-
-# Limitations and next work
-
-The principal unresolved questions concern selection fidelity and cost. The
-budgeted search can still discard a graph that would win at full fidelity; a
-frozen plan discovered from capped source cohorts can miss rare categories or
-fine temporal interactions. CDFs, scalar reductions and bounded optional heads
-cannot represent arbitrary joint neighbor structure. Optional capacity limits
-also mean that an available signal may be evaluated on one schema and excluded
-on a larger one. Further controlled studies must measure those failure modes
-rather than assume the largest graph is optimal.
-
-The current evidence does not isolate each addition's causal value. A clean
-ablation should preserve data clocks, search budgets, final fitting and runtime
-while changing one representation or selector component. The completed fresh run supports implementation reproducibility under the
-frozen environment; independent maintainer reproduction remains outstanding.
-Repeated benchmark development and overlapping Elo uncertainty also limit
-claims of general superiority.
-
-Exact intermediate sharing and additional replay-equivalent execution
-improvements are nearer-term opportunities. A longer-term direction is to
-amortize representation search across databases.
-
-# Next direction: a foundation model for graph planning
-
-## Predict a useful program from a task-conditioned schema
-
-A planner pretrained across many databases could propose GraphReduce programs
-for an unseen schema, reducing the need to rediscover useful depth, paths,
-feature families and column budgets for every task. This is a plausible
-research direction because the output is a structured, capability-constrained
-program, and KurveRSC already generates comparative supervision while searching.
-It is not evidence that the ideal graph is identifiable from a schema alone.
-Two databases with the same schema and marginal statistics can have different
-relationships between historical inputs and the target.
-
-The input should therefore combine the schema with the prediction task and
-cutoff-safe profiles: keys, types, cardinality, missingness, relationship
-coverage and fan-out, event cadence, time coverage, target kind, root entity,
-horizon and available training support. A resource profile should identify the
-learner, backend, memory and time budget. Column and task descriptions could
-supply an additional semantic channel. Optional supervised probes must use
-only planning-time training data, and their cost must be counted.
-
-The output should be a valid program or a short ranked set of programs, with
-predicted uncertainty and resource demand. Candidate generation and compilation
-would still enforce legal paths, temporal boundaries and backend capabilities.
-Confidence can determine whether to use the first proposal, evaluate a small
-set, or fall back to bounded search. Here **zero-shot planning** means no new
-graph search or planner retraining on the destination database; the downstream
-supervised learner still fits its observed labels. Evaluating proposed graphs
-on the new task is a few-probe variant and should be reported separately.
-
-## Existing scaffold and the data repository it needs
-
-The repository already contains an initial implementation for collecting
-`PlannerEpisode` traces from explicit `DatabaseProfile`, `TaskProfile` and
-`RuntimeProfile` objects. Its first model is a CatBoost meta-ranker, not a
-trained foundation planner or the selector used for this report. It tests the
-profile, supervision and database-grouped split contracts before a possible
-schema-aware graph transformer. The
-[planner training guide](kurveplanner-training.md) documents the collector,
-JSONL format and training entry point.
-
-The main bottleneck is a **repository of relational search outcomes**, rather
-than a repository of schemas alone. Each teacher episode should retain the
-task and cutoff, pre-execution profiles, candidate program, fidelity, validation
-predictions or scores, uncertainty, cost, width, failure reason and source/runtime
-identity. Low- and full-fidelity observations must remain distinct. A candidate
-that search never evaluated is censored, not a demonstrated loser. Winner-only
-traces would teach the new model to repeat the current selector's omissions.
-Matched full-fidelity comparisons and exhaustive small-schema audits are needed
-to calibrate that bias.
-
-Seven original RelBench databases and 21 related tasks are a starting point,
-not enough independent schema diversity to establish a foundation model. A
-practical corpus can combine three sources:
-
-| Source | Contribution | Required care |
-|----------------------|----------------------------------|----------------------------------------|
-| Public relational databases | Genuine schemas, fan-out, temporal structure and task outcomes | Deduplicate related sources; verify licenses and construct valid task/time contracts |
-| Synthetic relational generators | Controlled variation of topology, cadence, sparsity, rare categories and target mechanisms | Hold out generator families and check transfer to real databases |
-| Permissioned operational traces | Deployment diversity and measured backend/resource costs | Collect locally by default; share only with permission and a defined data policy |
-
-Concrete public starting points exist. RelBench v2 expands the benchmark and
-interfaces with ReDeLEx for access to more than 70 real-world databases; it also
-incorporates 4DBInfer coverage [31](https://arxiv.org/abs/2602.12606v2). 4DBInfer provides multi-table datasets,
-prediction tasks and an evaluation toolbox [32](https://arxiv.org/abs/2404.18209). The CTU Prague repository
-supplies SQL databases with searchable schema metadata [33](https://arxiv.org/abs/1511.03086v3). These collections
-still need standardized task definitions, availability clocks and newly
-measured graph outcomes before they become planner training episodes. Their
-overlap also prevents treating their database counts as additive. Single-table
-collections alone cannot teach relational path selection.
-
-The existing trace contract stores aggregate profiles rather than raw rows or
-categorical values. That reduces the sharing burden, but does not make schema
-and aggregate metadata automatically anonymous. A sovereign deployment can
-keep both traces and the trained planner locally; participation in a shared
-corpus is a separate decision.
-
-## Evaluation before replacing production search
-
-All tasks, cutoffs and candidates from one database must stay in one partition;
-related or duplicated source databases must also be grouped. Final evaluation
-should include entirely unseen schemas and source domains. Report full-fidelity
-validation regret, top-k retention of the audited winner, infeasible proposals,
-profiling cost, total runtime and memory. Lock the policy before evaluating
-held-out prediction targets. Table names and benchmark identifiers must not
-become shortcuts for remembered winning configurations.
-
-The first experiment should compare the existing metadata ranker against a
-fixed budgeted search on held-out databases. A schema-aware model with table,
-relationship and column pointer heads is justified only if broader traces
-improve that baseline. Subsequent outputs can cover temporal support and
-readout policies as well as the graph. This matters for end-to-end latency:
-graph search accounted for only about eight of the Olist run's 46 minutes, so
-predicting its graph alone would leave most of that procedure's measured cost.
-
-The objective is a transferable, uncertainty-aware prior over useful relational
-programs. Replacing every new-database search with an unverified claim of an
-optimal graph would skip the selection-fidelity question this report identifies.
-
-# Appendix A: Frozen runtime and reproduction identity
-
-The qualified Linux runtime uses Python 3.11.17, RelBench 2.1.2, CatBoost 1.2.10,
-DuckDB 1.2.2, pandas 2.3.3, NumPy 1.26.4, scikit-learn 1.6.1, PyArrow 20.0.0,
-PyTorch 2.13.0+cpu and Transformers 4.57.6. The preparation artifact contains
-114 pinned dependency requirements alongside three private candidate wheels.
-All 114 entries were checked against `importlib.metadata.version` in the frozen
-task environment, with zero mismatches. The raw enumerated distribution inventory
-is recorded separately; it also contains vendored metadata and is not itself a
-resolved lockfile. Install from the exact candidate artifacts and
-[dependency lock](assets/kurversc-staged-dependencies-20261027.txt) before using
-the complete staged entry point; broad compatible version ranges are not a
-reproduction specification.
-
-<!-- BEGIN GENERATED IDENTITY -->
-
-**graphreduce-1.10.17-py3-none-any.whl candidate wheel.**
+The public dependency recipe is:
 
 ```text
-dbf00d70a340e3707f6315ffb350caf746a040b738a0c1b60d60120c913450fc
+kurversc[staged]==0.2.0
+graphreduce==1.10.18
 ```
 
-**kurversc-0.1.1-py3-none-any.whl candidate wheel.**
+Both were published on November 4, 2026. For source audit, the release snapshots
+are KurveRSC `cf6599bd7de21f32b299c3cdce75f611ad050a06` and GraphReduce
+`21aff2e9ad83d69d7fc468d01e3d56a0dc6ca976`. The latter is the code published as
+GraphReduce 1.10.18, not an unpublished local patch. Documentation revisions do
+not alter these released Python payloads.
+
+The public artifact checksums are recorded below. They identify release files,
+not additional installation constraints.
 
 ```text
-04d066bb09185bed1bc687e1bcf30bfcc0349afdcc5800540f391e1e6a890692
+kurversc-0.2.0-py3-none-any.whl SHA-256
+0d5eae0f9381d0948475352bcae97b85e5fc5dce98ea4cfb1f7d50bceb635ea0
+
+kurversc-0.2.0.tar.gz SHA-256
+6093ba24d9d4fb31252980d816032c1141dab6ea9c50713e797428d458f5fc20
+
+graphreduce-1.10.18-py3-none-any.whl SHA-256
+5d99b358e4ce5f85c3d16fb8a2db072d9c18da6abbd03c4e194aff822410bd81
+
+graphreduce-1.10.18.tar.gz SHA-256
+20e7ac6335c6231c836e83339d69c98c895f30800fb83d5f7484fbb57960afc1
 ```
 
-**relarena-0.0.1-py3-none-any.whl candidate wheel.**
+| Implementation area | Source entry points |
+|:-------------------------|:--------------------------------------------------|
+| Public staged execution | `kurversc/staged.py`, `scripts/run_portable_staged.py` |
+| Fixed generic contract | `scripts/run_admissible_staged.py` |
+| Task/source boundaries | `kurversc/task_context.py`, `kurversc/task_source.py` |
+| Search and frozen plans | `kurversc/core.py`, `scripts/run_kurversc_selected_relarena.py` |
+| Finalist symmetry | `scripts/generic_finalist_helpers.py`, `scripts/benchmark_production_finalists_v2.py` |
+| Temporal selection | `kurversc/temporal_policy.py` |
+| Shared optional menu | `scripts/benchmark_generic_readouts.py`, `kurversc/signal_challengers.py` |
+| Object-history boundary | `scripts/phase_frozen_object_breadth.py` |
+| Packaged stage closure | `staged_build.py`, `kurversc/staged_runtime.py` |
 
-```text
-6dc821806d37409f1d0128940cd37d0650c71f9988a18a243254176593be8ca2
+The current [release specification](staged-release.md),
+[review/change record](generic-staged-review.md) and
+[qualification receipt](generic-staged-validation.json) provide companion
+evidence. Older result bundles remain tied to their recorded source identities;
+repository history is not an implicit source of runtime winners.
+
+```{=latex}
+\clearpage
 ```
 
-**Source archive.**
+# References {.unnumbered}
 
-```text
-c5478149c985f1448822681aecf0f9abd5ff6fe18a8b46c1af97ac2f75595fd8
-```
+The bibliography covers the implementation, protocol, relational feature
+construction, learned representations, search allocation, statistical methods
+and proposed planner-data sources. Product/deployment references describe
+capabilities rather than benchmark results. Software and revised online sources
+were checked on November 5, 2026; unchanged research-paper metadata is retained
+from the earlier report.
 
-**114-requirement dependency lock.**
-
-```text
-8e37df1ed0cb6f0d4a61f47a5d0ac431c9e4bad69bde88691f2fe14576380b2c
-```
-
-**Fresh run source identity.**
-
-```text
-7b3c8832547a490d180cbc849b6feb039e3e3ada66c01225da5b51713ec931ae
-```
-
-**Captured 15-method / 21-task panel.**
-
-```text
-85a1b1caecd2b878aadf81b64bda8da205efb9874f395b30654bc075b3c4a5fa
-```
-
-<!-- END GENERATED IDENTITY -->
-
-The public portable entry point is `kurversc.run_staged_task`. The submitted
-current-core adapter is
-`relarena.models.kurversc.staged.KurveRSC20261022System.run`, with alias
-`kurversc-latest`. The frozen campaign used its original registered
-`relarena.models.kurversc.model.KurveRSCSystem.run` bridge to the same procedure.
-Fresh outputs, source identity, effective stage contract, dependency lock,
-encoder hashes, request keys and full-stage completion receipts belong in the
-eventual reproduction bundle. The current root source checkout may contain
-unrelated research scripts; only the packaged transitive stage closure and the
-frozen identities define this report's procedure.
-
-# Appendix B: Implementation map
-
-Paths below refer to source modules packaged into the frozen candidate. Stage
-modules are relocated under `kurversc._staged` in the wheel. Their research-era
-filenames/docstrings do not override the effective frozen contract: several
-stages originally developed as opt-in experiments are included automatically
-in `run_staged_task()` today.
-
-| Responsibility | Source |
-|-------------------------------|---------------------------------------------------------------------|
-| Task/schema/availability contract | [task_context.py](../kurversc/task_context.py), [task_source.py](../kurversc/task_source.py) |
-| Supervised complete entry point | [staged.py](../kurversc/staged.py), [run_portable_staged.py](../scripts/run_portable_staged.py) |
-| Complete stage composition | [run_reproducible_staged_cloud.py](../scripts/run_reproducible_staged_cloud.py) |
-| Bounded graph profile | [run_kurversc_selected_relarena.py](../scripts/run_kurversc_selected_relarena.py) |
-| Graph candidates and selection | [search.py](../kurversc/search.py), [core.py](../kurversc/core.py) |
-| Historical labels and schema expansion | [core.py](../kurversc/core.py), [relbench.py](../kurversc/relbench.py) |
-| Column audit | [feature_audit.py](../kurversc/feature_audit.py) |
-| Active peer eligibility and summaries | [peer_context.py](../kurversc/peer_context.py), [peer_history.py](../kurversc/peer_history.py) |
-| Temporal support, fitting and gate | [temporal_policy.py](../kurversc/temporal_policy.py), [benchmark_temporal_policy.py](../scripts/benchmark_temporal_policy.py) |
-| Production MAE finalist check | [benchmark_production_finalists_v2.py](../scripts/benchmark_production_finalists_v2.py) |
-| Signal and recovered readouts | [signal_challengers.py](../kurversc/signal_challengers.py), [benchmark_recovered_readouts.py](../scripts/benchmark_recovered_readouts.py) |
-| Sequence and complementary views | [benchmark_production_sequence.py](../scripts/benchmark_production_sequence.py), [run_bounded_view_validation_20261020.py](../scripts/run_bounded_view_validation_20261020.py) |
-| Learner boundary and identities | [modeling.py](../kurversc/modeling.py), [checkpointing.py](../kurversc/checkpointing.py), [prediction_provenance.py](../kurversc/prediction_provenance.py) |
-| Stage packaging | [staged_build.py](../staged_build.py) |
-| Full-task resource observer | [observe_submission_resources_20261025.py](../scripts/observe_submission_resources_20261025.py) |
-
-# Appendix C: Evidence
-
-The compact machine-readable supplements are part of this report:
-
-- [Scores and per-task lineage](assets/kurversc-staged-scores-20261027.csv).
-- [Completed fresh-task resource measurements](assets/kurversc-staged-resources-20261027.csv).
-- [Snapshot identities, stage contract and aggregate results](assets/kurversc-staged-evidence-20261027.json).
-- [Frozen dependency requirements](assets/kurversc-staged-dependencies-20261027.txt).
-
-Author-side copied scorer receipts, the captured 315-row comparison panel and
-full resource observer snapshot are retained separately under
-`results/technical-report-20261027/evidence/`. Those supporting files preserve
-the exact panel and run lineage; they are not new model-selection inputs.
-
-# References
-
-The bibliography covers the implementation, benchmark protocol, competing
-architectures, feature-construction precedents, representation theory,
-resource-allocation methods and readout/statistical foundations. The
-[BibTeX file](kurversc-staged-references.bib) and
-[reviewed metadata](assets/kurversc-staged-references-20261026.json) accompany
-the report. Web and software references were checked on October 26, 2026.
-
-1. W. Madrigal. *KurveRSC: Validation-Guided Relational Signal Compression with a Downstream Learner in the Loop.* Kurve AI, original technical report, 2026.
-   [Primary source](kurversc-technical-report.md).
-
-2. W. Madrigal. *GraphReduce.* Open-source software.
-   [Primary source](https://github.com/wesmadrigal/graphreduce).
-   Results in this report require the privately patched candidate identified in Appendix A.
-
-3. J. Robinson, R. Ranjan, W. Hu, K. Huang, J. Han, A. Dobles, M. Fey, J. E. Lenssen, Y. Yuan, Z. Zhang, X. He and J. Leskovec. *RelBench: A Benchmark for Deep Learning on Relational Databases.* NeurIPS Datasets and Benchmarks, 2024.
-   [Primary source](https://arxiv.org/abs/2407.20060).
-
-4. Prior Labs. *RelArena: Open and Reproducible Benchmarking for Relational Learning.* Open-source benchmark and source-provenance documentation.
-   [Primary source](https://github.com/PriorLabs/relarena).
-   This report uses a separately checksummed captured panel; baseline_results/SOURCES.md distinguishes reproduced results from paper-reference rows.
-
-5. L. Prokhorenkova, G. Gusev, A. Vorobev, A. V. Dorogush and A. Gulin. *CatBoost: Unbiased Boosting with Categorical Features.* NeurIPS, 2018.
-   [Primary source](https://arxiv.org/abs/1706.09516).
-
-6. Sentence Transformers. *all-MiniLM-L6-v2: Model Card and Weights.* Hugging Face model repository.
-   [Primary source](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md).
-   Pinned revision identified in the URL and the text-representation disclosure; includes external training-mixture documentation.
-
-7. Prior Labs. *Relational Predictions with TabPFN-Rel.* TabPFN cookbook notebook.
-   [Primary source](https://github.com/PriorLabs/tabpfn-cookbook/blob/32b8db26a20ead9073259ba2719e649ce9da0283/notebooks/relational_predictions_tabpfn_rel.ipynb).
-   Pinned commit 32b8db2; full commit is retained in the URL and experiment driver.
-
-8. J. M. Kanter and K. Veeramachaneni. *Deep Feature Synthesis: Towards Automating Data Science Endeavors.* IEEE International Conference on Data Science and Advanced Analytics, 2015.
-   [Primary source](https://groups.csail.mit.edu/EVO-DesignOpt/groupWebSite/uploads/Site/DSAA_DSM_2015.pdf). DOI: [10.1109/DSAA.2015.7344858](https://doi.org/10.1109/DSAA.2015.7344858).
-
-9. H. T. Lam, J.-M. Thiebaut, M. Sinn, B. Chen, T. Mai and O. Alkan. *One Button Machine for Automating Feature Engineering in Relational Databases.* arXiv:1706.00327, 2017.
-   [Primary source](https://arxiv.org/abs/1706.00327).
-
-10. M. Fey, W. Hu, K. Huang, J. E. Lenssen, R. Ranjan, J. Robinson, R. Ying, J. You and J. Leskovec. *Position: Relational Deep Learning - Graph Representation Learning on Relational Databases.* ICML, PMLR 235:13592-13607, 2024.
-   [Primary source](https://proceedings.mlr.press/v235/fey24a.html).
-
-11. W. L. Hamilton, R. Ying and J. Leskovec. *Inductive Representation Learning on Large Graphs.* NeurIPS, 2017.
-   [Primary source](https://arxiv.org/abs/1706.02216).
-
-12. T. Chen, C. Kanatsoulis and J. Leskovec. *RelGNN: Composite Message Passing for Relational Deep Learning.* ICML; arXiv:2502.06784, 2025.
-   [Primary source](https://arxiv.org/abs/2502.06784).
-
-13. V. P. Dwivedi, S. Jaladi, Y. Shen, F. Lopez, C. I. Kanatsoulis, R. Puri, M. Fey and J. Leskovec. *Relational Graph Transformer.* ICLR; preprint first released in 2025, 2026.
-   [Primary source](https://arxiv.org/abs/2505.10960v2).
-
-14. M. Fey, V. Kocijan, F. Lopez, J. E. Lenssen and J. Leskovec. *KumoRFM: A Foundation Model for In-Context Learning on Relational Data.* Kumo.AI white paper, 2025.
-   [Primary source](https://web.archive.org/web/20251219072245/https://kumo.ai/research/kumo_relational_foundation_model.pdf).
-   Archived original; the former live PDF URL now redirects.
-
-15. V. Hudovernik, F. Lopez, V. Kocijan, A. Nitta, J. E. Lenssen, J. Leskovec and M. Fey. *KumoRFM-2: Scaling Foundation Models for Relational Learning.* arXiv:2604.12596, 2026.
-   [Primary source](https://arxiv.org/html/2604.12596v1).
-   Section 1 contains the quoted criticism of generic task-agnostic aggregation.
-
-16. A. Hayler et al.. *Advancing Open and Reproducible Relational Learning: RelArena-alpha, TabPFN-Rel and RPI.* arXiv:2608.16319, 2026.
-   [Primary source](https://arxiv.org/abs/2608.16319v2).
-
-17. Y. Zhang, L. Xu, Q. Gan, D. Wipf and M. Wang. *RDBLearn: Simple In-Context Prediction Over Relational Databases.* arXiv:2602.18495, 2026.
-   [Primary source](https://arxiv.org/abs/2602.18495).
-
-18. N. Hollmann, S. Muller, L. Purucker, A. Krishnakumar, M. Korfer, S. B. Hoo, R. T. Schirrmeister and F. Hutter. *Accurate Predictions on Small Data with a Tabular Foundation Model.* Nature 637:319-326, 2025.
-   [Primary source](https://doi.org/10.1038/s41586-024-08328-6). DOI: [10.1038/s41586-024-08328-6](https://doi.org/10.1038/s41586-024-08328-6).
-
-19. L. Grinsztajn et al.. *TabPFN-3: Technical Report.* arXiv:2605.13986, 2026.
-   [Primary source](https://arxiv.org/abs/2605.13986v2).
-
-20. M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. Salakhutdinov and A. J. Smola. *Deep Sets.* NeurIPS, 2017.
-   [Primary source](https://proceedings.neurips.cc/paper_files/paper/2017/hash/f22e4747da1aa27e363d86d40ff442fe-Abstract.html).
-
-21. K. Xu, W. Hu, J. Leskovec and S. Jegelka. *How Powerful are Graph Neural Networks?.* ICLR, 2019.
-   [Primary source](https://arxiv.org/abs/1810.00826).
-
-22. K. Jamieson and A. Talwalkar. *Non-stochastic Best Arm Identification and Hyperparameter Optimization.* AISTATS, PMLR 51:240-248, 2016.
-   [Primary source](https://proceedings.mlr.press/v51/jamieson16.html).
-
-23. L. Li, K. Jamieson, G. DeSalvo, A. Rostamizadeh and A. Talwalkar. *Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization.* Journal of Machine Learning Research 18(185):1-52, 2018.
-   [Primary source](https://jmlr.org/papers/v18/16-558.html).
-
-24. S. Falkner, A. Klein and F. Hutter. *BOHB: Robust and Efficient Hyperparameter Optimization at Scale.* ICML, PMLR 80:1437-1446, 2018.
-   [Primary source](https://proceedings.mlr.press/v80/falkner18a.html).
-
-25. M. Raasveldt and H. Muhleisen. *DuckDB: An Embeddable Analytical Database.* ACM SIGMOD, 2019.
-   [Primary source](https://duckdb.org/library/duckdb-sigmod-demo/). DOI: [10.1145/3299869.3320212](https://doi.org/10.1145/3299869.3320212).
-
-26. N. Reimers and I. Gurevych. *Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks.* EMNLP-IJCNLP:3982-3992, 2019.
-   [Primary source](https://aclanthology.org/D19-1410/). DOI: [10.18653/v1/D19-1410](https://doi.org/10.18653/v1/D19-1410).
-
-27. R. Koenker and G. Bassett, Jr.. *Regression Quantiles.* Econometrica 46(1):33-50, 1978.
-   [Primary source](https://people.eecs.berkeley.edu/~jordan/sail/readings/koenker-bassett.pdf). DOI: [10.2307/1913643](https://doi.org/10.2307/1913643).
-
-28. B. Efron. *Bootstrap Methods: Another Look at the Jackknife.* The Annals of Statistics 7(1):1-26, 1979.
-   [Primary source](https://doi.org/10.1214/aos/1176344552). DOI: [10.1214/aos/1176344552](https://doi.org/10.1214/aos/1176344552).
-
-29. NVIDIA Kumo. *Relational Deep Learning.* Explanatory research documentation, section Why flat tables fail.
-   [Primary source](https://docs.nvidia.com/sdgm/research/concepts-models/relational-deep-learning).
-   Accessed October 26, 2026; current explanatory documentation is distinguished from the original ICML paper.
-
-30. B. Jäger et al.. *TabPFN-3.5: Technical Report.* arXiv:2609.17895; revised September 22, 2026, 2026.
-   [Primary source](https://arxiv.org/abs/2609.17895).
-   Distinct from the earlier TabPFN-3 technical report.
-
-31. J. Gu et al.. *RelBench v2: A Large-Scale Benchmark and Repository for Relational Data.* ICLR 2026; arXiv:2602.12606v2, 2026.
-   [Primary source](https://arxiv.org/abs/2602.12606v2).
-   Corpus expansion and access to external relational databases; these resources are proposed planner inputs, not additional tasks in the reported 21-task scorecard.
-
-32. M. Wang et al.. *4DBInfer: A 4D Benchmarking Toolbox for Graph-Centric Predictive Modeling on Relational DBs.* arXiv:2404.18209, 2024.
-   [Primary source](https://arxiv.org/abs/2404.18209).
-   Primary paper and associated multi-table benchmark/toolbox.
-
-33. J. Motl and O. Schulte. *The CTU Prague Relational Learning Repository.* arXiv:1511.03086; revision March 26, 2025, 2015.
-   [Primary source](https://arxiv.org/abs/1511.03086v3).
-   Repository and schema metadata; valid prediction tasks and planning outcomes must still be constructed.
-
-34. Kurve AI. *Kurve Product and Deployment.* Product overview and deployment options.
-   [Primary source](https://kurve.ai/).
-   Primary product source for warehouse integrations, Snowflake Native App, customer-controlled deployment and existing ML/MLOps workflows; product statements are distinct from benchmark results.
-
-35. Kurve AI. *Kurve Product Documentation.* Deployment, metadata graphs and compute graphs.
-   [Primary source](https://kurveai.github.io/kurvedocs/).
-   Primary documentation for private deployment and operational graph workflows.
+::: {#refs}
+:::
