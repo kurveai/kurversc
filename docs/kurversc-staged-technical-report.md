@@ -5,7 +5,7 @@ author: |
   Wes Madrigal  
   Kurve AI
 author-meta: "Wes Madrigal"
-date: "November 5, 2026 | Published generic procedure"
+date: "November 5, 2026 | Maintainer-reproduced results"
 lang: en-US
 papersize: letter
 fontsize: 10.5pt
@@ -72,14 +72,16 @@ depends on declared inputs and capacity, independently of previous admissions.
 The finalist check now treats binary classification and regression symmetrically,
 using a 1% relative-loss cap on `1 - AUC` and MAE, respectively.
 
-The release is qualified by 727 passing source tests with one skip, 19 passing
-RelArena adapter/discovery checks, and complete installed-wheel classification
-and regression runs on fresh unregistered synthetic schemas. These are
-correctness and execution checks, not evidence of benchmark superiority. Earlier
-21-task scores, Elo values and resource measurements belong to the superseded
-procedure. **A full 21-task performance result for this revised release is not
-established in this report.** Independent reproduction through the submitted
-RelArena adapter will be the reference result.
+RelArena's maintainers reproduced all 21 RelBench v1 tasks at seed zero with
+these public packages and merged the system on November 5, 2026. On the frozen
+16-method combined leaderboard, KurveRSC ranks **second overall and first among
+systems**, with **1913.4 Elo** (95% task-bootstrap interval 1832.3-2050.6), versus
+1933.6 for the latest TabPFN-Rel client. It wins 11 of their 21 task comparisons.
+The broad overlapping intervals do not establish a statistically significant
+difference in aggregate performance. This report includes every reproduced
+per-task score and the successful jobs' measured resources
+[@relarena20261105results; @relarena20261105leaderboard; @relarena20261105resources].
+Earlier author-run results remain a separate historical record.
 
 The architecture separates relational representation from the downstream
 learner and from the execution backend. It supports operational use through the
@@ -117,7 +119,7 @@ retroactively establish their compliance.
 | Finalist symmetry | The same bounded comparison for MAE and binary ROC-AUC; regression decisions preserved. |
 | Optional admission | One selector, shared origins/seeds and incumbent, independent applicability, menu-size multiplicity adjustment. |
 | Source boundaries | Explicit strict event cutoffs, separately declared availability, phase-censored task contexts and verified replay bindings. |
-| Evidence | Release qualification and clearly attributed pilots; revised full-panel scores remain pending. |
+| Evidence | Maintainer reproduction of all 21 tasks, published combined leaderboard, per-task scores and measured job resources. |
 
 The runnable procedure removes exposure-role reconstruction, the
 recurrence/semantic teacher and offset-correction stack, conditional-count
@@ -554,8 +556,8 @@ portable context. The harness owns outer held-out scoring. A standalone
 research campaign that accesses a raw RelBench cache is a different execution
 path and cannot establish that a harness reproduction occurred. The reported
 release qualification uses the registered adapter and actual core split types;
-future benchmark claims must identify the adapter, packages, source boundaries
-and complete final artifacts [@relarena_software; @hayler2026relarena].
+the completed reproduction identifies the adapter, public packages, source
+boundaries and final result rows [@relarena_software; @hayler2026relarena].
 
 The package's transitive staged execution closure includes 32 stage modules.
 It excludes the removed recovery stages. Historical scripts remain in source
@@ -581,9 +583,9 @@ sovereignty also depends on deployment, access controls and external-service
 configuration. They are distinct from benchmark rank and from an unrestricted
 scale claim for this search implementation.
 
-# Qualification and empirical status
+# Maintainer reproduction and release qualification
 
-## What is established for this release
+## Release qualification (November 4, 2026)
 
 | Check | Evidence and scope |
 |:---------------------------|:------------------------------------------------|
@@ -594,7 +596,7 @@ scale claim for this search implementation.
 | Installed classification run | Complete registered procedure on a fresh, unregistered 48-request synthetic schema; no hidden targets. |
 | Installed regression run | The same execution qualification for numeric regression on a different fresh schema. |
 | Package parity | Source and installed public-wheel Python payloads match: 80 KurveRSC and 22 GraphReduce modules. |
-| Dependency lock | RelArena's 215-package lock resolves both exact versions from PyPI. |
+| Dependency lock | The submitted 215-package lock resolved both exact versions from PyPI. |
 
 The two synthetic runs completed in approximately 161 and 156 seconds. Their
 small schemas do not exercise every possible head or guarantee an S2 alternate
@@ -604,30 +606,185 @@ numerical dependencies; it is not a cold installation of every dependency on
 every supported platform. Detailed source checks are recorded in the
 [qualification receipt](generic-staged-validation.json).
 
-## What must not be inferred
+## Reproduced evaluation and provenance
 
-No current-release 21-task scorecard, updated Elo, first-place claim, or
-per-task runtime/RAM envelope is established here. The maintainers' fresh
-21-task reproduction through the submitted adapter will be the reference
-result. A changed dependency pin, correction or successful synthetic smoke is
-not a substitute for that evaluation.
+RelArena PR #80 was merged on November 5, 2026. The maintainers ran
+`kurversc-2026-10-22` through its registered adapter using public KurveRSC 0.2.0
+and GraphReduce 1.10.18, at seed zero, one task per CPU host. The 21 selected
+rows in `baseline_results/results.csv` cover seven databases, twelve binary
+classification tasks and nine regression tasks. All final rows contain finite
+test scores and no error. These are the reference measurements for this report
+[@relarena20261105results].
 
-The [six-task narrowed pilot](generic-staged-pilot.md) includes wins, unchanged
-incumbents and regressions, and predates the source-replay and symmetric-finalist
-revision. It remains useful historical evidence with its own source identity;
-it is not the completed benchmark of version 0.2.0. Likewise, an earlier Olist
-experiment used a superseded procedure. Retaining its incumbent does not show
-positive transfer of every optional component to Olist
-[@priorlabs_olist]. No external-data transfer claim for the revised release is
-made from that experiment.
+The snapshot is RelArena `fcab8fb` (November 5, 2026), after the staged-system
+merge and dating of the earlier KurveRSC registration. The
+[immutable result file](https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/baseline_results/results.csv),
+[published leaderboard](https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/README.md#-leaderboards) and
+[resource record](https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/docs/models/kurversc-staged-resources.md)
+identify the exact comparison. The
+[machine-readable extract](assets/kurversc-relarena-reproduction-20261105.json)
+retains full-precision scores, timings, source checksums and model identifiers.
 
-The archived report records the earlier author-run panel and resources. Those
-measurements must remain attached to the score-producing source and temporal
-semantics. Comparing their Elo to a moving leaderboard, or mixing historical
-carry-forward scores with new scores without labeling them, would misstate the
-current method's measured performance.
+## Combined leaderboard
+
+The published **models plus systems** panel contains sixteen complete methods
+on the same 21 tasks. It excludes self-reported `_MR` reference rows and
+incomplete/exploratory runs. Ratings are anchored to the global constant at
+1000. Intervals use the 2.5th and 97.5th percentiles of 100 task-bootstrap
+samples; they describe uncertainty across tasks, not variation across training
+seeds. A models-only board is computed separately and excludes KurveRSC as a
+system; its ratings must not be substituted into this combined comparison
+[@relarena20261105leaderboard].
+
+| Rank | Method | Kind | Elo | 95% task-bootstrap interval |
+|---:|:--------------------------------|:------|------:|:---------------------------|
+| 1 | tabpfn-rel-client-latest | Model | 1933.6 | 1864.7-2033.5 |
+| 2 | kurversc-latest | System | 1913.4 | 1832.3-2050.6 |
+| 3 | tabpfn-rel-local-latest | Model | 1887.7 | 1831.3-1974.8 |
+| 4 | rt-j | System | 1842.2 | 1721.9-1997.8 |
+| 5 | tabpfn-rel-client-2026-08-15 | Model | 1799.0 | 1740.7-1886.9 |
+| 6 | rt-plurel | System | 1787.7 | 1695.9-1889.4 |
+| 7 | kurversc-2026-09-03 | System | 1773.8 | 1709.9-1849.6 |
+| 8 | nori-rel | Model | 1732.3 | 1660.5-1844.7 |
+| 9 | tabpfn-rel-local-2026-08-15 | Model | 1702.0 | 1613.7-1771.7 |
+| 10 | graphsage | Model | 1660.3 | 1550.8-1747.2 |
+| 11 | relgt | Model | 1562.7 | 1430.3-1664.5 |
+| 12 | rdblearn | Model | 1529.8 | 1437.8-1610.5 |
+| 13 | relgnn-es | Model | 1525.0 | 1421.2-1636.6 |
+| 14 | lightgbm | Model | 1363.9 | 1168.9-1501.1 |
+| 15 | constant-per-entity | Model | 1266.5 | 1082.8-1408.5 |
+| 16 | constant-global | Model | 1000.0 | 838.5-1076.9 |
+
+KurveRSC's point rating is 20.2 below the latest TabPFN-Rel client and 139.6
+above the earlier KurveRSC registration in this same panel. The intervals overlap
+substantially. A higher point rank is not proof of a significant pairwise
+advantage, and task-level wins are not interchangeable with Elo: Elo accounts
+for results against the full panel.
+
+## Classification: ROC-AUC, higher is better
+
+The earlier column is `kurversc-2026-09-03`; the current column is
+`kurversc-2026-10-22`; the client column is
+`tabpfn-rel-client-2026-09-28`, which the snapshot displays as the latest client.
+All values below are held-out test scores from selected rows in the same
+published file. Winners are determined from full precision, before formatting
+[@relarena20261105results].
+
+| Dataset / task | Earlier KurveRSC | KurveRSC 0.2.0 | TabPFN-Rel client | Winner |
+|:--------------------------|-------------:|-------------:|-------------:|:---------|
+| Amazon / item-churn | 0.827256 | 0.828712 | 0.828653 | KurveRSC |
+| Amazon / user-churn | 0.710347 | 0.712558 | 0.711698 | KurveRSC |
+| Avito / user-clicks | 0.658406 | 0.660062 | 0.691631 | Client |
+| Avito / user-visits | 0.674721 | 0.672515 | 0.672453 | KurveRSC |
+| Event / user-ignore | 0.832628 | 0.850888 | 0.784037 | KurveRSC |
+| Event / user-repeat | 0.779679 | 0.782152 | 0.760495 | KurveRSC |
+| F1 / driver-dnf | 0.746484 | 0.722017 | 0.727809 | Client |
+| F1 / driver-top3 | 0.664957 | 0.834154 | 0.791702 | KurveRSC |
+| H&M / user-churn | 0.696916 | 0.707174 | 0.706021 | KurveRSC |
+| Stack / user-badge | 0.877626 | 0.876020 | 0.883443 | Client |
+| Stack / user-engagement | 0.903027 | 0.903861 | 0.907662 | Client |
+| Trial / study-outcome | 0.712131 | 0.760476 | 0.764556 | Client |
+
+```{=latex}
+\Needspace{18\baselineskip}
+```
+
+## Regression: MAE, lower is better
+
+MAE is in each task's native units. These values are not averaged across tasks
+with different target scales.
+
+| Dataset / task | Earlier KurveRSC | KurveRSC 0.2.0 | TabPFN-Rel client | Winner |
+|:--------------------------|-------------:|-------------:|-------------:|:---------|
+| Amazon / item-ltv | 42.2731 | 42.3828 | 45.2705 | KurveRSC |
+| Amazon / user-ltv | 14.0205 | 13.9894 | 13.8771 | Client |
+| Avito / ad-ctr | 0.033440 | 0.033258 | 0.031258 | Client |
+| Event / user-attendance | 0.258668 | 0.234934 | 0.241652 | KurveRSC |
+| F1 / driver-position | 3.8632 | 4.0605 | 3.7574 | Client |
+| H&M / item-sales | 0.032168 | 0.033636 | 0.036479 | KurveRSC |
+| Stack / post-votes | 0.063243 | 0.062864 | 0.062733 | Client |
+| Trial / site-success | 0.403842 | 0.398749 | 0.377615 | Client |
+| Trial / study-adverse | 41.2702 | 33.1750 | 34.4014 | KurveRSC |
+
+KurveRSC wins **11/21** observed task comparisons against the client: seven
+classification and four regression tasks. The client wins the other ten.
+Several margins, especially item-churn and user-visits, are small point
+advantages; a single training seed does not establish their robustness.
+Relative to the earlier KurveRSC registration, fifteen scores improve and six
+regress. The table discloses both directions; it is not a controlled ablation
+of any single feature or selection stage.
+
+## Relationship to earlier evidence
+
+The [six-task narrowed pilot](generic-staged-pilot.md) predates source-replay
+and symmetric-finalist revisions and is no longer the current performance
+reference. An earlier Olist experiment used a superseded procedure; retaining
+its incumbent does not show positive transfer of every optional component
+[@priorlabs_olist]. The completed RelArena evaluation establishes benchmark
+performance of the revised release, while predictive transfer to new databases
+and per-component attribution remain separate questions.
+
+The archived October 27 report records a different author-run source and
+comparison panel. Its Elo, temporal semantics and resources must remain tied
+to that source. No historical score is carried forward into the reproduced
+21-task column above.
+
+```{=latex}
+\Needspace{38\baselineskip}
+```
 
 # Cost, resources, and parallelization
+
+## Measured resources in the maintainer reproduction
+
+The public resource record reports successful jobs on two CPU host classes:
+eight tasks on 96-vCPU, 739-GB hosts, and thirteen on 48-core, 190-GB hosts.
+The larger hosts used a 160-GiB DuckDB working-memory limit and a 100-GiB
+temporary-directory limit; the smaller hosts used 48 GiB and 20 GiB,
+respectively. One task ran per host. Host RAM is reported in GB; observed
+Slurm `MaxRSS` is reported in GiB [@relarena20261105resources].
+
+| Task | Host RAM, GB | Job wall time, h | Peak RSS, GiB |
+|:---------------------------|------------:|----------------:|--------------:|
+| Amazon / item-churn | 739 | 3.32 | 364 |
+| Amazon / item-ltv | 739 | 6.48 | 202 |
+| Amazon / user-churn | 739 | 4.98 | 262 |
+| Amazon / user-ltv | 739 | 8.86 | 327 |
+| Avito / ad-ctr | 190 | 0.71 | 34 |
+| Avito / user-clicks | 190 | 1.21 | 51 |
+| Avito / user-visits | 190 | 1.14 | 64 |
+| Event / user-attendance | 190 | 3.35 | 46 |
+| Event / user-ignore | 739 | 1.83 | 283 |
+| Event / user-repeat | 190 | 1.72 | 44 |
+| F1 / driver-dnf | 190 | 5.88 | 6 |
+| F1 / driver-position | 190 | 4.88 | 4 |
+| F1 / driver-top3 | 190 | 3.93 | 4 |
+| H&M / item-sales | 190 | 3.47 | 27 |
+| H&M / user-churn | 190 | 1.64 | 21 |
+| Stack / post-votes | 739 | 10.60 | 257 |
+| Stack / user-badge | 739 | 10.38 | 370 |
+| Stack / user-engagement | 739 | 4.36 | 219 |
+| Trial / site-success | 190 | 1.73 | 89 |
+| Trial / study-adverse | 190 | 6.36 | 30 |
+| Trial / study-outcome | 190 | 2.27 | 23 |
+
+The successful jobs take **0.71-10.60 hours** and report **4-370 GiB MaxRSS**.
+The separate application `time_total` values in the score CSV span
+0.70-10.59 hours and sum to 88.81 task-hours. Job wall time and application time
+are different recorded clocks. Their sum is not the elapsed duration of a
+parallel multi-host campaign and does not include failed earlier attempts.
+Every successful reproduced task finishes below 24 hours.
+
+Resource retries are part of the provenance: user-ignore and user-engagement
+ran out of memory on the 190-GB hosts with the 48-GiB DuckDB limit; post-votes
+reached 140 GiB there before being moved. All three completed on the 739-GB
+hosts. Consequently, this is a complete set of final results, **not a claim of
+21 successful first attempts**. Peaks depend on engine limits and execution
+conditions and are observations, not minimum-memory requirements. Slurm MaxRSS
+is not interchangeable with the earlier author's process-tree RSS or cgroup
+memory peaks [@relarena20261105resources].
+
+## Execution budgets and parallel admission
 
 The complete task budget is 23.75 hours, below RelArena's 24-hour limit. This is
 a deadline, not a guarantee that every schema can finish under it. Source size,
@@ -651,17 +808,16 @@ a cache hit with mismatched bindings is a correctness error.
 Task-level and graph-configuration concurrency are distinct. Increasing both
 multiplies overlapping materialization and learner memory. Parallel execution
 should be admitted from measured process-tree or cgroup demand with an explicit
-host reserve. Historical peaks from the removed-stage pipeline can inform
-capacity planning only provisionally; they are not published resource
-requirements for this release.
+host reserve. The maintainer measurements above provide current planning evidence, but
+concurrent tasks need additional headroom and may change spill behavior.
+Historical removed-stage peaks are a separate measurement series.
 
-A reproducible full-panel resource report should record wall time, CPU/thread
-configuration, peak whole-task memory, SQL memory/spill settings, temporary
-storage peak, active concurrency, and completion status per task. Process-tree
-RSS and cgroup peaks have different accounting and must be labeled. An isolated
-retry must not replace a failed first attempt without disclosing both. This
-report does not promote unmeasured hardware estimates into maintainer
-replication requirements.
+The published resource table identifies host classes, job wall time, Slurm
+MaxRSS and engine limits. It does not report every temporary-storage peak or
+CPU-utilization trace. A hardware-normalized speedup over previous author runs
+cannot be inferred from these different hosts and accounting methods. Further
+efficiency work should retain source/phase identity and disclose retries,
+concurrency and the resource measure used.
 
 # Related work and architectural claims
 
@@ -711,10 +867,11 @@ KurveRSC makes a different design choice: select a task-conditioned relational
 program before fitting the tabular learner. This addresses the gap between
 unselected summaries and supervised relational compression. It leaves open
 whether the available programs preserve the interactions a particular task
-needs. **The narrowed release's performance is not yet established by a full
-panel**, so the superseded first-place result cannot be used here to declare
-those architectural concerns empirically refuted. A matched comparison with
-KumoRFM-2 would require the same tasks, inputs, temporal visibility, external
+needs. The maintainer-reproduced second-place overall result provides empirical
+evidence that this matrix-based learner interface can be competitive after
+task-conditioned relational compression. It does not show that arbitrary
+flattening is lossless or establish a matched result against KumoRFM-2. That
+comparison would require the same tasks, inputs, temporal visibility, external
 pretraining disclosure and compute protocol.
 
 ## Search allocation and uncertainty
