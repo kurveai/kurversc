@@ -1,45 +1,83 @@
 {
   "profile": "kurversc-generic-staged-v1",
-  "date": "2026-11-01",
+  "date": "2026-11-04",
   "version": "0.2.0",
-  "status": "ready_for_maintainer_review_and_reproduction",
+  "status": "ready_for_maintainer_reproduction",
+  "reviewed_base": "f5bf98a03cdaa2b0798f80b44854f4629aba4eb0",
+  "prior_qualification": "archive/generic-staged-validation-20261101.json",
   "graphreduce_version": "1.10.18",
   "graphreduce_source_pin": "21aff2e9ad83d69d7fc468d01e3d56a0dc6ca976",
-  "prior_qualification": "archive/generic-staged-validation-20261031.json",
+  "s2_finalist_check": {
+    "metrics": [
+      "mae",
+      "roc_auc"
+    ],
+    "comparison_loss": {
+      "mae": "mae",
+      "roc_auc": "1 - roc_auc"
+    },
+    "relative_loss_cap": 0.01,
+    "cap_applies_to": "Candidate screen and every origin/seed safety check",
+    "origins": [
+      2,
+      3
+    ],
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "require_unanimous_seed_selection": true,
+    "maximum_additional_graphs": 1,
+    "maximum_candidate_width_fraction": 0.5,
+    "native_metric_uncertainty": true,
+    "regression_parity_cases": 30,
+    "regression_decisions_and_evidence_exact": true,
+    "task_specific_dispatch": false,
+    "downstream_model_parameters_changed": false,
+    "additional_prediction_heads": false
+  },
   "kurversc_clean_source_tests": {
-    "passed": 716,
-    "skipped": 1,
-    "current_relarena_core_source": true
+    "passed": 727,
+    "skipped": 1
   },
   "current_relarena_adapter_tests": {
-    "passed": 14,
-    "scope": "staged adapter, built-in model discovery and external plugin discovery"
+    "passed": 19,
+    "scope": "Registered staged adapter, built-in model discovery and external plugin discovery"
   },
   "installed_wheel_smoke": {
     "status": "passed",
-    "actual_current_core_splits": true,
     "cases": {
       "classification": {
         "status": "passed",
-        "rows": 48,
-        "harness": true,
         "task_kind": "classification",
-        "elapsed_seconds": 310.88993008300895,
+        "rows": 48,
+        "installed_wheel": true,
+        "actual_current_core_splits": true,
+        "registered_system": "kurversc-2026-10-22",
+        "unregistered_schema": true,
         "hidden_targets_supplied": false,
-        "unregistered_schema": true
+        "complete_staged_pipeline": true,
+        "elapsed_seconds": 160.51337266602786,
+        "kurversc_version": "0.2.0",
+        "graphreduce_version": "1.10.18"
       },
       "regression": {
         "status": "passed",
-        "rows": 48,
-        "harness": true,
         "task_kind": "regression",
-        "elapsed_seconds": 274.7895418340049,
+        "rows": 48,
+        "installed_wheel": true,
+        "actual_current_core_splits": true,
+        "registered_system": "kurversc-2026-10-22",
+        "unregistered_schema": true,
         "hidden_targets_supplied": false,
-        "unregistered_schema": true
+        "complete_staged_pipeline": true,
+        "elapsed_seconds": 156.49762875004672,
+        "kurversc_version": "0.2.0",
+        "graphreduce_version": "1.10.18"
       }
     },
-    "unregistered_schema": true,
-    "hidden_targets_supplied": false,
+    "actual_current_core_splits": true,
     "full_generic_staged_procedure": true,
     "fresh_optional_dependency_resolution": false
   },
@@ -49,37 +87,20 @@
     "stage_modules": 32,
     "excluded_modules_absent": true,
     "source_and_wheel_exact": true,
-    "no_models_or_benchmark_data": true,
-    "tested_wheel_sha256": "441cf55614b71e77dde499836c32b0d06a35df5b32eeeeefdadb6ff27e037d2f",
-    "release_wheel_python_payload_matches_tested_wheel": true,
-    "release_wheel_sha256": "385e20aec452aac4e46cb0fdc3014088091168ba3192014b8d64e4c3b7a6f13d"
+    "tested_wheel_sha256": "0e966eb00fcc2b8d1806686fc384ca609a172151ff0dd5b4adaf783075e21720"
   },
-  "source_blueprint_repair": {
-    "source_occurrence_bound": "maximum occurrence bound in the offered candidate menu",
-    "frozen_plan_contract": "source bounds, instance aliases, keys, clocks and relationships",
-    "replay_mismatch": "raises instead of silently changing the source graph",
-    "candidate_menu_learner_and_admission_rule_changed": false,
-    "additional_prediction_heads": false,
-    "regression_checks": 6,
-    "heldout_test_targets_used": false
-  },
-  "prior_narrowed_pilot": {
-    "source_revision": "b2cbeea0c7ee26d22e7076c7424c7ab108b2d060",
-    "completed_tasks": 6,
-    "total_tasks": 21,
-    "results": "generic-staged-pilot.md",
-    "admissions": "generic-staged-pilot-admissions.tar.gz",
-    "scores_apply_to_current_source": false
+  "graphreduce_artifact": {
+    "python_modules": 22,
+    "source_and_wheel_exact": true,
+    "wheel_sha256": "5d99b358e4ce5f85c3d16fb8a2db072d9c18da6abbd03c4e194aff822410bd81",
+    "published_to_pypi": false
   },
   "current_full_21_results": false,
-  "official_task_completions": 0,
-  "official_task_count": 21,
-  "updated_elo": null,
-  "full_21_task_reproduction_passed": false,
   "current_harness_full_21_task_reproduction": false,
   "maintainer_reproduction_pending": true,
   "package_publication_performed": false,
-  "historical_score_substitutions": false,
+  "prior_scores_reassigned_to_this_revision": false,
+  "updated_elo": null,
   "research_challengers_included": false,
   "source_sha256": {
     "kurversc/__init__.py": "b79b047998716a7ed15528761a6ebe9fe4f30e188d8210199571e9c7f5ba3859",
@@ -133,15 +154,15 @@
     "scripts/benchmark_current_frozen_heads.py": "e706d3e585f578c70be69679f53275f76899ed04406b9ff921a4e43500b262a6",
     "scripts/benchmark_frozen_event_summaries.py": "bee1635e69a4dec35981657ca010283f661fdf015c051a2a4878397053185f1a",
     "scripts/benchmark_generic_readouts.py": "cb835a4c2fc3a5d31fb7b58ddff9252a2e9a6c1f178177cf953bf16cde2a417d",
-    "scripts/benchmark_production_finalists.py": "f09a95c5317ad902ef5eb7601673ff8391a2dd5e0029eb7665d37f7f7e31b384",
-    "scripts/benchmark_production_finalists_v2.py": "f739656dd6bbee585f9e71158161352bc699003a38ceff16e4b95d70ff5a4dc0",
+    "scripts/benchmark_production_finalists.py": "a27a60099859a445c31f49e5e3b4d463b82fca33e72933486ee455114e3af082",
+    "scripts/benchmark_production_finalists_v2.py": "78f836b954a1211e971f8d2a3ab06263b7357047796df68e58ea6750dba1b190",
     "scripts/benchmark_signal_challengers.py": "f792420dfa1dc386963e9164a3aacfe1ea40bf6af5c47b6fe698c182a460eb5d",
     "scripts/benchmark_sparse_training.py": "82591e6de745128d49b9bb6a9f296a6ca9553be1154f3acd25e1f3adb8acf59b",
     "scripts/benchmark_supported_official.py": "cd43feac4402c35adfaa1171956f21373d2e8e2931ed8f825646ff16d87d2f7f",
     "scripts/benchmark_temporal_policy.py": "2ea4bbe62841ed8b3b41c7d816ea2aaebbd329b997efd1c2f6db80627cdb92b2",
     "scripts/discrete_target_projection.py": "688563ad4aa89b59569bd87928bb0090b633c98a6105cb45639f96b2e1384fe9",
     "scripts/frozen_materialization_cache.py": "84e36342d4dcae944563fef5d4f33bc66b75df60afae5af150e2c80a9bce7c05",
-    "scripts/generic_finalist_helpers.py": "ba8615e52b694c38e0019e3529c4ebc0cd5ec3cda110f1ad481c255f27b18a12",
+    "scripts/generic_finalist_helpers.py": "00b228d3c45f6866fd9f3ce61cec2046255bdc598094ee8567a113af673bb98e",
     "scripts/generic_staged_helpers.py": "aaac8f6cb75395e3a1ccc0dba09e534d34a113e34d9f7c6b5efbceb4e005f74a",
     "scripts/materialize_policy_folds.py": "0453432d8348ca967db29403c4b4c22fe424c4264265f767183bd78d8c09724e",
     "scripts/object_breadth_challenger.py": "50ce1baf432dedca417905cdb10d2cd3102a3626444efb9df7d8b7e4e4d130cc",
@@ -160,6 +181,9 @@
     "scripts/streaming_feature_cache.py": "27513afba39d618d40c05fbc4cb049962a3a25a249ee3da4fb37ad6822b7242d",
     "scripts/temporal_audit_veto.py": "57bee8c27a29397eee9bb9b38ce033a73e8d2e7c1d5927823c59e2f53dfc41c6",
     "scripts/temporal_campaign_support.py": "4b189a71d8fe55d6ae3eb60d76fbbbe24e78b7f75d535ccc4fa2f9c3cc86c69f",
-    "scripts/zero_aware_quantile_readout.py": "e7922a45810c507e7b81ef7007ab74bd6455a257d6acf5ecf167537294d9cdae"
+    "scripts/zero_aware_quantile_readout.py": "e7922a45810c507e7b81ef7007ab74bd6455a257d6acf5ecf167537294d9cdae",
+    "staged_build.py": "941ed8b65f91de8eaaf677680194f30e58160b56cbf623324565887418f52fcf",
+    "tests/test_uniform_finalist_check.py": "c47f78e9aca99a339737105ebb39cfa98fdff11c14cf4027b07631dfef19b7e8",
+    "tests/test_production_finalists.py": "37c38f7f9605b872e815dd674dd603cbe4ba9612a72189a4ecf34689dd5d8857"
   }
 }

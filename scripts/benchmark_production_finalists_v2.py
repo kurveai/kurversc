@@ -1,8 +1,9 @@
 """Production-faithful finalist check across arbitrary temporal block sizes.
 
-Keep the post-votes experiment's bounded two-graph/native-readout comparison.
-Generalize to two or three available origins and multi-cutoff validation/refit
-blocks. Capacity fallbacks are target-blind and deterministic, not score based.
+Compare two graphs with the same native fit/refit procedure on two or three
+available origins and multi-cutoff validation blocks. Both supported task types
+use the same relative loss cap. Capacity fallbacks are target-blind and
+deterministic, not score based.
 No task names, historical winners or official scores enter the selector.
 """
 
@@ -39,8 +40,9 @@ def compare_cases(incumbent, challenger, control, candidate):
     expected = {(f, s) for f in folds for s in range(3)}
     if not 2 <= len(folds) <= 3 or set(control) != expected or set(candidate) != expected:
         raise ValueError("Complete two/three-origin, three-seed evidence required")
-    if incumbent.metric != "mae" or challenger.metric != "mae":
-        raise ValueError("The optional bounded finalist comparison is MAE-only")
+    metric = incumbent.metric
+    if metric not in previous.SUPPORTED_FINALIST_METRICS or challenger.metric != metric:
+        raise ValueError("Finalists must share a supported validation metric")
     if challenger.feature_count * 2 > incumbent.feature_count:
         return dict(selected="incumbent", reason="no_drastic_complexity_reduction")
     decisions, safety, summaries = {}, True, {}
@@ -54,16 +56,11 @@ def compare_cases(incumbent, challenger, control, candidate):
                     np.testing.assert_array_equal(control[key][field], candidate[key][field])
                 if control[key]["origin"] != candidate[key]["origin"]:
                     raise ValueError("Unmatched forecast origins")
-                y, prediction = np.asarray(cases[key]["truth"]), np.asarray(cases[key]["prediction"])
-                if not y.size or y.shape != prediction.shape or not np.isfinite(prediction).all():
-                    raise ValueError("Finite complete aligned validation vectors required")
-                loss = np.abs(y-prediction)
-                if not np.isfinite(loss).all():
-                    raise ValueError("Finite mature validation targets required")
-                scores.append(float(loss.mean()))
-                errors.append(float(loss.std(ddof=1)/np.sqrt(len(loss))) if len(loss)>1 else 0.)
+                score, error = previous.finalist_case_score(metric,cases[key]["truth"],cases[key]["prediction"])
+                scores.append(score)
+                errors.append(error)
                 labels.append(cases[key]["origin"])
-            obj, se = _rerank_objective("mae", float(np.mean(scores)), float(np.std(scores)), len(folds), .25)
+            obj, se = _rerank_objective(metric, float(np.mean(scores)), float(np.std(scores)), len(folds), .25)
             records.append(replace(trial, model=None, stage="rerank", validation_score=float(np.mean(scores)),
                 objective_score=obj, validation_standard_error=se, cutoff_labels=tuple(labels),
                 cutoff_scores=tuple(scores), cutoff_standard_errors=tuple(errors)))
@@ -72,7 +69,8 @@ def compare_cases(incumbent, challenger, control, candidate):
             regression_negligible_relative_gain=.005, complexity_uncertainty_multiplier=1.,
             complexity_selector=True, practical_recent_ties=True)[-1]
         decisions[str(seed)] = "challenger" if chosen.config==challenger.config else "incumbent"
-        safety = safety and all(b<=a*1.01+1e-12 for a,b in zip(records[0].cutoff_scores, records[1].cutoff_scores))
+        safety = safety and all(previous.finalist_loss(metric,b)<=previous.finalist_loss(metric,a)*1.01+1e-12
+            for a,b in zip(records[0].cutoff_scores, records[1].cutoff_scores))
     admitted = safety and all(v=="challenger" for v in decisions.values())
     return dict(selected="challenger" if admitted else "incumbent",
         reason="unanimous_production_fidelity_complexity_tie" if admitted else "incumbent_retained",
