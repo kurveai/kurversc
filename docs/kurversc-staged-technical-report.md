@@ -978,29 +978,76 @@ can increase search cost and multiple-comparison burden. Changes should be
 qualified with the same public procedure on held-out databases, without
 benchmark-name switches or test-score campaign gates.
 
-## Amortizing graph selection with a pretrained planner
+## Planned zero-shot configuration and prediction
 
-A future planner could propose graph configurations from a schema, relationship
-metadata, table/column statistics, root, horizon and target type. It could warm
-start a bounded search while retaining verified execution and validation.
-Zero-shot prediction of the universally optimal graph is a stronger claim and
-has not been demonstrated.
+We plan to develop a pretrained configuration model that replaces task-time graph
+search with a single forward pass on a new database and prediction task. Inputs
+will include the schema, relationship metadata, table/column statistics, root
+entity, prediction horizon, target type and target definition. The target
+definition or label-generation rule is essential: the same root, horizon and
+binary target type can describe different prediction problems. Profiles must
+respect the task's temporal boundaries. The planner will also receive the
+downstream learner specification and execution budget.
 
-The limiting resource is a training corpus of phase-correct tasks, evaluated
-programs, fidelity/cost records, uncertainty and independent held-out outcomes.
-Schema metadata alone does not label predictive quality. RelBench v2, 4DBInfer
-and the CTU repository can seed collection
-[@gu2026relbenchv2; @wang2024dbinfer; @motl2015ctu], but sibling tasks do not
-provide independent databases. THE JOIN, released with RT-J, offers another
-source of real relational databases and forecasting tasks [@ranjan2026rtj]. A
-graph-selection planner would still need its own phase-correct program-quality
-and cost traces on those tasks. Permissioned operational traces and synthetic
-tasks could broaden coverage with appropriate licensing, privacy and temporal
-validity.
+The model will predict a schema-valid, executable GraphReduce configuration,
+including relational paths, depth, feature families, annotations, temporal
+windows and payload budgets. Structured output heads and a deterministic
+schema-aware compiler will bind these decisions to a valid plan without
+autoregressive configuration search. GraphReduce will materialize the selected
+representation, and a downstream pretrained learner will produce predictions.
+The intended composition is
 
-Evaluation must hold out entire databases/schema families. It should measure
-full-fidelity winner retention, regret, execution validity and cost against the
-fixed staged search. No pretrained planner is part of this release.
+$$
+\widehat g=P_\phi\!\left(m(D_{<t}),\mathcal T\right),\qquad
+Z=\Phi_{\widehat g}(D_{<t}),\qquad
+\widehat Y=F_\psi\!\left(Z_C,Y_C,Z_Q;\mathcal T\right),
+$$
+
+where $m$ computes the permitted metadata/profile, $\mathcal T$ specifies the
+task and learner, $C$ is optional observed support and $Q$ is the forecast
+request set. Both models' pretrained weights remain fixed at deployment.
+The single forward pass refers to configuration prediction; profiling,
+GraphReduce execution and downstream inference remain explicit operations whose
+costs must be included in end-to-end latency.
+
+The goal is a complete pretrained prediction procedure with no task-specific
+graph search, hyperparameter tuning or model-weight updates. An in-context
+learner may still use mature observed labels as support; this is different from
+label-free prediction and will be reported explicitly. A separate label-free
+protocol will omit $Y_C$ and require the pretrained predictor to understand the
+target definition. Pretrained in-context learning and relational task prompting
+provide relevant precedents, without establishing the effectiveness of this
+planned composition [@hollmann2025tabpfn; @ranjan2026relational].
+
+The hypothesis is that pretraining can amortize the cost of discovering useful
+relational representations across databases. It is not a claim that coarse
+metadata uniquely determines the optimal graph. A confidence-triggered return
+to bounded search can be studied as a separate fallback; its results and costs
+must remain distinct from the one-proposal protocol. No pretrained planner is
+part of KurveRSC 0.2.0 or the reported benchmark results.
+
+## Pretraining data and evaluation
+
+The principal data requirement is a corpus of phase-correct tasks and executed
+programs with predictive-quality, fidelity, cost and uncertainty records.
+Planner supervision must use training and inner-validation evidence, with final
+evaluation outcomes held out. RelBench v2, 4DBInfer and the CTU repository can
+seed collection [@gu2026relbenchv2; @wang2024dbinfer; @motl2015ctu], but sibling
+tasks do not provide independent databases. THE JOIN, released with RT-J,
+offers another source of real relational databases and forecasting tasks
+[@ranjan2026rtj]. These sources still require phase-correct program-quality and
+cost traces. Permissioned operational traces and synthetic tasks could broaden
+coverage with appropriate licensing, privacy and temporal validity.
+
+Evaluation will hold out entire databases and schema families. The primary
+comparison will pair a single planner proposal with the same downstream
+pretrained learner used by fixed generic configurations and the bounded search
+reference. It will measure ROC-AUC or MAE, regret relative to evaluated
+full-fidelity configurations, plan validity, execution failures, total latency
+and peak resources. Learned planning and downstream learner choice will also
+be varied separately to measure their respective contributions. A successful
+experiment would retain competitive predictive quality while eliminating
+per-task search; label-free performance is a separate result to establish.
 
 ```{=latex}
 \clearpage
