@@ -62,6 +62,3 @@ Concurrent tasks require separate output/scratch/cache directories and host
 headroom. Preserve the procedure's internal worker/thread settings, and size
 admission from measured demand and spill behavior. The absolute task deadline
 remains below 24 h across resumes; incomplete execution is not a scored success.
-
-The [October 27 resource record](archive/kurversc-staged-resources-20261027.md)
-belongs to the superseded procedure.

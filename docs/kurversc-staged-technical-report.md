@@ -29,6 +29,8 @@ header-includes:
     \usepackage{microtype}
     \usepackage{fancyhdr}
     \usepackage{graphicx}
+    \usepackage{float}
+    \floatplacement{figure}{H}
     \usepackage{xurl}
     \usepackage{fvextra}
     \usepackage{needspace}
@@ -64,13 +66,12 @@ before saving keyed predictions.
 This report specifies the published **KurveRSC 0.2.0 / GraphReduce 1.10.18**
 procedure.
 
-The fixed profile is `kurversc-generic-staged-v1`. It replaces the October 27
-report after removal of specialized recovery components. The retained optional menu contains
+The fixed profile is `kurversc-generic-staged-v1`. Its optional menu contains
 parent text heads, training-frame ensembles, target-domain projection, a
 zero-aware distributional readout, and object breadth. All optional candidates
 challenge the same incumbent with one temporal admission rule. Their eligibility
 depends on declared inputs and capacity, independently of previous admissions.
-The finalist check now treats binary classification and regression symmetrically,
+The finalist check treats binary classification and regression symmetrically,
 using a 1% relative-loss cap on `1 - AUC` and MAE, respectively.
 
 RelArena's maintainers reproduced all 21 RelBench v1 tasks at seed zero with
@@ -82,7 +83,6 @@ The broad overlapping intervals do not establish a statistically significant
 difference in aggregate performance. This report includes every reproduced
 per-task score and the successful jobs' measured resources
 [@relarena20261105results; @relarena20261105leaderboard; @relarena20261105resources].
-Earlier author-run results remain a separate historical record.
 
 The architecture separates relational representation from the downstream
 learner and from the execution backend. It supports operational use through the
@@ -93,53 +93,54 @@ this complete search procedure. The main unresolved questions remain selection
 fidelity, computational cost, and predictive transfer to previously unseen
 databases.
 
-# Scope, release identity, and revision
+**Code and reproducibility.** The source code, installation instructions and
+reproduction documentation are available at
+[github.com/kurveai/kurversc](https://github.com/kurveai/kurversc)
+[@kurversc020]. The evaluated packages are `kurversc[staged]==0.2.0` and
+`graphreduce==1.10.18`.
+
+```{=latex}
+\clearpage
+```
+
+# Architecture overview {.unnumbered}
+
+Figure 1 shows how KurveRSC adapts the relational representation with a
+downstream learner in the loop. GraphReduce executes candidate programs;
+increasing-fidelity validation selects a graph, training policy and applicable
+optional readout before the production artifact is frozen.
+
+![KurveRSC 0.2.0 architecture. Strict temporal inputs feed schema-derived graph search. GraphReduce materializes entity-grain frames, and the downstream learner supplies the validation objective. Finalist and temporal-policy checks precede a shared optional-candidate gate. The selected program, schema, policy and fitted learner are frozen for prediction; outer test targets are used only by the external scorer.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
+
+```{=latex}
+\clearpage
+```
+
+# Scope and release identity
 
 This document describes the fixed staged procedure rather than every native
 KurveRSC option. Its software dependencies are the public packages
 `kurversc[staged]==0.2.0` and `graphreduce==1.10.18`. The corresponding source
 identities are recorded in Appendix A for audit; installation uses package
-versions, not a Git dependency. The baseline relational-compression formulation
-is described in the [original report](kurversc-technical-report.md)
-[@madrigal2026kurversc].
+versions, not a Git dependency. The mathematical formulation, representation
+space, selection procedure, data boundaries and reproduced results are specified
+in this report.
 
-The earlier [October 27 report](archive/kurversc-staged-technical-report-20261027.md)
-and its [PDF](archive/kurversc-staged-technical-report-20261027.pdf) are preserved
-as historical records. Their pipeline included additional, disputed recovery
-stages. Its scorecard cannot be relabeled as a measurement of the narrowed
-release. Strict temporal compliance of those earlier predictions was also not
-established. Neither source-level corrections nor transfer experiments
-retroactively establish their compliance.
-
-## What changed
+## Procedure at a glance
 
 | Area | Published generic procedure |
 |:-----------------------|:---------------------------------------------------|
 | Core stages | Schema-derived graph search, full-fidelity rerank, production-faithful finalist check, temporal training-policy selection. |
 | Generic optional menu | Text, frame ensembles, target-domain projection, zero-aware distributional readout, object breadth. |
-| Finalist symmetry | The same bounded comparison for MAE and binary ROC-AUC; regression decisions preserved. |
+| Finalist symmetry | The same bounded comparison for MAE and binary ROC-AUC. |
 | Optional admission | One selector, shared origins/seeds and incumbent, independent applicability, menu-size multiplicity adjustment. |
 | Source boundaries | Explicit strict event cutoffs, separately declared availability, phase-censored task contexts and verified replay bindings. |
 | Evidence | Maintainer reproduction of all 21 tasks, published combined leaderboard, per-task scores and measured job resources. |
 
-The runnable procedure removes exposure-role reconstruction, the
-recurrence/semantic teacher and offset-correction stack, conditional-count
-recovery, production-sequence recovery, bounded-view recovery, and benchmark
-test-win campaign gates. None is an optional fallback in the released staged
-execution closure. In particular, the procedure does not infer click, position,
-or prior-rate roles by alphabetic order or cardinality; it does not choose a
-rarest binary event column for a special head.
-
-These removals do not remove ordinary GraphReduce `sequence`, `conditional`,
-`context`, or `state` features. Those are schema-derived feature families inside
-the graph search. Nor do they remove mature historical labels or generic peer
-context. A family of SQL summaries and a later specialized prediction-recovery
-stack are different components.
-
 The fixed recipe retains globally specified model sizes, blend menus and capacity
 limits. They are shared defaults disclosed below, not values rediscovered on each
-database. Removing name-specific behavior does not prove predictive transfer;
-that remains an empirical question requiring new-database evaluation.
+database. Predictive transfer remains an empirical question requiring
+new-database evaluation.
 
 ## Interfaces
 
@@ -150,9 +151,8 @@ that remains an empirical question requiring new-database evaluation.
 | RelArena registered system | Converts harness-owned splits into the task context, invokes the packaged procedure, and returns keyed predictions for external scoring. |
 
 Calling native `fit()` with its defaults does not by itself reproduce every
-stage of the submitted benchmark procedure. The retained RelArena system name
-is `kurversc-2026-10-22`; the date is a registry identifier, not a claim that the
-October 22 research recipe remains in use.
+stage of the submitted benchmark procedure. The RelArena system name is
+`kurversc-2026-10-22`; the date is a registry identifier.
 
 # Relational compression as a learned program
 
@@ -242,8 +242,7 @@ Generic peer context uses declared relationships and visible history. It can
 summarize other entities attached to common objects while excluding the current
 root's own contribution where the peer definition requires it. Peer-label
 availability may be stricter than the general source-export rule; the provider
-applies its own conservative visibility checks. This is separate from the
-removed exposure and bounded-view heads.
+applies its own conservative visibility checks.
 
 ## Request preservation and replay
 
@@ -268,8 +267,8 @@ source graph and checks restored bindings during replay.
 ## GraphReduce feature families
 
 The fixed procedure builds candidates from applicable families and declared
-schema relationships. The following descriptions concern ordinary GraphReduce
-features, not the removed recovery heads [@graphreduce].
+schema relationships. The following descriptions summarize GraphReduce's
+feature families [@graphreduce].
 
 | Family | Signal represented |
 |:----------------|:---------------------------------------------------------|
@@ -283,8 +282,8 @@ features, not the removed recovery heads [@graphreduce].
 
 GraphReduce also accepts caller-declared semantic expressions and predicates.
 These are available natively; the fixed staged recipe does not automatically
-invent arbitrary semantic expressions or add the removed semantic correction
-stack. Parent/root payload and applicable annotations remain available, subject
+invent arbitrary semantic expressions. Parent/root payload and applicable
+annotations remain available, subject
 to the same source visibility and payload budgets.
 
 ## CDF sketches inside `base`
@@ -478,8 +477,7 @@ require MiniLM, PyTorch or Transformers. Character length is an imperfect proxy
 for language; admitting a column does not prove it contains semantic text.
 
 Target-domain projection uses eligible observed training targets, not test
-targets. The integer projection is distinct from the removed Poisson
-conditional-count head. The zero-aware candidate requires at least 20 zero and
+targets. The zero-aware candidate requires at least 20 zero and
 20 positive examples and fits positive-amount quantiles at
 $\{0.05,0.25,0.5,0.75,0.95\}$. Its readout approximates a predictive mixture
 with a mass at zero [@koenker1978quantiles].
@@ -507,8 +505,7 @@ support is unavailable, the incumbent stays selected.
 
 The recent-only lower bound is recorded as a diagnostic and is **not** a
 separate positive-bound requirement. This definition is shared by optional
-heads; there is no stricter, differently tuned gate for a selected recovery
-stage. S2's graph-complexity comparison is a separate operation with the
+heads. S2's graph-complexity comparison is a separate operation with the
 explicit relative-loss rule above, not this optional admission test.
 
 These checks reduce unsupported promotions. They do not guarantee no future
@@ -561,9 +558,9 @@ the completed reproduction identifies the adapter, public packages, source
 boundaries and final result rows [@relarena_software; @hayler2026relarena].
 
 The package's transitive staged execution closure includes 32 stage modules.
-It excludes the removed recovery stages. Historical scripts remain in source
-history for provenance, but are not implicit runtime choices. The staged extra
-no longer requests the removed semantic encoder's deep-learning dependencies.
+Their execution is fixed by the packaged procedure; other repository scripts
+are not implicit runtime choices. The staged extra does not require a
+deep-learning semantic encoder.
 
 ## Warehouse backends and the Kurve product
 
@@ -644,6 +641,14 @@ seeds. A models-only board is computed separately and excludes KurveRSC as a
 system; its ratings must not be substituted into this combined comparison
 [@relarena20261105leaderboard].
 
+![Combined RelArena models-and-systems leaderboard on 21 tasks. Bars show published Elo ratings above the constant-global anchor of 1000; error bars show the 2.5th-97.5th percentiles of 100 task-bootstrap samples. Hatched bars identify systems; KurveRSC 0.2.0 is highlighted. Point labels are rounded to whole Elo; the table retains published precision. All values use the same November 5, 2026 snapshot, and overlapping intervals do not establish a statistically significant ordering.](assets/kurversc-relarena-elo-20261105.svg){#fig:kurversc-elo width=100%}
+
+```{=latex}
+\clearpage
+```
+
+Published ratings and method references for the same combined panel:
+
 | Rank | Method | Kind | Elo | 95% task-bootstrap interval |
 |---:|:--------------------------------|:------|------:|:---------------------------|
 | 1 | tabpfn-rel-client-latest [@hayler2026relarena; @jaeger2026tabpfn35] | Model | 1933.6 | 1864.7-2033.5 |
@@ -670,7 +675,7 @@ advantage, and task-level wins are not interchangeable with Elo: Elo accounts
 for results against the full panel.
 
 ```{=latex}
-\Needspace{24\baselineskip}
+\clearpage
 ```
 
 ## Classification: ROC-AUC, higher is better
@@ -750,21 +755,6 @@ advantages; a single training seed does not establish their robustness.
 Relative to the earlier KurveRSC registration, fifteen scores improve and six
 regress. Appendix B reports both versions; the comparison is not a controlled
 ablation of any single feature or selection stage.
-
-## Relationship to earlier evidence
-
-The [six-task narrowed pilot](generic-staged-pilot.md) predates source-replay
-and symmetric-finalist revisions and is no longer the current performance
-reference. An earlier Olist experiment used a superseded procedure; retaining
-its incumbent does not show positive transfer of every optional component
-[@priorlabs_olist]. The completed RelArena evaluation establishes benchmark
-performance of the revised release, while predictive transfer to new databases
-and per-component attribution remain separate questions.
-
-The archived October 27 report records a different author-run source and
-comparison panel. Its Elo, temporal semantics and resources must remain tied
-to that source. No historical score is carried forward into the reproduced
-21-task column above.
 
 ```{=latex}
 \Needspace{38\baselineskip}
@@ -847,12 +837,11 @@ multiplies overlapping materialization and learner memory. Parallel execution
 should be admitted from measured process-tree or cgroup demand with an explicit
 host reserve. The maintainer measurements above provide current planning evidence, but
 concurrent tasks need additional headroom and may change spill behavior.
-Historical removed-stage peaks are a separate measurement series.
 
 The published resource table identifies host classes, job wall time, Slurm
 MaxRSS and engine limits. It does not report every temporary-storage peak or
-CPU-utilization trace. A hardware-normalized speedup over previous author runs
-cannot be inferred from these different hosts and accounting methods. Further
+CPU-utilization trace. Hardware-normalized speedups cannot be inferred from
+measurements on different hosts with different accounting methods. Further
 efficiency work should retain source/phase identity and disclose retries,
 concurrency and the resource measure used.
 
@@ -1042,8 +1031,8 @@ graphreduce-1.10.18.tar.gz SHA-256
 The current [release specification](staged-release.md),
 [review/change record](generic-staged-review.md) and
 [qualification receipt](generic-staged-validation.json) provide companion
-evidence. Older result bundles remain tied to their recorded source identities;
-repository history is not an implicit source of runtime winners.
+evidence. Reproduction uses the declared packages, source boundaries and
+fixed procedure.
 
 ```{=latex}
 \clearpage
@@ -1188,9 +1177,8 @@ References are numbered in order of first citation. The bibliography covers
 the implementation, protocol, relational feature construction, learned
 representations, search allocation, statistical methods and proposed planner-data
 sources. Compact source labels remain linked to the complete original URLs. Product/deployment references describe
-capabilities rather than benchmark results. Software and revised online sources
-were checked on November 5, 2026; unchanged research-paper metadata is retained
-from the earlier report.
+capabilities rather than benchmark results. Publication metadata and access
+dates are recorded in the individual reference entries.
 
 ::: {#refs}
 :::
