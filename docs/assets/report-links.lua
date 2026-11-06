@@ -1,5 +1,18 @@
--- Compact bibliography link labels; preserve all original link destinations.
+-- Compact bibliography links and use publication PDF figures in LaTeX output.
 -- Run after citeproc. Body links and in-text citation links are unchanged.
+function Image(img)
+  if FORMAT:match("latex") then
+    local publication_figures = {
+      ["assets/kurversc-staged-architecture.svg"] = "assets/kurversc-staged-architecture.pdf",
+      ["assets/kurversc-relarena-elo-20261105.svg"] = "assets/kurversc-relarena-elo-20261105.pdf",
+    }
+    if publication_figures[img.src] then
+      img.src = publication_figures[img.src]
+    end
+  end
+  return img
+end
+
 local function compact_link(link)
   local target = link.target
   local arxiv = target:match("arxiv%.org/abs/([^?#]+)")

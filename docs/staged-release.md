@@ -1,14 +1,14 @@
 # Generic staged pipeline — published 0.2.0
 
-The runnable submission has been narrowed following maintainer review. The
-previous October 27 results and resource tables describe a superseded pipeline;
-they do not establish performance or Elo for this revision. RelArena maintainers
-have now reproduced all 21 tasks with the public packages and merged the
+This document specifies the published KurveRSC 0.2.0 procedure. The
+[technical report](kurversc-staged-technical-report.md) is its canonical
+architecture and evaluation reference. RelArena maintainers reproduced all
+21 tasks with the public packages and merged the
 system. The [reproduced table](kurversc-reproduced-results.md) is the reference:
 1913.4 Elo, second overall and first among systems in the November 5 combined
 16-method snapshot, with 11/21 wins against the latest TabPFN-Rel client.
 
-## Retained procedure
+## Procedure
 
 1. Schema-derived graph search with successive fidelity, CDF/base representations,
    peer context, and bounded graph/path/feature budgets.

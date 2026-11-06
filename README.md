@@ -73,19 +73,13 @@ were generated, but it cannot recover paths, time windows, feature families,
 or propagation depths that were never materialized. KurveRSC makes those
 upstream choices part of validation-guided selection while retaining a
 replaceable downstream model. See the technical report's
-[full comparison](https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.md#difference-from-relational-feature-synthesis).
+[discussion of relational feature construction](docs/kurversc-staged-technical-report.md#relational-feature-construction-and-learned-neighborhood-representations).
 
-The [original KurveRSC technical report](https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.md)
-([PDF](https://github.com/kurveai/kurversc/blob/main/docs/kurversc-technical-report.pdf)) explains the
-GraphReduce algorithm, relational feature families, learner-guided graph search,
-point-in-time guarantees, frozen-plan lifecycle, and evaluation protocol.
-
-The [current technical report](docs/kurversc-staged-technical-report.md)
-([PDF](docs/kurversc-staged-technical-report.pdf)) specifies published 0.2.0:
-retained generic components, removed recovery stages, shared selection rules,
-strict temporal boundaries and release qualification. The
-[October 27 report](docs/archive/kurversc-staged-technical-report-20261027.md)
-preserves the superseded procedure and measurements.
+The [KurveRSC 0.2.0 technical report](docs/kurversc-staged-technical-report.md)
+([PDF](docs/kurversc-staged-technical-report.pdf)) specifies the architecture,
+GraphReduce feature families, staged graph search, shared selection rules,
+strict temporal boundaries, frozen-plan lifecycle, maintainer-reproduced results
+and measured resources for this release.
 
 ## Complete staged pipeline (0.2.0)
 
@@ -94,15 +88,15 @@ The complete staged procedure is available through `TaskContext`,
 production-faithful finalist checks, temporal support/readout selection and
 final refitting. Native `fit` / `predict` remain component interfaces.
 
-See [the revised procedure](docs/staged-release.md),
+See [the published procedure](docs/staged-release.md),
 [maintainer-reproduced results](docs/kurversc-reproduced-results.md) and
 [current resource measurements](docs/kurversc-staged-resources.md).
 
 ## Quickstart
 
-The native graph-fitting API is one function. The historical performance tables
-below use the superseded staged procedure. The current [staged procedure](docs/staged-release.md)
-adds temporal policy and readout selection. For the native API, give `fit` an entity table, a
+The native graph-fitting API is one function. The complete
+[0.2.0 staged procedure](docs/staged-release.md) includes temporal-policy and
+readout selection. For the native API, give `fit` an entity table, a
 label table, their join keys, target, and authoritative train/validation split:
 
 ```bash
@@ -190,13 +184,6 @@ memory on smaller hosts, and post-votes was moved after reaching 140 GiB;
 these three completed on the larger hosts. These observations are not minimum
 RAM requirements. See the [per-task resource table](docs/kurversc-staged-resources.md)
 for engine limits, measurement definitions and parallel-admission guidance.
-
-### Historical measurements
-
-The [October 27 report](docs/archive/kurversc-staged-technical-report-20261027.md)
-and [September 2 performance snapshot](docs/archive/relarena-performance-20260902.txt)
-remain historical records of different procedures. Their scores, Elo and
-resource receipts are not substituted into the reproduced table above.
 
 ## Native API details
 
