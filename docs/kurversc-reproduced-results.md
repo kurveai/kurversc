@@ -76,3 +76,23 @@ earlier KurveRSC registration, 15 scores improve and 6 regress. These are
 observed results at one seed, not a per-component ablation or a guarantee of
 future improvement. See [measured resources](kurversc-staged-resources.md) and the
 [technical report](kurversc-staged-technical-report.md).
+
+## Sources for the compared methods
+
+These identify the underlying methods, not alternate sources for the reproduced
+scores above. The registered variants and fitting policies are defined by the
+frozen RelArena snapshot.
+
+| Method / family | Primary papers or official releases |
+|:----------------|:------------------------------------|
+| RT-PluRel | [Relational Transformer](https://arxiv.org/abs/2510.06377); [PluRel](https://proceedings.mlr.press/v306/kothapalli26a.html). |
+| RT-J | [RT-J](https://arxiv.org/abs/2610.17867), building on the RT and PluRel papers above. |
+| TabPFN-Rel API/local | [RelArena / TabPFN-Rel](https://arxiv.org/abs/2608.16319v2); [TabPFN-3](https://arxiv.org/abs/2605.13986v2); [TabPFN-3.5](https://arxiv.org/abs/2609.17895), according to the dated submission. |
+| Nori-Rel | [Nori software citation](https://doi.org/10.5281/zenodo.20710462); [official Nori-Rel release](https://www.synthefy.com/blog/nori-rel). |
+| GraphSAGE | [GraphSAGE](https://arxiv.org/abs/1706.02216); [RelBench implementation](https://arxiv.org/abs/2407.20060); [relational deep learning](https://proceedings.mlr.press/v235/fey24a.html). |
+| RelGT | [Relational Graph Transformer](https://arxiv.org/abs/2505.10960v2). |
+| RDBLearn | [RDBLearn](https://arxiv.org/abs/2602.18495). |
+| RelGNN | [RelGNN](https://arxiv.org/abs/2502.06784); the leaderboard uses the `relgnn-es` variant. |
+| LightGBM | [LightGBM](https://proceedings.neurips.cc/paper_files/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html). |
+| KurveRSC | [Original report](kurversc-technical-report.md); [current report](kurversc-staged-technical-report.md). |
+| Constant predictors | [RelArena baseline definitions](https://arxiv.org/abs/2608.16319v2). |

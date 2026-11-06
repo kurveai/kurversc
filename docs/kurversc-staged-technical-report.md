@@ -628,6 +628,13 @@ retains full-precision scores, timings, source checksums and model identifiers.
 
 ## Combined leaderboard
 
+The method column credits the underlying model, architecture, pretraining-data
+work or official release, as applicable. RT-PluRel is credited to the RT and
+PluRel papers; RT-J is credited to those foundations and the RT-J paper. The
+constant predictors use RelArena's documented baselines. These method citations
+identify intellectual provenance; every displayed score and interval still
+comes from the frozen RelArena reproduction, rather than from the cited papers.
+
 The published **models plus systems** panel contains sixteen complete methods
 on the same 21 tasks. It excludes self-reported `_MR` reference rows and
 incomplete/exploratory runs. Ratings are anchored to the global constant at
@@ -639,28 +646,32 @@ system; its ratings must not be substituted into this combined comparison
 
 | Rank | Method | Kind | Elo | 95% task-bootstrap interval |
 |---:|:--------------------------------|:------|------:|:---------------------------|
-| 1 | tabpfn-rel-client-latest | Model | 1933.6 | 1864.7-2033.5 |
-| 2 | kurversc-latest | System | 1913.4 | 1832.3-2050.6 |
-| 3 | tabpfn-rel-local-latest | Model | 1887.7 | 1831.3-1974.8 |
-| 4 | rt-j | System | 1842.2 | 1721.9-1997.8 |
-| 5 | tabpfn-rel-client-2026-08-15 | Model | 1799.0 | 1740.7-1886.9 |
-| 6 | rt-plurel | System | 1787.7 | 1695.9-1889.4 |
-| 7 | kurversc-2026-09-03 | System | 1773.8 | 1709.9-1849.6 |
-| 8 | nori-rel | Model | 1732.3 | 1660.5-1844.7 |
-| 9 | tabpfn-rel-local-2026-08-15 | Model | 1702.0 | 1613.7-1771.7 |
-| 10 | graphsage | Model | 1660.3 | 1550.8-1747.2 |
-| 11 | relgt | Model | 1562.7 | 1430.3-1664.5 |
-| 12 | rdblearn | Model | 1529.8 | 1437.8-1610.5 |
-| 13 | relgnn-es | Model | 1525.0 | 1421.2-1636.6 |
-| 14 | lightgbm | Model | 1363.9 | 1168.9-1501.1 |
-| 15 | constant-per-entity | Model | 1266.5 | 1082.8-1408.5 |
-| 16 | constant-global | Model | 1000.0 | 838.5-1076.9 |
+| 1 | tabpfn-rel-client-latest [@hayler2026relarena; @jaeger2026tabpfn35] | Model | 1933.6 | 1864.7-2033.5 |
+| 2 | kurversc-latest (this work) | System | 1913.4 | 1832.3-2050.6 |
+| 3 | tabpfn-rel-local-latest [@hayler2026relarena; @jaeger2026tabpfn35] | Model | 1887.7 | 1831.3-1974.8 |
+| 4 | rt-j [@ranjan2026relational; @kothapalli2026plurel; @ranjan2026rtj] | System | 1842.2 | 1721.9-1997.8 |
+| 5 | tabpfn-rel-client-2026-08-15 [@hayler2026relarena; @grinsztajn2026tabpfn3] | Model | 1799.0 | 1740.7-1886.9 |
+| 6 | rt-plurel [@ranjan2026relational; @kothapalli2026plurel] | System | 1787.7 | 1695.9-1889.4 |
+| 7 | kurversc-2026-09-03 [@madrigal2026kurversc] | System | 1773.8 | 1709.9-1849.6 |
+| 8 | nori-rel [@synthefy_2026_20710462; @synthefy2026norirel] | Model | 1732.3 | 1660.5-1844.7 |
+| 9 | tabpfn-rel-local-2026-08-15 [@hayler2026relarena; @grinsztajn2026tabpfn3] | Model | 1702.0 | 1613.7-1771.7 |
+| 10 | graphsage [@hamilton2017graphsage; @robinson2024relbench] | Model | 1660.3 | 1550.8-1747.2 |
+| 11 | relgt [@dwivedi2026relgt] | Model | 1562.7 | 1430.3-1664.5 |
+| 12 | rdblearn [@zhang2026rdblearn] | Model | 1529.8 | 1437.8-1610.5 |
+| 13 | relgnn-es [@chen2025relgnn] | Model | 1525.0 | 1421.2-1636.6 |
+| 14 | lightgbm [@ke2017lightgbm] | Model | 1363.9 | 1168.9-1501.1 |
+| 15 | constant-per-entity [@hayler2026relarena] | Model | 1266.5 | 1082.8-1408.5 |
+| 16 | constant-global [@hayler2026relarena] | Model | 1000.0 | 838.5-1076.9 |
 
 KurveRSC's point rating is 20.2 below the latest TabPFN-Rel client and 139.6
 above the earlier KurveRSC registration in this same panel. The intervals overlap
 substantially. A higher point rank is not proof of a significant pairwise
 advantage, and task-level wins are not interchangeable with Elo: Elo accounts
 for results against the full panel.
+
+```{=latex}
+\Needspace{24\baselineskip}
+```
 
 ## Classification: ROC-AUC, higher is better
 
@@ -831,7 +842,7 @@ explicit temporal phases and frozen execution as central requirements.
 
 RelBench and its larger v2 repository supply relational prediction tasks
 [@robinson2024relbench; @gu2026relbenchv2]. GraphSAGE, relational deep learning,
-RelGNN and relational transformers instead learn representations through
+RelGNN and RelGT instead learn representations through
 neighborhood/message-passing mechanisms
 [@hamilton2017graphsage; @fey2024rdl; @chen2025relgnn; @dwivedi2026relgt]. These
 can retain or learn interactions that a finite set of independent reductions
@@ -844,15 +855,34 @@ Equal compressed vectors are indistinguishable to any downstream learner; a
 stronger tabular model cannot reconstruct information absent from those
 vectors.
 
-TabPFN and subsequent tabular foundation models use pretrained inference rather
-than the same per-task CatBoost procedure
-[@hollmann2025tabpfn; @grinsztajn2026tabpfn3]. TabPFN-Rel, RDBLearn and KumoRFM
-explore different routes from relational structure to in-context prediction
-[@hayler2026relarena; @zhang2026rdblearn; @fey2025kumorfm]. The requested
-[TabPFN-3.5 technical report](https://arxiv.org/abs/2609.17895) is a separate
-reference, most recently revised November 3, 2026 at this writing
-[@jaeger2026tabpfn35]. No head-to-head result against that revision is asserted
-for KurveRSC 0.2.0.
+The Relational Transformer (RT) tokenizes database cells with schema metadata
+and attends across relational structure [@ranjan2026relational]. PluRel supplies
+synthetic relational databases for pretraining [@kothapalli2026plurel]. RT-PluRel
+combines that architecture and synthetic-data pretraining. RT-J builds on these
+foundations with continued pretraining on real relational databases from THE
+JOIN and context-efficient retrieval and inference [@ranjan2026rtj]. In the
+RelArena panel, RT-PluRel and RT-J are fine-tuned systems with custom tuning;
+their reproduced scores should not be read as zero-shot results from the
+architecture papers [@hayler2026relarena].
+
+TabPFN and subsequent tabular foundation models use pretrained inference
+[@hollmann2025tabpfn; @grinsztajn2026tabpfn3; @jaeger2026tabpfn35]. TabPFN-Rel
+couples this learner family with relational feature construction, while RDBLearn
+provides an aggregation-to-tabular-inference framework
+[@hayler2026relarena; @zhang2026rdblearn]. Nori-Rel pairs relational feature
+construction with the Nori foundation model; its official release description
+and the authors' requested software citation provide the corresponding credit
+[@synthefy2026norirel; @synthefy_2026_20710462]. The entity-only LightGBM
+baseline uses gradient-boosted decision trees [@ke2017lightgbm], while KurveRSC's
+benchmark learner is CatBoost [@prokhorenkova2018catboost]. KumoRFM explores a
+separate relational in-context architecture [@fey2025kumorfm].
+
+The [TabPFN-3.5 technical report](https://arxiv.org/abs/2609.17895) was most
+recently revised November 3, 2026 at this writing [@jaeger2026tabpfn35]. The
+benchmark comparators are the dated API/local submissions identified in the
+reproduction section; their reproduced scores are distinct from paper-reported
+results. Model papers, training-data papers and software releases are cited for
+their respective contributions, rather than treated as interchangeable methods.
 
 ## What this approach says about flattening
 
@@ -925,7 +955,10 @@ programs, fidelity/cost records, uncertainty and independent held-out outcomes.
 Schema metadata alone does not label predictive quality. RelBench v2, 4DBInfer
 and the CTU repository can seed collection
 [@gu2026relbenchv2; @wang2024dbinfer; @motl2015ctu], but sibling tasks do not
-provide independent databases. Permissioned operational traces and synthetic
+provide independent databases. THE JOIN, released with RT-J, offers another
+source of real relational databases and forecasting tasks [@ranjan2026rtj]. A
+graph-selection planner would still need its own phase-correct program-quality
+and cost traces on those tasks. Permissioned operational traces and synthetic
 tasks could broaden coverage with appropriate licensing, privacy and temporal
 validity.
 
