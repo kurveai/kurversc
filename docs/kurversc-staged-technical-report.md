@@ -1049,6 +1049,11 @@ be varied separately to measure their respective contributions. A successful
 experiment would retain competitive predictive quality while eliminating
 per-task search; label-free performance is a separate result to establish.
 
+# Acknowledgments {.unnumbered}
+
+We thank Rishabh Ranjan for reviewing the manuscript and providing helpful
+feedback on related work and citations.
+
 ```{=latex}
 \clearpage
 ```
