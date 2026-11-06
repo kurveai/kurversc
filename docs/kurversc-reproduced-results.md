@@ -38,44 +38,137 @@ intervals, based on 100 task-bootstrap samples and a constant-global anchor of
 
 ## Classification: ROC-AUC, higher is better
 
-Earlier KurveRSC is `kurversc-2026-09-03`; the client is
-`tabpfn-rel-client-2026-09-28`. All rows below use selected held-out test scores.
-Winners use full precision before display rounding.
+The tables compare KurveRSC 0.2.0 (`kurversc-2026-10-22`) with the
+latest TabPFN-Rel API and local variants (both dated September 28, 2026), RT-J,
+RT-PluRel, Nori-Rel and GraphSAGE. This set covers strong aggregate competitors
+and several relational modeling approaches; the sources below
+provide their method citations. The short headers API and Local denote the
+two TabPFN-Rel variants. All values are selected held-out test scores from the
+same frozen RelArena file. **Bold marks the best score among the seven displayed
+methods**, determined before rounding; it does not indicate statistical
+significance. The complete comparison below includes all sixteen methods, including earlier
+releases and simpler baselines.
 
-| Dataset / task | Earlier KurveRSC | KurveRSC 0.2.0 | TabPFN-Rel client | Winner |
-|:--------------------------|-------------:|-------------:|-------------:|:---------|
-| Amazon / item-churn | 0.827256 | 0.828712 | 0.828653 | KurveRSC |
-| Amazon / user-churn | 0.710347 | 0.712558 | 0.711698 | KurveRSC |
-| Avito / user-clicks | 0.658406 | 0.660062 | 0.691631 | Client |
-| Avito / user-visits | 0.674721 | 0.672515 | 0.672453 | KurveRSC |
-| Event / user-ignore | 0.832628 | 0.850888 | 0.784037 | KurveRSC |
-| Event / user-repeat | 0.779679 | 0.782152 | 0.760495 | KurveRSC |
-| F1 / driver-dnf | 0.746484 | 0.722017 | 0.727809 | Client |
-| F1 / driver-top3 | 0.664957 | 0.834154 | 0.791702 | KurveRSC |
-| H&M / user-churn | 0.696916 | 0.707174 | 0.706021 | KurveRSC |
-| Stack / user-badge | 0.877626 | 0.876020 | 0.883443 | Client |
-| Stack / user-engagement | 0.903027 | 0.903861 | 0.907662 | Client |
-| Trial / study-outcome | 0.712131 | 0.760476 | 0.764556 | Client |
+| Dataset / task | KurveRSC | API | Local | RT-J | RT-PluRel | Nori-Rel | GraphSAGE |
+|:--------------------------|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|
+| Amazon / item-churn | 0.828712 | 0.828653 | 0.827685 | **0.832556** | 0.831014 | 0.822805 | 0.830527 |
+| Amazon / user-churn | 0.712558 | 0.711698 | 0.706670 | **0.714327** | 0.713592 | 0.690798 | 0.704596 |
+| Avito / user-clicks | 0.660062 | 0.691631 | **0.698621** | 0.671975 | 0.670345 | 0.636418 | 0.608674 |
+| Avito / user-visits | **0.672515** | 0.672453 | 0.671587 | 0.667930 | 0.662691 | 0.662070 | 0.665758 |
+| Event / user-ignore | 0.850888 | 0.784037 | 0.817646 | 0.821496 | 0.823280 | **0.859148** | 0.758728 |
+| Event / user-repeat | 0.782152 | 0.760495 | 0.760628 | **0.786598** | 0.777340 | 0.781217 | 0.784626 |
+| F1 / driver-dnf | 0.722017 | **0.727809** | 0.724794 | 0.588469 | 0.643268 | 0.715532 | 0.717235 |
+| F1 / driver-top3 | **0.834154** | 0.791702 | 0.810632 | 0.797757 | 0.750144 | 0.793922 | 0.725975 |
+| H&M / user-churn | **0.707174** | 0.706021 | 0.705416 | 0.706981 | 0.703784 | 0.694094 | 0.698525 |
+| Stack / user-badge | 0.876020 | 0.883443 | 0.884633 | **0.893610** | 0.893398 | 0.840720 | 0.888748 |
+| Stack / user-engagement | 0.903861 | 0.907662 | **0.907741** | 0.904240 | 0.895384 | 0.896160 | 0.905609 |
+| Trial / study-outcome | 0.760476 | **0.764556** | 0.758230 | 0.711371 | 0.697735 | 0.742175 | 0.686232 |
 
 ## Regression: MAE, lower is better
 
-| Dataset / task | Earlier KurveRSC | KurveRSC 0.2.0 | TabPFN-Rel client | Winner |
-|:--------------------------|-------------:|-------------:|-------------:|:---------|
-| Amazon / item-ltv | 42.2731 | 42.3828 | 45.2705 | KurveRSC |
-| Amazon / user-ltv | 14.0205 | 13.9894 | 13.8771 | Client |
-| Avito / ad-ctr | 0.033440 | 0.033258 | 0.031258 | Client |
-| Event / user-attendance | 0.258668 | 0.234934 | 0.241652 | KurveRSC |
-| F1 / driver-position | 3.8632 | 4.0605 | 3.7574 | Client |
-| H&M / item-sales | 0.032168 | 0.033636 | 0.036479 | KurveRSC |
-| Stack / post-votes | 0.063243 | 0.062864 | 0.062733 | Client |
-| Trial / site-success | 0.403842 | 0.398749 | 0.377615 | Client |
-| Trial / study-adverse | 41.2702 | 33.1750 | 34.4014 | KurveRSC |
+MAE is in each task's native units; bold marks the best of the seven displayed methods.
 
-There are **11 wins and 10 losses** against the latest client. Relative to the
-earlier KurveRSC registration, 15 scores improve and 6 regress. These are
-observed results at one seed, not a per-component ablation or a guarantee of
-future improvement. See [measured resources](kurversc-staged-resources.md) and the
-[technical report](kurversc-staged-technical-report.md).
+| Dataset / task | KurveRSC | API | Local | RT-J | RT-PluRel | Nori-Rel | GraphSAGE |
+|:--------------------------|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|
+| Amazon / item-ltv | **42.3828** | 45.2705 | 45.3496 | 42.5622 | 42.8036 | 43.7084 | 49.2453 |
+| Amazon / user-ltv | 13.9894 | 13.8771 | 13.8858 | **13.8515** | 13.8798 | 14.1412 | 14.4153 |
+| Avito / ad-ctr | 0.033258 | **0.031258** | 0.031350 | 0.034591 | 0.036435 | 0.031766 | 0.038966 |
+| Event / user-attendance | 0.234934 | 0.241652 | 0.238005 | 0.241660 | 0.241207 | **0.233820** | 0.245018 |
+| F1 / driver-position | 4.0605 | **3.7574** | 3.7785 | 3.7911 | 3.8535 | 3.8844 | 4.0111 |
+| H&M / item-sales | **0.033636** | 0.036479 | 0.036539 | 0.037345 | 0.039304 | 0.043806 | 0.055153 |
+| Stack / post-votes | 0.062864 | **0.062733** | 0.062842 | 0.068049 | 0.064124 | 0.065047 | 0.064898 |
+| Trial / site-success | 0.398749 | 0.377615 | 0.404219 | 0.362282 | 0.371274 | 0.417738 | **0.324851** |
+| Trial / study-adverse | 33.1750 | 34.4014 | 35.5059 | 37.4920 | 34.0414 | **30.8832** | 44.3153 |
+
+There are **11 wins and 10 losses** against the latest API client. These are
+pairwise comparisons, not counts of best scores across all methods. Relative
+to the earlier KurveRSC registration, 15 scores improve and 6 regress. These
+are observed results at one seed, not a per-component ablation or a guarantee
+of future improvement. See [measured resources](kurversc-staged-resources.md)
+and the [technical report](kurversc-staged-technical-report.md).
+
+## Complete sixteen-method comparison
+
+All sixteen methods in the combined leaderboard are included below. Panels A
+and B split columns for readability and follow the leaderboard order.
+**Bold marks the best full-precision score across both panels together** for
+each task. Consequently, a panel may have no bold entry on a particular row.
+All scores use the selected seed-zero rows from the same frozen result file;
+method citations are given in the sources below.
+
+API-09 and Local-09 are the September 28, 2026 TabPFN-Rel releases; API-08 and
+Local-08 are the August 15, 2026 releases. Kurve-02 is KurveRSC 0.2.0
+(`kurversc-2026-10-22`); Kurve-01 is the earlier `kurversc-2026-09-03`
+registration. RelGNN denotes `relgnn-es`; Entity and Global denote the
+per-entity and global constant predictors. Scores are point estimates; bold
+does not establish statistical significance.
+
+
+### Classification: ROC-AUC, higher is better
+
+Panel A.
+
+| Dataset / task | API-09 | Kurve-02 | Local-09 | RT-J | API-08 | RT-PluRel | Kurve-01 | Nori-Rel |
+|:--------------------------|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|
+| Amazon / item-churn | 0.828653 | 0.828712 | 0.827685 | **0.832556** | 0.827996 | 0.831014 | 0.827256 | 0.822805 |
+| Amazon / user-churn | 0.711698 | 0.712558 | 0.706670 | **0.714327** | 0.708649 | 0.713592 | 0.710347 | 0.690798 |
+| Avito / user-clicks | 0.691631 | 0.660062 | **0.698621** | 0.671975 | 0.675191 | 0.670345 | 0.658406 | 0.636418 |
+| Avito / user-visits | 0.672453 | 0.672515 | 0.671587 | 0.667930 | 0.668026 | 0.662691 | **0.674721** | 0.662070 |
+| Event / user-ignore | 0.784037 | 0.850888 | 0.817646 | 0.821496 | **0.878659** | 0.823280 | 0.832628 | 0.859148 |
+| Event / user-repeat | 0.760495 | 0.782152 | 0.760628 | **0.786598** | 0.759291 | 0.777340 | 0.779679 | 0.781217 |
+| F1 / driver-dnf | 0.727809 | 0.722017 | 0.724794 | 0.588469 | 0.732172 | 0.643268 | **0.746484** | 0.715532 |
+| F1 / driver-top3 | 0.791702 | **0.834154** | 0.810632 | 0.797757 | 0.771426 | 0.750144 | 0.664957 | 0.793922 |
+| H&M / user-churn | 0.706021 | **0.707174** | 0.705416 | 0.706981 | 0.705215 | 0.703784 | 0.696916 | 0.694094 |
+| Stack / user-badge | 0.883443 | 0.876020 | 0.884633 | **0.893610** | 0.880386 | 0.893398 | 0.877626 | 0.840720 |
+| Stack / user-engagement | 0.907662 | 0.903861 | **0.907741** | 0.904240 | 0.905994 | 0.895384 | 0.903027 | 0.896160 |
+| Trial / study-outcome | 0.764556 | 0.760476 | 0.758230 | 0.711371 | **0.764702** | 0.697735 | 0.712131 | 0.742175 |
+
+Panel B.
+
+| Dataset / task | Local-08 | GraphSAGE | RelGT | RDBLearn | RelGNN | LightGBM | Entity | Global |
+|:--------------------------|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|
+| Amazon / item-churn | 0.827857 | 0.830527 | 0.823835 | 0.819538 | 0.785579 | 0.662211 | 0.728875 | 0.500000 |
+| Amazon / user-churn | 0.702403 | 0.704596 | 0.701924 | 0.684375 | 0.694281 | 0.517056 | 0.634205 | 0.500000 |
+| Avito / user-clicks | 0.614522 | 0.608674 | 0.644353 | 0.678769 | 0.667571 | 0.564163 | 0.504143 | 0.500000 |
+| Avito / user-visits | 0.668811 | 0.665758 | 0.662142 | 0.659624 | 0.648731 | 0.529282 | 0.602703 | 0.500000 |
+| Event / user-ignore | 0.701376 | 0.758728 | 0.781507 | 0.664351 | 0.805393 | 0.777181 | 0.839930 | 0.500000 |
+| Event / user-repeat | 0.769251 | 0.784626 | 0.734358 | 0.744084 | 0.754612 | 0.748295 | 0.751805 | 0.500000 |
+| F1 / driver-dnf | 0.714468 | 0.717235 | 0.711667 | 0.714551 | 0.726106 | 0.730298 | 0.699258 | 0.500000 |
+| F1 / driver-top3 | 0.792916 | 0.725975 | 0.810841 | 0.780081 | 0.758864 | 0.738889 | 0.556530 | 0.500000 |
+| H&M / user-churn | 0.705690 | 0.698525 | 0.689531 | 0.698352 | 0.682025 | 0.590081 | 0.647972 | 0.500000 |
+| Stack / user-badge | 0.863470 | 0.888748 | 0.574286 | 0.771147 | 0.620584 | 0.537995 | 0.788956 | 0.500000 |
+| Stack / user-engagement | 0.905834 | 0.905609 | 0.906731 | 0.858670 | 0.905054 | 0.811836 | 0.826717 | 0.500000 |
+| Trial / study-outcome | 0.730607 | 0.686232 | 0.668495 | 0.721205 | 0.657435 | 0.715018 | 0.500000 | 0.500000 |
+
+### Regression: MAE, lower is better
+
+Panel A.
+
+| Dataset / task | API-09 | Kurve-02 | Local-09 | RT-J | API-08 | RT-PluRel | Kurve-01 | Nori-Rel |
+|:--------------------------|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|
+| Amazon / item-ltv | 45.2705 | 42.3828 | 45.3496 | 42.5622 | 46.7682 | 42.8036 | **42.2731** | 43.7084 |
+| Amazon / user-ltv | 13.8771 | 13.9894 | 13.8858 | **13.8515** | 14.3582 | 13.8798 | 14.0205 | 14.1412 |
+| Avito / ad-ctr | 0.031258 | 0.033258 | 0.031350 | 0.034591 | **0.031080** | 0.036435 | 0.033440 | 0.031766 |
+| Event / user-attendance | 0.241652 | 0.234934 | 0.238005 | 0.241660 | 0.243944 | 0.241207 | 0.258668 | **0.233820** |
+| F1 / driver-position | **3.7574** | 4.0605 | 3.7785 | 3.7911 | 3.7692 | 3.8535 | 3.8632 | 3.8844 |
+| H&M / item-sales | 0.036479 | 0.033636 | 0.036539 | 0.037345 | 0.060507 | 0.039304 | **0.032168** | 0.043806 |
+| Stack / post-votes | **0.062733** | 0.062864 | 0.062842 | 0.068049 | 0.067882 | 0.064124 | 0.063243 | 0.065047 |
+| Trial / site-success | 0.377615 | 0.398749 | 0.404219 | 0.362282 | 0.412624 | 0.371274 | 0.403842 | 0.417738 |
+| Trial / study-adverse | 34.4014 | 33.1750 | 35.5059 | 37.4920 | 39.7537 | 34.0414 | 41.2702 | **30.8832** |
+
+Panel B.
+
+| Dataset / task | Local-08 | GraphSAGE | RelGT | RDBLearn | RelGNN | LightGBM | Entity | Global |
+|:--------------------------|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|-----------:|
+| Amazon / item-ltv | 47.7683 | 49.2453 | 48.6734 | 48.9975 | 52.4581 | 55.7508 | 65.3514 | 64.2336 |
+| Amazon / user-ltv | 14.4009 | 14.4153 | 14.3521 | 14.5775 | 14.5752 | 16.7847 | 17.4235 | 16.7830 |
+| Avito / ad-ctr | 0.031379 | 0.038966 | 0.036499 | 0.034103 | 0.042646 | 0.041250 | 0.041201 | 0.043067 |
+| Event / user-attendance | 0.239383 | 0.245018 | 0.261493 | 0.242215 | 0.243858 | 0.262798 | 0.269152 | 0.263534 |
+| F1 / driver-position | 3.7617 | 4.0111 | 4.7655 | 3.8886 | 4.2659 | 4.1058 | 4.1035 | 4.3991 |
+| H&M / item-sales | 0.061362 | 0.055153 | 0.053168 | 0.067132 | 0.056493 | 0.075295 | 0.078033 | 0.076087 |
+| Stack / post-votes | 0.067957 | 0.064898 | 0.067904 | 0.067719 | 0.067904 | 0.066099 | 0.069374 | 0.067904 |
+| Trial / site-success | 0.385751 | **0.324851** | 0.370110 | 0.485833 | 0.340493 | 0.437506 | 0.441148 | 0.462222 |
+| Trial / study-adverse | 42.5917 | 44.3153 | 44.1259 | 44.0267 | 46.2701 | 44.5735 | 57.5332 | 57.5332 |
 
 ## Sources for the compared methods
 
