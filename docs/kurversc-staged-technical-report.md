@@ -57,8 +57,9 @@ header-includes:
 
 KurveRSC selects a relational feature program with a supervised learner in the
 loop. GraphReduce executes that program, reducing timestamped, related records
-to an entity-level feature matrix; CatBoost evaluates and fits the resulting
-representation. The staged procedure allocates increasing fidelity to a bounded
+to an entity-level feature matrix; a pluggable downstream learner evaluates and
+fits the resulting representation. CatBoost is the evaluated reference learner
+in this report. The staged procedure allocates increasing fidelity to a bounded
 set of schema-derived candidates, checks finalists with the production fitting
 lifecycle, and compares temporal support policies and generic optional readouts
 before saving keyed predictions.
@@ -84,14 +85,18 @@ difference in aggregate performance. This report includes every reproduced
 per-task score and the successful jobs' measured resources
 [@relarena20261105results; @relarena20261105leaderboard; @relarena20261105resources].
 
-The architecture separates relational representation from the downstream
-learner and from the execution backend. It supports operational use through the
-Kurve product, while the evaluated open-source recipe uses DuckDB. Warehouse
-execution and customer-controlled deployment are architectural and product
-capabilities; they do not establish an unlimited scale or runtime guarantee for
-this complete search procedure. The main unresolved questions remain selection
-fidelity, computational cost, and predictive transfer to previously unseen
-databases.
+The central research objective is to characterize how much predictive power can
+be recovered through relational signal compression and how that value interacts
+with learner capacity. The entity-level feature frame deliberately separates
+the relational program from a pluggable downstream learner. As tabular foundation
+models (TFMs) become more capable, compatible adapters can bring them into the
+same architecture for selection and replay. The reported scores evaluate the complete
+CatBoost-based procedure.
+
+The architecture also separates representation from the execution backend.
+The Kurve product provides production workflows, while the evaluated open-source
+recipe uses DuckDB. The main open questions concern selection fidelity,
+representation loss and computational cost.
 
 **Code and reproducibility.** The source code, installation instructions and
 reproduction documentation are available at
@@ -106,11 +111,12 @@ reproduction documentation are available at
 # Architecture overview {.unnumbered}
 
 Figure 1 shows how KurveRSC adapts the relational representation with a
-downstream learner in the loop. GraphReduce executes candidate programs;
-increasing-fidelity validation selects a graph, training policy and applicable
-optional readout before the production artifact is frozen.
+pluggable downstream learner in the loop. GraphReduce executes candidate
+programs; the tabular frame is the interface to the learner. Increasing-fidelity
+validation selects a graph, training policy and applicable optional readout
+before the production artifact is frozen.
 
-![KurveRSC 0.2.0 architecture. Strict temporal inputs feed schema-derived graph search. GraphReduce materializes entity-grain frames, and the downstream learner supplies the validation objective. Finalist and temporal-policy checks precede a shared optional-candidate gate. The selected program, schema, policy and fitted learner are frozen for prediction; outer test targets are used only by the external scorer.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
+![KurveRSC 0.2.0 architecture. Strict temporal inputs feed schema-derived graph search. GraphReduce materializes entity-grain frames for a pluggable downstream learner; CatBoost is the evaluated reference, and compatible tabular foundation-model adapters can use the same interface. Finalist and temporal-policy checks precede a shared optional-candidate gate. The selected program, schema, policy and fitted learner are frozen for prediction; outer test targets are used only by the external scorer.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
 
 ```{=latex}
 \clearpage
@@ -139,8 +145,9 @@ in this report.
 
 The fixed recipe retains globally specified model sizes, blend menus and capacity
 limits. They are shared defaults disclosed below, not values rediscovered on each
-database. Predictive transfer remains an empirical question requiring
-new-database evaluation.
+database. The procedure applies to new schemas through their declared tables,
+keys, root entity, horizon and observed labels; candidate selection uses the
+task's own temporal validation evidence.
 
 ## Interfaces
 
@@ -188,9 +195,23 @@ means and counts may have different event ordering, category-conditioned
 outcomes, or neighbor structure. The families below preserve some of these
 distinctions within a finite program budget.
 
-The benchmark learner is CatBoost [@prokhorenkova2018catboost]. Other native
-learner integrations are separate interfaces; this release does not substitute
-a foundation model during the staged benchmark search or final prediction.
+The research focus is the predictive information preserved by the relational
+program and its interaction with the learner. Within matched graph comparisons,
+KurveRSC varies the representation under a declared downstream fitting policy.
+The reported end-to-end scores measure the complete pair; separating the
+contributions of compression and learner capacity requires controlled
+comparisons of both components.
+
+The downstream learner is intentionally replaceable at the typed frame
+boundary. Native `model_backend` and `final_model_backend` interfaces already
+include tabular foundation-model adapters. More capable TFMs can be integrated
+without replacing the relational-program abstraction. Their use should evaluate
+candidate programs with the intended learner and the same temporal contracts;
+a graph selected for one learner need not be optimal for another.
+
+The benchmark learner is CatBoost [@prokhorenkova2018catboost]. The fixed staged
+procedure evaluated here uses CatBoost for graph search and final prediction;
+native learner integrations are separate interfaces.
 
 # Temporal and data contracts
 
@@ -231,9 +252,10 @@ necessary but insufficient: its prediction horizon must have matured, and any
 declared label availability must satisfy the relevant training boundary.
 Held-out targets are never added to this relation.
 
-The history provider uses the observed-label source rather than the sampled
-CatBoost rows. Consequently, a model-row cap need not erase earlier known
-labels. The staged recipe also bounds peer-history discovery to 50,000 history
+The history provider reads eligible observed labels independently of any
+sampling of the learner's training examples. A limit on the examples used to
+fit the learner therefore does not itself truncate the label-history source.
+The staged recipe separately bounds peer-history discovery to 50,000 history
 rows. Counts, means, recency, and peer summaries are therefore bounded
 representations rather than a promise to expose every historical observation
 in every provider.

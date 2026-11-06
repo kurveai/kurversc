@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1200" viewBox="0 0 1440 1200" role="img" aria-labelledby="title desc">
   <title id="title">KurveRSC 0.2.0 architecture</title>
-  <desc id="desc">A database and task contract pass through strict temporal filtering. Schema-derived programs are executed by GraphReduce and scored by CatBoost in an increasing-fidelity validation loop. Production-faithful finalist checks and temporal policy selection precede optional candidates evaluated against one incumbent using a shared gate. The selected graph, schema, training policy and fitted learner are frozen for keyed prediction. Outer test targets are used only by an external scorer.</desc>
+  <desc id="desc">A database and task contract pass through strict temporal filtering. Schema-derived programs are executed by GraphReduce and scored by a pluggable downstream learner in an increasing-fidelity validation loop. CatBoost is the evaluated reference; compatible tabular foundation-model adapters can use the same frame interface. Production-faithful finalist checks and temporal policy selection precede optional candidates evaluated against one incumbent using a shared gate. The selected graph, schema, training policy and fitted learner are frozen for keyed prediction. Outer test targets are used only by an external scorer.</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0 0 L9 4.5 L0 9 Z" fill="#53667d"/>
@@ -57,14 +57,15 @@
   <path d="M707 493 H752" class="flow"/>
   <rect x="766" y="467" width="131" height="56" fill="#edf4fc" stroke="#779ac4" stroke-width="2"/>
   <path d="M792 467 V523 M818 467 V523 M844 467 V523 M870 467 V523 M766 486 H897 M766 505 H897" stroke="#a9c3df" stroke-width="1.5"/>
-  <text x="537" y="542" font-size="21">Entity-grain feature frame</text>
+  <text x="537" y="542" font-size="21">Typed entity-grain feature frame</text>
 
   <path d="M926 463 H970" class="flow"/>
   <rect x="975" y="366" width="410" height="188" rx="9" fill="#eff8f6" stroke="#78aaa2" stroke-width="2"/>
-  <text x="997" y="405" class="label">Downstream learner</text>
-  <text x="997" y="445" class="small">CatBoost reference implementation</text>
-  <text x="997" y="481" class="small">Validate representation + learner</text>
-  <text x="997" y="517" class="small">ROC-AUC (higher) / MAE (lower)</text>
+  <text x="997" y="405" class="label">Pluggable learner</text>
+  <text x="997" y="443" class="small">CatBoost: evaluated reference</text>
+  <text x="997" y="477" class="small">TFMs via compatible adapters</text>
+  <text x="997" y="511" class="small">Validate representation + learner</text>
+  <text x="997" y="543" font-size="21">ROC-AUC (higher) / MAE (lower)</text>
 
   <path d="M1180 555 V580 H260 V556" class="loop"/>
   <rect x="533" y="565" width="374" height="32" rx="8" fill="#f6f9fd"/>
