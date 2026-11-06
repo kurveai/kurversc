@@ -1054,6 +1054,11 @@ per-task search; label-free performance is a separate result to establish.
 We thank Rishabh Ranjan for reviewing the manuscript and providing helpful
 feedback on related work and citations.
 
+We also thank Adrian Hayler for his constructive methodological feedback, code
+review, and collaboration on the KurveRSC integration, and the Prior Labs team
+and RelArena maintainers for developing the benchmark and independently
+reproducing the reported results.
+
 ```{=latex}
 \clearpage
 ```
