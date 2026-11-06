@@ -5,7 +5,7 @@ author: |
   Wes Madrigal  
   Kurve AI
 author-meta: "Wes Madrigal"
-date: "November 5, 2026 | Maintainer-reproduced results"
+date: "November 5, 2026"
 lang: en-US
 papersize: letter
 fontsize: 10.5pt
