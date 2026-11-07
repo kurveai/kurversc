@@ -57,6 +57,25 @@ header-includes:
 \clearpage
 ```
 
+# RelArena-$\alpha$ results at a glance {.unnumbered .unlisted}
+
+**Highest-ranked open-source method and registered system.**
+
+| Comparison cohort | KurveRSC rank |
+|:----------------------------------------------|:----------------:|
+| Registered systems | **1** |
+| Fully open-source methods | **1** |
+| All models and systems | **2 of 16** |
+
+Table: Aggregate-Elo ranks on 21 tasks from seven databases, at seed zero.
+November 5, 2026 RelArena-$\alpha$ snapshot.
+
+KurveRSC achieves **1913.4 Elo** (95% task-bootstrap interval 1832.3-2050.6).
+All ranks use point estimates from the same published combined leaderboard.
+The openness cohort is our classification of complete, locally executable
+open-source prediction procedures; category definitions are in Section 10.3
+[@relarena20261105leaderboard; @kurversc020].
+
 # Abstract
 
 KurveRSC selects a relational feature program with a supervised learner in the
@@ -81,8 +100,9 @@ using a 1% relative-loss cap on `1 - AUC` and MAE, respectively.
 
 RelArena's maintainers reproduced all 21 RelBench v1 tasks at seed zero with
 these public packages and merged the system on November 5, 2026. On the frozen
-16-method combined leaderboard, KurveRSC ranks **second overall and first among
-systems**, with **1913.4 Elo** (95% task-bootstrap interval 1832.3-2050.6), versus
+16-method combined leaderboard, KurveRSC ranks **first among registered systems
+and fully open-source methods, and second overall**, with **1913.4 Elo**
+(95% task-bootstrap interval 1832.3-2050.6), versus
 1933.6 for the latest TabPFN-Rel client. It wins 11 of their 21 task comparisons.
 The broad overlapping intervals do not establish a statistically significant
 difference in aggregate performance. This report includes every reproduced
@@ -1085,6 +1105,29 @@ above the earlier KurveRSC registration in this same panel. The intervals overla
 substantially. A higher point rank is not proof of a significant pairwise
 advantage, and task-level wins are not interchangeable with Elo: Elo accounts
 for results against the full panel.
+
+**System and openness categories.** RelArena registers a method as a system
+when it supplies its own tuning procedure, whereas model submissions use the
+framework's standardized tuning regime. KurveRSC has the highest point Elo
+among the registered systems in this combined panel
+[@relarena_software; @relarena20261105leaderboard].
+
+It also has the highest point Elo among fully open-source methods in the panel.
+Here this means that the complete evaluated prediction procedure and required
+model components are available under open-source licenses and can execute
+locally without a proprietary prediction service. This openness cohort is our
+classification of the published entries, not a separate RelArena submission
+category or a recomputed Elo board. The evaluated MIT-licensed KurveRSC release
+uses local GraphReduce, DuckDB and CatBoost components
+[@kurversc020; @graphreduce; @raasveldt2019duckdb; @prokhorenkova2018catboost].
+
+The only higher-ranked entry is the hosted TabPFN-Rel client, at 1933.6 Elo.
+The TabPFN-3.5 report distinguishes proprietary API implementations from its
+released local checkpoints [@jaeger2026tabpfn35]. The openness label describes
+the evaluated procedure rather than the model-family name; local TabPFN-Rel
+variants remain in the comparison. These category ranks describe aggregate
+point estimates for the stated snapshot, rather than superiority on every task
+or a statistically significant ordering.
 
 ```{=latex}
 \clearpage
