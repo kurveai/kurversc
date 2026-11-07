@@ -31,6 +31,10 @@ header-includes:
     \usepackage{graphicx}
     \usepackage{float}
     \floatplacement{figure}{H}
+    \usepackage{algorithm}
+    \usepackage{algpseudocode}
+    \algrenewcommand{\algorithmicrequire}{\textbf{Input:}}
+    \algrenewcommand{\algorithmicensure}{\textbf{Output:}}
     \usepackage{xurl}
     \usepackage{fvextra}
     \usepackage{needspace}
@@ -110,17 +114,11 @@ reproduction documentation are available at
 
 # Architecture overview {.unnumbered}
 
-Figure 1 shows how KurveRSC adapts the relational representation with a
-pluggable downstream learner in the loop. GraphReduce executes candidate
-programs; the tabular frame is the interface to the learner. Increasing-fidelity
-validation selects a graph, training policy and applicable optional readout
-before the production artifact is frozen.
+Figure 1 summarizes representation search, production selection and frozen
+prediction. GraphReduce executes candidate programs; the pluggable learner
+supplies their validation evidence.
 
-![KurveRSC 0.2.0 architecture. Strict temporal inputs feed schema-derived graph search. GraphReduce materializes entity-grain frames for a pluggable downstream learner; CatBoost is the evaluated reference, and compatible tabular foundation-model adapters can use the same interface. Finalist and temporal-policy checks precede a shared optional-candidate gate. The selected program, schema, policy and fitted learner are frozen for prediction; outer test targets are used only by the external scorer.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
-
-```{=latex}
-\clearpage
-```
+![KurveRSC 0.2.0 architecture. GraphReduce compresses point-in-time histories for a pluggable learner (CatBoost here). Temporal validation selects the procedure; outer test scoring remains external.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
 
 # Scope and release identity
 
@@ -252,15 +250,35 @@ also prevents sibling fan-out: independently joining orders and support tickets
 would otherwise multiply rows and distort counts and sums. Under valid key
 contracts, a reduction and its join preserve the receiving table's grain.
 
-**Algorithm 1: materialize one candidate at one cutoff.**
+Figure 2 distinguishes a reducing edge from a dimension lookup. Each summary
+joins at the receiving grain before it is available to the next reduction.
 
-1. Instantiate paths allowed by $d$ and $o$ with distinct aliases and keys.
-2. Load phase-censored sources; select routing and bounded payload; annotate.
-3. In reverse depth-first order, reduce child rows by key and historical window,
-   or look up a keyed dimension. Left join each result to its parent.
-4. Align root rows to requests; separate targets/routing from learner payload.
-5. Freeze operations, categories, cutpoints, bindings and schema on discovery;
-   verify and replay them with rebound time expressions for later requests.
+![Keyed reduction and propagation toward the root. Arrows show feature flow: line summaries first enrich orders, then enriched orders are summarized for customers. A store dimension uses a unique-key lookup without aggregation. All inputs obey the phase's temporal contract; extraction preserves the requested root grain.](assets/kurversc-keyed-reduction.svg){#fig:keyed-reduction width=100%}
+
+```{=latex}
+\begin{algorithm}[H]
+\caption{Materializing a relational program at one cutoff}
+\label{alg:materialize}
+\fontsize{9.5}{11.5}\selectfont
+\begin{algorithmic}[1]
+\Require Program $g$; phase-censored $D$; cutoff $t$; root requests $Q$; optional replay plan $P_0$.
+\Ensure Root payload $Z$ and a frozen or verified execution plan $P$.
+\State $\mathcal G \gets \Call{InstantiatePaths}{D,g,P_0}$ \Comment{Restore and verify replay bindings}
+\State $X \gets \Call{LoadSelectAndAnnotate}{D,g,t,P_0}$
+\For{each edge $(p,v)$ in reverse depth-first order of $\mathcal G$}
+    \If{the edge requires reduction}
+        \State $S_v \gets \Call{WindowedReduce}{X_v,k_v,g,t,P_0}$
+    \Else
+        \State $S_v \gets \Call{KeyedLookup}{X_v,k_v}$
+    \EndIf
+    \State $X_p \gets \Call{LeftJoin}{X_p,S_v;\ k_p=k_v}$
+\EndFor
+\State $Z \gets \Call{AlignRootPayload}{X_r,Q}$ \Comment{Separate targets and routing}
+\State $P \gets \Call{FreezeOrVerify}{P_0,\mathcal G,\text{operations},\text{schema}}$
+\State \Return $(Z,P)$
+\end{algorithmic}
+\end{algorithm}
+```
 
 Unavailable payload remains missing; a missing child group is not universally
 imputed to zero. Request keys and order are retained throughout.
@@ -328,6 +346,11 @@ The default continuation does not silently recover an item-weighted mean.
 Different programs preserve different information, and deeper is not always
 better. Temporal validation decides whether a representation is useful for
 the declared target.
+
+Figure 3 traces the reductions for customer A. The numerical example displays
+selected features, with category and CDF details omitted for clarity.
+
+![Worked example at customer grain. Per-order line maxima and means join to the original orders before customer aggregation. Customer A's order totals are counted once, giving 120. The propagated mean of order means is 55; the mean over all three lines is 40, illustrating the weighting implied by this program. Same-cutoff source rows are excluded.](assets/kurversc-reduction-example.svg){#fig:reduction-example width=100%}
 
 ## The learner boundary
 
@@ -691,23 +714,47 @@ includes point-in-time materialization, fitting under the declared learner
 budget, validation and checkpointing. Every stage applies its ceiling before
 execution; unavailable stages retain the preceding completed evidence.
 
-```text
-Algorithm 2: bounded staged selection
-  Build censored phases, path graph and deterministic payload audit.
-  Evaluate balanced anchors at 10K fidelity (at most 32).
-  Expand up to six retained anchors plus sparse modern controls.
-  Evaluate individual challengers (24), then eligible combinations (12).
-  Retain the confidence frontier and structural controls; confirm at 50K (40).
-  If support grows, evaluate historical promotions (8).
-  Refine category ties for up to two leading structural parents (8).
-  Collapse category lineages; retain a frontier for full-source rerank (12).
-  Replay those plans on up to three chronological folds; select one graph.
-  S2: compare at most one smaller finalist with the production lifecycle.
-  S3: select a complete temporal fitting policy for the selected graph.
-  Compare the generic optional menu against the common S3 incumbent.
-  Freeze the admitted procedure; refit with permitted observed labels.
-  Replay on masked requests, save keyed predictions, then score externally.
+```{=latex}
+\begin{algorithm}[H]
+\caption{Bounded staged relational program selection}
+\label{alg:staged-selection}
+\fontsize{9.5}{11.5}\selectfont
+\begin{algorithmic}[1]
+\Require Phase-censored $D$; task $\mathcal T$; observed labels $Y$; masked requests $Q$.
+\Ensure Frozen artifact $A$ and keyed predictions $\widehat Y_Q$.
+\Statex \textit{Representation selection}
+\State $C \gets \Call{BalancedAnchors}{D,\mathcal T;32}$
+\State $E \gets \Call{Evaluate}{C;\text{10K}}$
+\State $P \gets \Call{RetainAnchors}{E;6}$
+\State $E \gets E \cup \Call{EvaluateChallengers}{P,\text{sparse controls};24}$
+\State $E \gets E \cup \Call{EvaluateEligibleCombinations}{E;12}$
+\State $F \gets \Call{FrontierWithControls}{E}$
+\State $E \gets \Call{Confirm}{F;\text{50K},40}$
+\If{additional mature historical support is available}
+    \State $E \gets \Call{PromoteHistory}{E;8}$
+\EndIf
+\State $E \gets \Call{RefineCategoryTies}{E;\text{parents}\leq2,\ \text{evaluations}\leq8}$
+\State $F \gets \Call{BestPerLineage}{E}$
+\State $G \gets \Call{Frontier}{F;12}$
+\State $g \gets \Call{FullSourceRerank}{G;\text{chronological folds}\leq3}$
+\Statex \textit{Production selection}
+\State $g \gets \Call{CheckSmallerFinalist}{g;\text{alternate}\leq1}$
+\State $\pi \gets \Call{SelectTemporalPolicy}{g}$
+\State $q \gets \Call{SelectOptionalReadout}{g,\pi;\text{common incumbent}}$
+\Statex \textit{Freeze and predict}
+\State $A \gets \Call{FreezeAndRefit}{g,\pi,q;Y}$
+\State $\widehat Y_Q \gets \Call{KeyedPredict}{A,Q}$
+\State \Return $(A,\widehat Y_Q)$
+\end{algorithmic}
+\end{algorithm}
 ```
+
+Here $E$ stores trial evidence, $P$ the retained parents, $F$ a retained trial
+set, $G$ the graph
+finalists, $\pi$ a temporal fitting policy and $q$ an optional readout.
+Helper operations include the payload audit, capacity checks and checkpointing
+described above. Numerical arguments are evaluation ceilings; 10K and 50K are
+nominal fidelities. Predictions are saved before any external test scoring.
 
 Initial search support uses the smallest recent window of 3-12 available
 cutoffs with at least 256 labels and, for classification, at least 24 examples

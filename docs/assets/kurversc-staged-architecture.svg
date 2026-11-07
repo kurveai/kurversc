@@ -1,102 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1200" viewBox="0 0 1440 1200" role="img" aria-labelledby="title desc">
-  <title id="title">KurveRSC 0.2.0 architecture</title>
-  <desc id="desc">A database and task contract pass through strict temporal filtering. Schema-derived programs are executed by GraphReduce and scored by a pluggable downstream learner in an increasing-fidelity validation loop. CatBoost is the evaluated reference; compatible tabular foundation-model adapters can use the same frame interface. Production-faithful finalist checks and temporal policy selection precede optional candidates evaluated against one incumbent using a shared gate. The selected graph, schema, training policy and fitted learner are frozen for keyed prediction. Outer test targets are used only by an external scorer.</desc>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0 L9 4.5 L0 9 Z" fill="#53667d"/>
-    </marker>
-    <marker id="feedback" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0 L9 4.5 L0 9 Z" fill="#2b65a4"/>
-    </marker>
-    <style>
-      text {font-family: Arial, Helvetica, sans-serif; fill: #172b42;}
-      .heading {font-size: 30px; font-weight: 700;}
-      .label {font-size: 27px; font-weight: 700;}
-      .body {font-size: 25px;}
-      .small {font-size: 23px;}
-      .card {fill: #ffffff; stroke: #b9c7d6; stroke-width: 2;}
-      .flow {fill: none; stroke: #53667d; stroke-width: 3; marker-end: url(#arrow);}
-      .loop {fill: none; stroke: #2b65a4; stroke-width: 3; marker-end: url(#feedback);}
-    </style>
-  </defs>
-  <rect width="1440" height="1200" fill="#ffffff"/>
-
-  <rect x="30" y="20" width="650" height="132" rx="12" class="card"/>
-  <text x="54" y="62" class="heading">Relational database</text>
-  <text x="54" y="101" class="body">Tables, keys, event and availability clocks</text>
-  <text x="54" y="132" class="small">Related records at different granularities</text>
-  <rect x="760" y="20" width="650" height="132" rx="12" class="card"/>
-  <text x="784" y="62" class="heading">Task contract</text>
-  <text x="784" y="101" class="body">Root entity, horizon, origins and metric</text>
-  <text x="784" y="132" class="small">Observed labels and masked forecast requests</text>
-
-  <path d="M355 153 V185" class="flow"/>
-  <path d="M1085 153 V185" class="flow"/>
-  <rect x="30" y="188" width="1380" height="84" rx="10" fill="#edf4fc" stroke="#779ac4" stroke-width="2"/>
-  <text x="720" y="222" class="label" text-anchor="middle">Point-in-time boundary: source event time &lt; query cutoff</text>
-  <text x="720" y="253" class="small" text-anchor="middle">Phase-censored inputs; mature observed-label history and eligible peer context</text>
-  <path d="M720 273 V303" class="flow"/>
-
-  <rect x="30" y="307" width="1380" height="351" rx="12" fill="#f6f9fd" stroke="#779ac4" stroke-width="2"/>
-  <text x="55" y="343" class="heading">1. Staged relational search (S1)</text>
-  <rect x="55" y="366" width="410" height="188" rx="9" class="card"/>
-  <text x="77" y="405" class="label">Schema-derived programs</text>
-  <text x="77" y="445" class="small">Depth 1-4; bounded repeated paths</text>
-  <text x="77" y="481" class="small">Family combinations; base + CDF</text>
-  <text x="77" y="517" class="small">Annotations and payload budgets</text>
-
-  <path d="M466 463 H510" class="flow"/>
-  <rect x="515" y="366" width="410" height="188" rx="9" class="card"/>
-  <text x="537" y="405" class="label">GraphReduce</text>
-  <text x="537" y="441" class="small">Filter, annotate, reduce and join</text>
-  <path d="M565 493 L625 472 M565 493 L625 514 M625 472 L682 493 M625 514 L682 493" fill="none" stroke="#779ac4" stroke-width="3"/>
-  <circle cx="565" cy="493" r="15" fill="#2b65a4"/>
-  <circle cx="625" cy="472" r="12" fill="#b9d3ee" stroke="#779ac4" stroke-width="2"/>
-  <circle cx="625" cy="514" r="12" fill="#b9d3ee" stroke="#779ac4" stroke-width="2"/>
-  <circle cx="682" cy="493" r="10" fill="#e1ebf5" stroke="#779ac4" stroke-width="2"/>
-  <path d="M707 493 H752" class="flow"/>
-  <rect x="766" y="467" width="131" height="56" fill="#edf4fc" stroke="#779ac4" stroke-width="2"/>
-  <path d="M792 467 V523 M818 467 V523 M844 467 V523 M870 467 V523 M766 486 H897 M766 505 H897" stroke="#a9c3df" stroke-width="1.5"/>
-  <text x="537" y="542" font-size="21">Typed entity-grain feature frame</text>
-
-  <path d="M926 463 H970" class="flow"/>
-  <rect x="975" y="366" width="410" height="188" rx="9" fill="#eff8f6" stroke="#78aaa2" stroke-width="2"/>
-  <text x="997" y="405" class="label">Pluggable learner</text>
-  <text x="997" y="443" class="small">CatBoost: evaluated reference</text>
-  <text x="997" y="477" class="small">TFMs via compatible adapters</text>
-  <text x="997" y="511" class="small">Validate representation + learner</text>
-  <text x="997" y="543" font-size="21">ROC-AUC (higher) / MAE (lower)</text>
-
-  <path d="M1180 555 V580 H260 V556" class="loop"/>
-  <rect x="533" y="565" width="374" height="32" rx="8" fill="#f6f9fd"/>
-  <text x="720" y="589" class="small" text-anchor="middle" fill="#2b65a4">Validation drives promotion</text>
-  <text x="720" y="633" class="label" text-anchor="middle">10K screening  &#8594;  50K confirmation  &#8594;  full-source rerank</text>
-
-  <path d="M355 659 V704" class="flow"/>
-  <rect x="30" y="708" width="650" height="130" rx="10" fill="#edf4fc" stroke="#779ac4" stroke-width="2"/>
-  <text x="54" y="749" class="label">2. Production-faithful finalist check (S2)</text>
-  <text x="54" y="787" class="small">Bounded comparison with a smaller completed graph</text>
-  <text x="54" y="819" class="small">Matched fitting lifecycle for classification and regression</text>
-  <path d="M681 773 H755" class="flow"/>
-  <rect x="760" y="708" width="650" height="130" rx="10" fill="#edf4fc" stroke="#779ac4" stroke-width="2"/>
-  <text x="784" y="749" class="label">3. Temporal training policy (S3)</text>
-  <text x="784" y="787" class="small">Recent-only / pooled support / temporal blends</text>
-  <text x="784" y="819" class="small">Walk-forward origins and matched validation seeds</text>
-
-  <path d="M1085 839 V879" class="flow"/>
-  <rect x="30" y="883" width="1380" height="123" rx="10" fill="#eff8f6" stroke="#78aaa2" stroke-width="2"/>
-  <text x="54" y="921" class="label">4. Optional candidates evaluated with one shared temporal gate</text>
-  <text x="54" y="959" class="body">Text  &#183;  frame ensembles  &#183;  target domain  &#183;  zero-aware  &#183;  object breadth</text>
-  <text x="54" y="990" class="small">One incumbent; matched origins and seeds; independent applicability; uncertainty and safety checks</text>
-
-  <path d="M530 1007 V1048" class="flow"/>
-  <rect x="30" y="1052" width="1000" height="112" rx="10" fill="#172b42"/>
-  <text x="54" y="1089" class="label" style="fill:#ffffff">Freeze and fit</text>
-  <text x="54" y="1121" class="small" style="fill:#ffffff">Graph plan + ordered schema + selected training policy + fitted learner</text>
-  <text x="54" y="1151" class="small" style="fill:#ffffff">Replay on forecast requests with feature discovery disabled</text>
-  <path d="M1031 1108 H1067" class="flow"/>
-  <rect x="1072" y="1052" width="338" height="112" rx="10" fill="#eff8f6" stroke="#78aaa2" stroke-width="2"/>
-  <text x="1096" y="1091" class="label">Keyed predictions</text>
-  <text x="1096" y="1126" class="small">Entity / cutoff order</text>
-  <text x="720" y="1192" font-size="22" text-anchor="middle">Outer test targets are scored externally after predictions are saved.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
+<title id="title">KurveRSC 0.2.0 architecture</title><desc id="desc">Strict temporal inputs feed bounded, schema-derived relational search. GraphReduce creates a typed entity-level frame for a pluggable learner. Validation promotes candidates from 10K screening to 50K confirmation and full-source rerank. A production-faithful finalist check and temporal policy selection precede one generic optional menu and a shared gate. The selected procedure is frozen and refitted before keyed prediction.</desc>
+<defs>
+<marker id="arrow-flow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#53667d"/></marker>
+<marker id="arrow-teal" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#087e8b"/></marker>
+<marker id="arrow-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#386c9c"/></marker>
+</defs>
+<rect width="1440" height="720" fill="#ffffff"/>
+<rect x="20" y="12" width="660" height="90" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="40" y="46" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Relational database</text>
+<text x="40" y="82" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Tables, keys and source clocks</text>
+<rect x="760" y="12" width="660" height="90" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="780" y="46" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Task contract</text>
+<text x="780" y="82" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Root, horizon, labels and masked requests</text>
+<path d="M350,106 L350,115" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<path d="M1090,106 L1090,115" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<rect x="20" y="119" width="1400" height="58" rx="9" fill="#edf4fc" stroke="#779ac4" stroke-width="1.8"/>
+<text x="720" y="156" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="600" text-anchor="middle">Source time &lt; query cutoff; phase and label-availability checks</text>
+<path d="M720,181 L720,203" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<rect x="20" y="207" width="1400" height="250" rx="9" fill="#f6f9fd" stroke="#779ac4" stroke-width="1.8"/>
+<text x="44" y="241" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" text-anchor="start">1. Staged relational search (S1)</text>
+<rect x="44" y="260" width="404" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="64" y="294" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Schema-derived programs</text>
+<text x="64" y="330" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Depth 1-4; bounded repeats</text>
+<text x="64" y="360" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Families, CDF, annotations</text>
+<rect x="518" y="260" width="404" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="538" y="294" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">GraphReduce</text>
+<text x="538" y="330" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Filter, annotate, reduce, join</text>
+<text x="538" y="360" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Entity-level feature frame</text>
+<rect x="992" y="260" width="404" height="116" rx="9" fill="#eff8f6" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="1012" y="294" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Pluggable learner</text>
+<text x="1012" y="330" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">CatBoost: evaluated reference</text>
+<text x="1012" y="360" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">TFMs via compatible adapters</text>
+<path d="M452,315 L514,315" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<path d="M926,315 L988,315" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<path d="M1194,380 V402 H246 V379" fill="none" stroke="#386c9c" stroke-width="2.8" marker-end="url(#arrow-blue)"/>
+<rect x="526" y="388" width="388" height="30" rx="0" fill="#f6f9fd" stroke="none" stroke-width="1.8"/>
+<text x="720" y="410" fill="#386c9c" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="middle">Validation-driven promotion</text>
+<text x="720" y="444" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="600" text-anchor="middle">10K screening → 50K confirmation → full-source rerank</text>
+<path d="M225,461 L225,479" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<rect x="20" y="484" width="410" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="40" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">2. Finalist check (S2)</text>
+<text x="40" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Production-faithful comparison</text>
+<text x="40" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Classification and regression</text>
+<rect x="495" y="484" width="400" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="515" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">3. Training policy (S3)</text>
+<text x="515" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Recent / pooled / blends</text>
+<text x="515" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Matched origins and seeds</text>
+<rect x="960" y="484" width="460" height="116" rx="9" fill="#eff8f6" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="980" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">4. Generic optional menu</text>
+<text x="980" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Text, ensembles and readouts</text>
+<text x="980" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">One incumbent; shared gate</text>
+<path d="M434,539 L490,539" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<path d="M899,539 L955,539" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<path d="M1190,604 V620 H520 V639" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<rect x="20" y="643" width="1000" height="64" rx="9" fill="#172b42" stroke="none" stroke-width="1.8"/>
+<text x="44" y="684" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="600" text-anchor="start">Freeze and refit</text>
+<text x="310" y="684" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="400" text-anchor="start">Plan + schema + policy + learner</text>
+<path d="M1024,675 L1085,675" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
+<rect x="1090" y="643" width="330" height="64" rx="9" fill="#eff8f6" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="1110" y="670" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="600" text-anchor="start">Keyed predictions</text>
+<text x="1110" y="698" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Entity / cutoff order</text>
 </svg>

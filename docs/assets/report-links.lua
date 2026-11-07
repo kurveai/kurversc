@@ -4,6 +4,8 @@ function Image(img)
   if FORMAT:match("latex") then
     local publication_figures = {
       ["assets/kurversc-staged-architecture.svg"] = "assets/kurversc-staged-architecture.pdf",
+      ["assets/kurversc-keyed-reduction.svg"] = "assets/kurversc-keyed-reduction.pdf",
+      ["assets/kurversc-reduction-example.svg"] = "assets/kurversc-reduction-example.pdf",
       ["assets/kurversc-relarena-elo-20261105.svg"] = "assets/kurversc-relarena-elo-20261105.pdf",
     }
     if publication_figures[img.src] then

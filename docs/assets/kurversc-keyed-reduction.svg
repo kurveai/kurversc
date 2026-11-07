@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="650" viewBox="0 0 1400 650" role="img" aria-labelledby="title desc">
+<title id="title">Keyed reduction and propagation</title><desc id="desc">Arrows carry features from order lines to orders and then to customers. Each reducing edge groups rows by its parent key, then left joins the summaries at the receiving grain. A store dimension enriches orders by a unique-key lookup without aggregation. Root extraction preserves one row per requested customer.</desc>
+<defs>
+<marker id="arrow-flow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#53667d"/></marker>
+<marker id="arrow-teal" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#087e8b"/></marker>
+<marker id="arrow-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#386c9c"/></marker>
+</defs>
+<rect width="1400" height="650" fill="#ffffff"/>
+<rect x="20" y="18" width="400" height="125" rx="9" fill="#eff8f6" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="40" y="52" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Customers (root)</text>
+<text x="40" y="88" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">1 row/customer</text>
+<text x="40" y="118" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">customer_id, country, ...</text>
+<rect x="20" y="263" width="400" height="125" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="40" y="297" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Orders + child features</text>
+<text x="40" y="333" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">1 row/order</text>
+<text x="40" y="363" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">total, line summaries, region</text>
+<rect x="20" y="508" width="400" height="120" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="40" y="542" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Order lines (deepest)</text>
+<text x="40" y="578" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Many rows/order</text>
+<text x="40" y="608" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">order_id, price, ...</text>
+<rect x="950" y="263" width="430" height="125" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="970" y="297" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Stores (keyed dimension)</text>
+<text x="970" y="333" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">1 row/store</text>
+<text x="970" y="363" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">store_id, region, ...</text>
+<path d="M220,503 L220,393" fill="none" stroke="#087e8b" stroke-width="2.8" marker-end="url(#arrow-teal)"/>
+<circle cx="268" cy="419" r="20" fill="#087e8b"/>
+<text x="268" y="428" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="600" text-anchor="middle">1</text>
+<text x="310" y="428" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Reduce by order_id</text>
+<text x="310" y="463" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">max(price), mean(price), ...</text>
+<text x="310" y="496" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">LEFT JOIN into orders</text>
+<path d="M220,258 L220,148" fill="none" stroke="#087e8b" stroke-width="2.8" marker-end="url(#arrow-teal)"/>
+<circle cx="268" cy="175" r="20" fill="#087e8b"/>
+<text x="268" y="184" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="600" text-anchor="middle">2</text>
+<text x="310" y="184" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Reduce by customer_id</text>
+<text x="310" y="219" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Aggregate enriched orders</text>
+<text x="310" y="252" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">LEFT JOIN into customers</text>
+<path d="M945,325 L425,325" fill="none" stroke="#386c9c" stroke-width="2.8" marker-end="url(#arrow-blue)"/>
+<text x="685" y="295" fill="#386c9c" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="600" text-anchor="middle">LEFT JOIN on store_id</text>
+<text x="685" y="363" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="middle">Lookup; no aggregation</text>
+<path d="M425,81 L945,81" fill="none" stroke="#087e8b" stroke-width="2.8" marker-end="url(#arrow-teal)"/>
+<text x="685" y="54" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="middle">Root extraction</text>
+<rect x="950" y="18" width="430" height="125" rx="9" fill="#eff8f6" stroke="#b9c7d6" stroke-width="1.8"/>
+<text x="970" y="56" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Root feature frame</text>
+<text x="970" y="93" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">1 row/requested root entity</text>
+<line x1="970" y1="108" x2="970" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="1030" y1="108" x2="1030" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="1090" y1="108" x2="1090" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="1150" y1="108" x2="1150" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="1210" y1="108" x2="1210" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="1270" y1="108" x2="1270" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="1330" y1="108" x2="1330" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="970" y1="108" x2="1330" y2="108" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="970" y1="118" x2="1330" y2="118" stroke="#b9c7d6" stroke-width="1.5"/>
+<line x1="970" y1="128" x2="1330" y2="128" stroke="#b9c7d6" stroke-width="1.5"/>
+</svg>

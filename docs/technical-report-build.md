@@ -9,9 +9,7 @@ manuscript header), librsvg, and Python with Matplotlib and NumPy. From the
 
 ```bash
 python assets/build-relarena-elo-figure.py
-rsvg-convert --format pdf \
-  --output assets/kurversc-staged-architecture.pdf \
-  assets/kurversc-staged-architecture.svg
+python assets/build-method-figures.py
 
 pandoc kurversc-staged-technical-report.md \
   --from=markdown+tex_math_dollars+raw_tex \
@@ -47,6 +45,19 @@ for publication. The filter selects these PDFs for LaTeX output and leaves SVG
 links intact for other formats. The Elo figure generator reads the frozen,
 published leaderboard extract rather than recomputing ratings or mixing
 comparison panels.
+
+`build-method-figures.py` regenerates the compact architecture, keyed-reduction
+and worked-example figures. It uses only the Python standard library and
+`rsvg-convert`. Optional `--preview-dir /path/to/previews` writes PNGs and a
+dimension receipt outside the source assets. At the report's 6.94-inch text
+width the figures are approximately 3.47, 3.22 and 3.02 inches tall, respectively,
+with minimum labels of 9.0, 9.3 and 9.3 points. Longer explanations belong in
+captions rather than inside the artwork.
+
+Both algorithms use native LaTeX `algorithm` and `algpseudocode` environments,
+with numbered steps, explicit inputs/outputs, indented control flow and
+9.5-point body text. They are searchable text rather than screenshots or
+verbatim blocks. The corresponding packages must be available to XeLaTeX.
 
 The PDF was built with Pandoc 3.1.8 and XeTeX 0.999994 (TeX Live 2022).
 
