@@ -18,7 +18,7 @@ toc: true
 toc-depth: 1
 numbersections: true
 bibliography: kurversc-staged-references.bib
-csl: assets/ieee.csl
+csl: assets/kurversc-full-authors.csl
 link-citations: true
 header-includes:
   - |
@@ -1252,7 +1252,8 @@ Panel B: remaining eight methods.
 
 # References {.unnumbered}
 
-References are numbered in order of first citation. The bibliography covers
+References are numbered in order of first citation and print complete author
+lists. The bibliography covers
 the implementation, protocol, relational feature construction, learned
 representations, search allocation, statistical methods and proposed planner-data
 sources. Compact source labels remain linked to the complete original URLs. Product/deployment references describe
