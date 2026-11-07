@@ -24,9 +24,18 @@ pandoc kurversc-staged-technical-report.md \
 ```
 
 The source resolves references from `kurversc-staged-references.bib` and selects
-`assets/ieee.csl` in its metadata. The vendored [IEEE CSL style](https://github.com/citation-style-language/styles/blob/master/ieee.csl)
-is licensed under CC BY-SA 3.0; its upstream attribution and license are retained
-in the style file. It numbers citations/references and repeats author names.
+`assets/kurversc-full-authors.csl` in its metadata. This local adaptation of the
+[IEEE CSL style](https://github.com/citation-style-language/styles/blob/master/ieee.csl)
+preserves numbered citations and prints complete author lists with full given
+names, including long author lists. The upstream attribution, template link and
+CC BY-SA 3.0 license are retained. The unmodified upstream style remains in
+`assets/ieee.csl` for provenance.
+
+The BibTeX file must also contain every author: a complete-list style cannot
+recover names omitted from source metadata. The RelArena, TabPFN-3 and
+TabPFN-3.5 entries use complete author lists from their cited arXiv versions.
+Before publishing, verify the rendered reference list against the parsed
+BibTeX author arrays, including the last author of each long entry.
 
 Run `assets/report-links.lua` **after citeproc**, as above. It shortens only
 bibliography link labels (for example, `GitHub source` or an arXiv identifier),

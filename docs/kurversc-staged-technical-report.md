@@ -18,7 +18,7 @@ toc: true
 toc-depth: 1
 numbersections: true
 bibliography: kurversc-staged-references.bib
-csl: assets/ieee.csl
+csl: assets/kurversc-full-authors.csl
 link-citations: true
 header-includes:
   - |
@@ -57,8 +57,9 @@ header-includes:
 
 KurveRSC selects a relational feature program with a supervised learner in the
 loop. GraphReduce executes that program, reducing timestamped, related records
-to an entity-level feature matrix; CatBoost evaluates and fits the resulting
-representation. The staged procedure allocates increasing fidelity to a bounded
+to an entity-level feature matrix; a pluggable downstream learner evaluates and
+fits the resulting representation. CatBoost is the evaluated reference learner
+in this report. The staged procedure allocates increasing fidelity to a bounded
 set of schema-derived candidates, checks finalists with the production fitting
 lifecycle, and compares temporal support policies and generic optional readouts
 before saving keyed predictions.
@@ -84,14 +85,18 @@ difference in aggregate performance. This report includes every reproduced
 per-task score and the successful jobs' measured resources
 [@relarena20261105results; @relarena20261105leaderboard; @relarena20261105resources].
 
-The architecture separates relational representation from the downstream
-learner and from the execution backend. It supports operational use through the
-Kurve product, while the evaluated open-source recipe uses DuckDB. Warehouse
-execution and customer-controlled deployment are architectural and product
-capabilities; they do not establish an unlimited scale or runtime guarantee for
-this complete search procedure. The main unresolved questions remain selection
-fidelity, computational cost, and predictive transfer to previously unseen
-databases.
+The central research objective is to characterize how much predictive power can
+be recovered through relational signal compression and how that value interacts
+with learner capacity. The entity-level feature frame deliberately separates
+the relational program from a pluggable downstream learner. As tabular foundation
+models (TFMs) become more capable, compatible adapters can bring them into the
+same architecture for selection and replay. The reported scores evaluate the complete
+CatBoost-based procedure.
+
+The architecture also separates representation from the execution backend.
+The Kurve product provides production workflows, while the evaluated open-source
+recipe uses DuckDB. The main open questions concern selection fidelity,
+representation loss and computational cost.
 
 **Code and reproducibility.** The source code, installation instructions and
 reproduction documentation are available at
@@ -106,11 +111,12 @@ reproduction documentation are available at
 # Architecture overview {.unnumbered}
 
 Figure 1 shows how KurveRSC adapts the relational representation with a
-downstream learner in the loop. GraphReduce executes candidate programs;
-increasing-fidelity validation selects a graph, training policy and applicable
-optional readout before the production artifact is frozen.
+pluggable downstream learner in the loop. GraphReduce executes candidate
+programs; the tabular frame is the interface to the learner. Increasing-fidelity
+validation selects a graph, training policy and applicable optional readout
+before the production artifact is frozen.
 
-![KurveRSC 0.2.0 architecture. Strict temporal inputs feed schema-derived graph search. GraphReduce materializes entity-grain frames, and the downstream learner supplies the validation objective. Finalist and temporal-policy checks precede a shared optional-candidate gate. The selected program, schema, policy and fitted learner are frozen for prediction; outer test targets are used only by the external scorer.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
+![KurveRSC 0.2.0 architecture. Strict temporal inputs feed schema-derived graph search. GraphReduce materializes entity-grain frames for a pluggable downstream learner; CatBoost is the evaluated reference, and compatible tabular foundation-model adapters can use the same interface. Finalist and temporal-policy checks precede a shared optional-candidate gate. The selected program, schema, policy and fitted learner are frozen for prediction; outer test targets are used only by the external scorer.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
 
 ```{=latex}
 \clearpage
@@ -139,8 +145,9 @@ in this report.
 
 The fixed recipe retains globally specified model sizes, blend menus and capacity
 limits. They are shared defaults disclosed below, not values rediscovered on each
-database. Predictive transfer remains an empirical question requiring
-new-database evaluation.
+database. The procedure applies to new schemas through their declared tables,
+keys, root entity, horizon and observed labels; candidate selection uses the
+task's own temporal validation evidence.
 
 ## Interfaces
 
@@ -188,9 +195,23 @@ means and counts may have different event ordering, category-conditioned
 outcomes, or neighbor structure. The families below preserve some of these
 distinctions within a finite program budget.
 
-The benchmark learner is CatBoost [@prokhorenkova2018catboost]. Other native
-learner integrations are separate interfaces; this release does not substitute
-a foundation model during the staged benchmark search or final prediction.
+The research focus is the predictive information preserved by the relational
+program and its interaction with the learner. Within matched graph comparisons,
+KurveRSC varies the representation under a declared downstream fitting policy.
+The reported end-to-end scores measure the complete pair; separating the
+contributions of compression and learner capacity requires controlled
+comparisons of both components.
+
+The downstream learner is intentionally replaceable at the typed frame
+boundary. Native `model_backend` and `final_model_backend` interfaces already
+include tabular foundation-model adapters. More capable TFMs can be integrated
+without replacing the relational-program abstraction. Their use should evaluate
+candidate programs with the intended learner and the same temporal contracts;
+a graph selected for one learner need not be optimal for another.
+
+The benchmark learner is CatBoost [@prokhorenkova2018catboost]. The fixed staged
+procedure evaluated here uses CatBoost for graph search and final prediction;
+native learner integrations are separate interfaces.
 
 # Temporal and data contracts
 
@@ -231,9 +252,10 @@ necessary but insufficient: its prediction horizon must have matured, and any
 declared label availability must satisfy the relevant training boundary.
 Held-out targets are never added to this relation.
 
-The history provider uses the observed-label source rather than the sampled
-CatBoost rows. Consequently, a model-row cap need not erase earlier known
-labels. The staged recipe also bounds peer-history discovery to 50,000 history
+The history provider reads eligible observed labels independently of any
+sampling of the learner's training examples. A limit on the examples used to
+fit the learner therefore does not itself truncate the label-history source.
+The staged recipe separately bounds peer-history discovery to 50,000 history
 rows. Counts, means, recency, and peer summaries are therefore bounded
 representations rather than a promise to expose every historical observation
 in every provider.
@@ -956,29 +978,86 @@ can increase search cost and multiple-comparison burden. Changes should be
 qualified with the same public procedure on held-out databases, without
 benchmark-name switches or test-score campaign gates.
 
-## Amortizing graph selection with a pretrained planner
+## Planned zero-shot configuration and prediction
 
-A future planner could propose graph configurations from a schema, relationship
-metadata, table/column statistics, root, horizon and target type. It could warm
-start a bounded search while retaining verified execution and validation.
-Zero-shot prediction of the universally optimal graph is a stronger claim and
-has not been demonstrated.
+We plan to develop a pretrained configuration model that replaces task-time graph
+search with a single forward pass on a new database and prediction task. Inputs
+will include the schema, relationship metadata, table/column statistics, root
+entity, prediction horizon, target type and target definition. The target
+definition or label-generation rule is essential: the same root, horizon and
+binary target type can describe different prediction problems. Profiles must
+respect the task's temporal boundaries. The planner will also receive the
+downstream learner specification and execution budget.
 
-The limiting resource is a training corpus of phase-correct tasks, evaluated
-programs, fidelity/cost records, uncertainty and independent held-out outcomes.
-Schema metadata alone does not label predictive quality. RelBench v2, 4DBInfer
-and the CTU repository can seed collection
-[@gu2026relbenchv2; @wang2024dbinfer; @motl2015ctu], but sibling tasks do not
-provide independent databases. THE JOIN, released with RT-J, offers another
-source of real relational databases and forecasting tasks [@ranjan2026rtj]. A
-graph-selection planner would still need its own phase-correct program-quality
-and cost traces on those tasks. Permissioned operational traces and synthetic
-tasks could broaden coverage with appropriate licensing, privacy and temporal
-validity.
+The model will predict a schema-valid, executable GraphReduce configuration,
+including relational paths, depth, feature families, annotations, temporal
+windows and payload budgets. Structured output heads and a deterministic
+schema-aware compiler will bind these decisions to a valid plan without
+autoregressive configuration search. GraphReduce will materialize the selected
+representation, and a downstream pretrained learner will produce predictions.
+The intended composition is
 
-Evaluation must hold out entire databases/schema families. It should measure
-full-fidelity winner retention, regret, execution validity and cost against the
-fixed staged search. No pretrained planner is part of this release.
+$$
+\widehat g=P_\phi\!\left(m(D_{<t}),\mathcal T\right),\qquad
+Z=\Phi_{\widehat g}(D_{<t}),\qquad
+\widehat Y=F_\psi\!\left(Z_C,Y_C,Z_Q;\mathcal T\right),
+$$
+
+where $m$ computes the permitted metadata/profile, $\mathcal T$ specifies the
+task and learner, $C$ is optional observed support and $Q$ is the forecast
+request set. Both models' pretrained weights remain fixed at deployment.
+The single forward pass refers to configuration prediction; profiling,
+GraphReduce execution and downstream inference remain explicit operations whose
+costs must be included in end-to-end latency.
+
+The goal is a complete pretrained prediction procedure with no task-specific
+graph search, hyperparameter tuning or model-weight updates. An in-context
+learner may still use mature observed labels as support; this is different from
+label-free prediction and will be reported explicitly. A separate label-free
+protocol will omit $Y_C$ and require the pretrained predictor to understand the
+target definition. Pretrained in-context learning and relational task prompting
+provide relevant precedents, without establishing the effectiveness of this
+planned composition [@hollmann2025tabpfn; @ranjan2026relational].
+
+The hypothesis is that pretraining can amortize the cost of discovering useful
+relational representations across databases. It is not a claim that coarse
+metadata uniquely determines the optimal graph. A confidence-triggered return
+to bounded search can be studied as a separate fallback; its results and costs
+must remain distinct from the one-proposal protocol. No pretrained planner is
+part of KurveRSC 0.2.0 or the reported benchmark results.
+
+## Pretraining data and evaluation
+
+The principal data requirement is a corpus of phase-correct tasks and executed
+programs with predictive-quality, fidelity, cost and uncertainty records.
+Planner supervision must use training and inner-validation evidence, with final
+evaluation outcomes held out. RelBench v2, 4DBInfer and the CTU repository can
+seed collection [@gu2026relbenchv2; @wang2024dbinfer; @motl2015ctu], but sibling
+tasks do not provide independent databases. THE JOIN, released with RT-J,
+offers another source of real relational databases and forecasting tasks
+[@ranjan2026rtj]. These sources still require phase-correct program-quality and
+cost traces. Permissioned operational traces and synthetic tasks could broaden
+coverage with appropriate licensing, privacy and temporal validity.
+
+Evaluation will hold out entire databases and schema families. The primary
+comparison will pair a single planner proposal with the same downstream
+pretrained learner used by fixed generic configurations and the bounded search
+reference. It will measure ROC-AUC or MAE, regret relative to evaluated
+full-fidelity configurations, plan validity, execution failures, total latency
+and peak resources. Learned planning and downstream learner choice will also
+be varied separately to measure their respective contributions. A successful
+experiment would retain competitive predictive quality while eliminating
+per-task search; label-free performance is a separate result to establish.
+
+# Acknowledgments {.unnumbered}
+
+We thank Rishabh Ranjan for reviewing the manuscript and providing helpful
+feedback on related work and citations.
+
+We also thank Adrian Hayler for his constructive methodological feedback, code
+review, and collaboration on the KurveRSC integration, and the Prior Labs team
+and RelArena maintainers for developing the benchmark and independently
+reproducing the reported results.
 
 ```{=latex}
 \clearpage
@@ -1173,7 +1252,8 @@ Panel B: remaining eight methods.
 
 # References {.unnumbered}
 
-References are numbered in order of first citation. The bibliography covers
+References are numbered in order of first citation and print complete author
+lists. The bibliography covers
 the implementation, protocol, relational feature construction, learned
 representations, search allocation, statistical methods and proposed planner-data
 sources. Compact source labels remain linked to the complete original URLs. Product/deployment references describe
