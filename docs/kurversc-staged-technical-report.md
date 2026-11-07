@@ -163,10 +163,40 @@ stage of the submitted benchmark procedure. The RelArena system name is
 
 # Relational compression as a learned program
 
-Let a prediction request be $(e,t)$, identifying a root entity and query cutoff.
-A relational database supplies keyed tables, foreign keys, source clocks, and
-observed labels. A graph configuration $g$ selects paths, depth, reductions,
-feature families, and bounded annotation choices. GraphReduce computes
+## Task, configuration, and learning objective
+
+A task declares a database $D$, a root table $r$, a target definition, a forecast
+horizon $H$, and a metric. A prediction request $(e,t)$ asks for the outcome of
+root entity $e$ after query cutoff $t$, under that target definition. For
+example, a customer task can ask whether an order will occur in the next 30
+days. A *feature frame* is a matrix with one row per requested entity at one
+cutoff. Historical frames repeat this construction at earlier cutoffs; they
+are separate supervised examples, not additional columns.
+
+The database declares primary and foreign keys, source clocks, and observed
+labels. KurveRSC compiles these relationships into a graph oriented outward
+from the root. A graph node is a *path occurrence* of a table: the same physical
+table can occur more than once under different aliases. An edge records both
+join keys and whether its related rows require reduction. The direction of
+this compute edge describes feature flow toward the root; it need not match
+the direction in which the database stores its foreign key.
+
+For the bounded search, write a configuration as
+
+$$
+g=(d,\mathcal F,a,h,o,c;B).
+$$
+
+Here $d$ is maximum path depth; $\mathcal F$ contains `base` and the selected
+feature families; $a$ enables or disables automatic annotation; $h$ controls
+the historical-target relation; $o$ bounds occurrences of a base table along a
+path; and $c$ specifies categorical handling, including bounded tie refinement.
+$B$ contains payload and feature-expansion limits. The schema and these choices
+determine the executable paths. The staged search does not independently search
+every possible edge subset, window length, numeric transform, and learner
+hyperparameter. CDF sketches are fixed on in the evaluated profile.
+
+GraphReduce executes the resulting feature program:
 
 $$
 z_{e,t}=\Phi_g(D_{<t},e,t), \qquad
@@ -174,18 +204,139 @@ z_{e,t}=\Phi_g(D_{<t},e,t), \qquad
 $$
 
 The notation $D_{<t}$ abbreviates the visibility contract in the next section;
-a source record may also have an independent availability clock. KurveRSC fits
-$f_\theta$ on eligible training examples and uses temporal validation to choose
-among programs. It therefore selects the compression procedure jointly with a
-bounded downstream fitting procedure, rather than creating a fixed flat table
-once and treating it as the entire database.
+a source record may also have an independent availability clock. Let $A$ be the
+declared learner-fitting procedure, including its row budget, seed, and temporal
+support policy. For each temporal validation origin $k$, it produces
 
-A many-to-one relationship contributes child summaries at the parent grain.
-Those features may continue upward through additional joins and reductions.
-Path-specific aliases distinguish repeated occurrences of a base table.
-Structural keys route records; they are excluded from the CatBoost payload,
-along with the current target and routing columns. Entity history can still
-contribute through explicitly constructed, time-safe relations.
+$$
+\theta_{g,k}=A(Z^{\mathrm{train}}_{g,k},Y^{\mathrm{train}}_k),\qquad
+s_{g,k}=M\!\left(Y^{\mathrm{val}}_k,
+ f_{\theta_{g,k}}(Z^{\mathrm{val}}_{g,k})\right).
+$$
+
+Each row of either $Z$ is materialized at that row's own query cutoff. Earlier
+training targets must be observable by the fitting boundary. $M$ is ROC-AUC for
+binary classification or MAE for regression; the learner itself optimizes
+Logloss or MAE, respectively. Search compares $g$ under the same declared
+fitting procedure, using these validation scores and the retention rules in
+Section 6. It does not differentiate through SQL, learn table embeddings, or
+select on held-out test scores. This is supervised selection of a relational
+program with a learner in the loop.
+
+## Keyed reduction and propagation
+
+Consider a parent occurrence $p$ and a related occurrence $v$. Let $X_p$ denote
+the parent's visible rows and payload, and let $Z_v$ include the child's own
+payload plus features already received from its descendants. If many child
+rows refer to one parent, a reduction $R^g_{v\to p}$ groups $Z_v$ by the declared
+child foreign key and computes a bounded vector of summaries. GraphReduce then
+left joins this one-row-per-key result to the parent:
+
+$$
+Z_p=\operatorname{LeftJoin}_{k_p=k_v}
+ \!\left(X_p,R^g_{v\to p}(Z_v)\right).
+$$
+
+The join is repeated for each child. A keyed dimension lookup is different:
+when the parent's foreign key identifies a single related row, that row's
+visible attributes can be joined without aggregating it. The adapter records
+this distinction in the edge's `reduce` flag. Keys must satisfy the declared
+uniqueness and cardinality contracts; unrestricted many-to-many joins are not
+a substitute for reduction.
+
+Edges are processed in reverse depth-first order, so descendant features exist
+before their receiving table is itself reduced. For
+`customer -> order -> line`, line features first become order features; those
+features then become customer features. Summarizing each child before joining
+also prevents sibling fan-out: independently joining orders and support tickets
+would otherwise multiply rows and distort counts and sums. Under valid key
+contracts, a reduction and its join preserve the receiving table's grain.
+
+**Algorithm 1: materialize one candidate at one cutoff.**
+
+1. Instantiate paths allowed by $d$ and $o$ with distinct aliases and keys.
+2. Load phase-censored sources; select routing and bounded payload; annotate.
+3. In reverse depth-first order, reduce child rows by key and historical window,
+   or look up a keyed dimension. Left join each result to its parent.
+4. Align root rows to requests; separate targets/routing from learner payload.
+5. Freeze operations, categories, cutpoints, bindings and schema on discovery;
+   verify and replay them with rebound time expressions for later requests.
+
+Unavailable payload remains missing; a missing child group is not universally
+imputed to zero. Request keys and order are retained throughout.
+
+The procedure executes SQL through the backend; it does not need to construct
+one fully joined raw table in Python. The final frame can nevertheless be wide
+or expensive to materialize. A materialized aggregate is a new payload column
+at the next level, not a retained bag of its original rows. For columns with
+recognized aggregate lineage, the recipe permits one compatible continuation
+function: maxima continue with `max`, sums and counts with `sum`, and averages
+with `avg`. This controls
+expansion but also determines which distinctions survive [@graphreduce].
+
+## Worked three-table example
+
+Suppose the root table contains customers A, B, and C with a known `country`
+attribute. The following small database illustrates two graph configurations;
+it is not a benchmark or an additional stage. All timestamps are in January
+2026, and the request cutoff is **January 11 at 00:00**. Orders and lines have
+strict source clocks. The target is a future 30-day order indicator, supplied
+separately as observed labels when it becomes available.
+
+| Order | Customer | Time | Total |
+|:------|:---------|:-------------|------:|
+| O1 | A | Jan 7, 00:00 | 20 |
+| O2 | A | Jan 10, 00:00 | 100 |
+| O3 | B | Jan 9, 00:00 | 60 |
+| O4 | A | Jan 11, 00:00 | 999 |
+
+| Line | Order | Time | Price |
+|:-----|:------|:-------------|------:|
+| L1 | O1 | Jan 7, 00:00 | 10 |
+| L2 | O1 | Jan 7, 00:00 | 10 |
+| L3 | O2 | Jan 10, 00:00 | 100 |
+| L4 | O3 | Jan 9, 00:00 | 60 |
+| L5 | O4 | Jan 11, 00:00 | 999 |
+
+The keys are `orders.customer -> customers.customer` and
+`lines.order -> orders.order`. O4 and L5 are invisible at this cutoff, even
+though their dates match the query date. A depth-one `base` configuration sees
+orders and can produce the first three summaries below. A depth-two `base`
+configuration also reduces lines to orders and propagates the resulting
+summaries. Hold annotation and target history off in both configurations to
+isolate depth; CDF remains enabled but is omitted from this displayed subset.
+
+| Customer | Order count | Total sum | Total mean | Line-price max | Line-price mean of means |
+|:---------|------------:|----------:|-----------:|---------------:|-------------------------:|
+| A | 2 | 120 | 60 | 100 | 55 |
+| B | 1 | 60 | 60 | 60 | 60 |
+| C | NA | NA | NA | NA | NA |
+
+The last two columns require depth two. At order grain, O1 has line-price
+maximum 10 and mean 10, while O2 has maximum 100 and mean 100. Customer A then
+receives $\max(10,100)=100$ and $(10+100)/2=55$. These descriptive column names
+stand for path-qualified operation aliases; the table displays selected
+features, not every generated feature. Root `country` is also available to the
+learner, while customer/order identifiers route computation and are removed
+from its raw payload.
+
+This example exposes two consequential choices. First, joining raw lines to
+orders before summing totals would count O1's total twice, incorrectly giving
+A a total of 140 instead of 120. Reducing first avoids that error. Second, the
+mean of per-order means is 55, whereas the mean over A's three lines is 40.
+The default continuation does not silently recover an item-weighted mean.
+Different programs preserve different information, and deeper is not always
+better. Temporal validation decides whether a representation is useful for
+the declared target.
+
+## The learner boundary
+
+Training defines the learner's column order and types. Entirely missing and
+constant training columns are removed; categorical values use string encodings
+with a missing-value token, datetimes become numerical timestamps, and
+nonfinite numeric values become missing. Prediction applies that saved schema
+and preprocessing rather than selecting columns again. Thus the artifact
+contains both the relational execution plan and the learner-facing schema.
 
 The matrix is an interface to the learner. Information can be lost in the
 chosen representation, but a matrix interface does not imply that the features
@@ -266,6 +417,11 @@ root's own contribution where the peer definition requires it. Peer-label
 availability may be stricter than the general source-export rule; the provider
 applies its own conservative visibility checks.
 
+The graph's history switch controls its explicit historical-target child table.
+The staged profile's configured peer provider is separate: disabling that
+child does not disable every peer-label summary. Both must obey their declared
+availability contracts.
+
 ## Request preservation and replay
 
 A strict cutoff can hide the root row itself, for example when it was created
@@ -308,6 +464,54 @@ invent arbitrary semantic expressions. Parent/root payload and applicable
 annotations remain available, subject
 to the same source visibility and payload budgets.
 
+These families specify operations rather than semantic roles assigned to a
+particular database. For an entity's visible event rows, `temporal` can compare
+the mean amount in a recent window with an older window; `state` can retain
+the latest amount and the mean of the last three events; and `sequence` can
+describe event counts per day and recent-to-longer-window activity shares.
+`conditional` can count events with a selected status and measure that status's
+share over time. `episode` distinguishes row opportunities from distinct event
+keys. Given a declared group key, `context` can first annotate each child row
+with its group size and $x-\operatorname{mean}(x\mid\text{group})$, then reduce
+those deviations to the root. It therefore retains information unavailable
+from the root's unconditional mean alone. These are representative expressions;
+applicability and payload limits determine which are emitted.
+
+The families overlap. `base` already includes dated activity/recency and some
+bounded categorical trajectories, as well as standard type-dependent
+aggregations. Adding `sequence` does not create time awareness from nothing;
+it adds a richer bounded collection of activity summaries. The planner audit
+and saved operations, rather than the family name alone, identify the actual
+feature representation.
+
+## Automatic annotation before aggregation
+
+Annotation creates row-level columns that later reductions can summarize.
+For a categorical `status`, a retained value such as `closed` can yield
+$\mathbf 1[\text{status}=\text{closed}]$ and a numeric payload such as
+`amount` can yield `CASE WHEN status = 'closed' THEN amount END`. Summing or
+averaging the indicator measures frequency or share; averaging the gated amount
+measures magnitude conditional on that status. A global mean and a status count
+cannot in general recover this cross-column association.
+
+The released procedure discovers these choices on eligible training source
+samples. Its node settings allow at most ten categorical annotation columns,
+four numeric columns for gated values, and three category values per gated
+numeric column. Ordinary category retention uses a cardinality threshold of
+20 and a top-five policy; the compatible anchor can retain all low-cardinality
+values and top categories above the threshold. Category frequencies and tie
+choices are frozen with the plan. Forecast data does not fit a new category
+vocabulary. Source-column, per-column expansion and propagation caps still
+apply, so annotation does not imply an unbounded Cartesian product.
+
+This operation also runs on the root/parent node. Retained parent payload,
+eligible categorical indicators and gated numeric annotations can enter the
+learner directly; child annotations can first travel through aggregation.
+A dated root can contribute an age-at-cutoff feature. Automatic text-shape
+annotation is disabled in the evaluated graph recipe; the separately validated
+TF-IDF parent-text head in Section 8 is a different operation. Automatic
+annotation does not infer an outcome's meaning or invent arbitrary SQL predicates.
+
 ## CDF sketches inside `base`
 
 For an eligible numeric payload $v$, bounded training-only quantile cutpoints
@@ -331,6 +535,25 @@ CDF is part of `base`, not an additional family. **The fixed staged recipe sets
 the published recipe does not double its entire graph menu into both forms.
 A bounded sketch preserves some distributional differences; it does not retain
 the complete empirical distribution or every cross-column dependency.
+
+## Historical windows versus forecast horizon
+
+The forecast horizon $H$ defines the target and label maturity. The compute
+lookback $L$ limits source history; these are different quantities. The native
+materializer's default lookback used by this profile is 3,650 days. A timed
+reduction uses source rows in $(t-L,t)$, intersected with the phase's permitted
+data. A window of $w$ days further requires $\tau(r)\geq t-w$; it never restores
+a row excluded by the strict upper cutoff or the phase boundary.
+
+The evaluated profile disables inferred periods. GraphReduce's default day
+grid is $\{1,3,4,7,14,30,60,90,180,365,730\}$, with the longer compute lookback
+added during graph hydration. The expansion budget can retain only a subset
+of the corresponding expressions. These durations specify retrospective
+windows, not rounding of timestamps: a query at 15:30 still excludes source
+rows at or after 15:30. `state` instead orders eligible rows by event time and
+uses row-relative lags and trailing windows, including 3, 5 and 10 events.
+Learned plans preserve their period choices across replay. Optional providers
+can impose separate lookback limits, such as object breadth's 730-day cap.
 
 ## Depth, repeated tables, and payload limits
 
@@ -365,6 +588,28 @@ full fidelity is expensive. The `staged-retention` profile evaluates a bounded
 schema-derived menu, promotes survivors, then increases data fidelity. Search
 uses no saved task-to-winning-configuration lookup.
 
+## Candidate construction
+
+The initial anchor lattice contains `base` plus subsets of `temporal`,
+`sequence`, `conditional`, and `episode`, under both annotation policies and
+bounded topology variants. It reaches depth three, with the more expensive
+family combinations initially limited to depth two. Capability checks remove
+unavailable operations, and a deterministic balanced collection selects at
+most 32 candidates. It reserves base controls and covers family, annotation,
+depth and topology strata before filling its budget. This is a bounded sample
+of a potential program space, not exhaustive search over every schema path.
+
+Up to six successful anchors seed expansion, retaining the complexity-aware
+recommendation among them. Challengers vary depth through four, repeated-table
+limits, target history, and additions of `state` or `context`. A separate sparse
+seed panel includes `base + state`, `base + context`, and their interaction even
+if plain `base` was not promoted. This avoids requiring a useful small modern
+graph to descend from a large winning anchor. Combined challengers are added
+when individual additions show meaningful validation gains over the same
+parent. Depth restrictions on some expensive expansions and hard stage budgets
+still apply. Unavailable or estimated-overwidth programs are pruned before
+execution; duplicate configurations are evaluated only once per relevant stage.
+
 | Stage | Max. | Purpose |
 |:-----------------------|:------:|:-------------------------------------------|
 | Screening | 32 | Initial comparison, nominally 10,000-example frames. |
@@ -380,6 +625,96 @@ graphs nor a count of CatBoost fits. Applicability, duplicate configurations,
 available support and stage outcomes can reduce evaluations. Multiple cutoffs,
 seeds, temporal policies and optional heads can increase learner fits beyond
 that sum.
+
+## Retention, promotion, and final graph selection
+
+Define higher-is-better utility $U(s)=s$ for ROC-AUC and $U(s)=-s$ for MAE.
+A single-fidelity trial records utility, its sampling standard error, feature
+count, plan and cutoff evidence. Confirmation does not simply take the top few
+scores. Relative to leader $g_*$, the confidence frontier includes candidates
+satisfying
+
+$$
+U(s_{g_*})-U(s_g)\leq
+\max\!\left(\delta,\sqrt{\mathrm{SE}_{g_*}^{\,2}+\mathrm{SE}_g^{\,2}}\right),
+$$
+
+with $\delta=0.01$ AUC or 1% of the leading MAE. If the frontier exceeds the
+stage budget, structural diversity chooses a bounded subset; otherwise up to
+four additional structural controls can fill spare slots. Diversity retains
+representatives of family interactions, sparse family controls, annotation
+policies, depth, history and topology alternatives. Thus an unresolved
+low-fidelity tie preserves several hypotheses, subject to capacity; it is not
+evidence that their full-fidelity scores are equal. The 0.01-AUC *retention*
+margin is distinct from S2's 1% *relative ranking-loss* limit.
+
+Nominal 50K confirmation replays each survivor's frozen plan. A historical
+promotion stage runs only if additional eligible training frames are available.
+Categorical refinement gives up to two score-leading structural parents a
+bounded number of deterministic category-tie variants. Before full rerank,
+the best observed variant of each categorical lineage represents that graph,
+so many tie seeds cannot consume every finalist slot. Confidence-frontier
+retention then selects at most twelve lineages for full-source comparisons.
+
+At full rerank, each candidate is scored on the same available chronological
+folds, up to three. Its stability-adjusted utility is
+
+$$
+Q(g)=U(\bar s_g)-0.25\,\frac{\operatorname{sd}(s_{g,1},\ldots,s_{g,K})}
+ {\sqrt K}.
+$$
+
+Here the dispersion is the population standard deviation over the available
+fold scores, as in the released implementation.
+
+The selector first finds the latest-fold leader. A candidate is excluded when
+that leader's recent gain exceeds both the practical veto (0.01 AUC or 1%
+relative MAE) and their combined estimated standard error. Among remaining
+candidates, $Q$ ranks walk-forward performance. A graph with at most half as
+many features can replace that winner only within a practical, uncertainty-based
+tie; paired fold differences are used where available, with a hard maximum
+loss of 0.01 AUC or 1% MAE. Stable configuration ordering resolves remaining
+ties. This is the native graph-selection heuristic. S2 subsequently tests a
+bounded smaller finalist using the stricter, symmetric production comparison
+specified in Section 7.
+
+Search standard errors are heuristic: MAE uses the standard error of absolute
+errors, while ROC-AUC uses a positive/negative-count approximation. They do not
+model all dependence between repeated observations. The optional-head gate
+later uses paired entity-cluster resampling; these are different statistical
+operations, not interchangeable confidence guarantees.
+
+## End-to-end search and deployment
+
+The following pseudocode summarizes the published control flow. `Evaluate`
+includes point-in-time materialization, fitting under the declared learner
+budget, validation and checkpointing. Every stage applies its ceiling before
+execution; unavailable stages retain the preceding completed evidence.
+
+```text
+Algorithm 2: bounded staged selection
+  Build censored phases, path graph and deterministic payload audit.
+  Evaluate balanced anchors at 10K fidelity (at most 32).
+  Expand up to six retained anchors plus sparse modern controls.
+  Evaluate individual challengers (24), then eligible combinations (12).
+  Retain the confidence frontier and structural controls; confirm at 50K (40).
+  If support grows, evaluate historical promotions (8).
+  Refine category ties for up to two leading structural parents (8).
+  Collapse category lineages; retain a frontier for full-source rerank (12).
+  Replay those plans on up to three chronological folds; select one graph.
+  S2: compare at most one smaller finalist with the production lifecycle.
+  S3: select a complete temporal fitting policy for the selected graph.
+  Compare the generic optional menu against the common S3 incumbent.
+  Freeze the admitted procedure; refit with permitted observed labels.
+  Replay on masked requests, save keyed predictions, then score externally.
+```
+
+Initial search support uses the smallest recent window of 3-12 available
+cutoffs with at least 256 labels and, for classification, at least 24 examples
+of each class when such support exists. Fewer available cutoffs or insufficient
+support limit what can be compared. These support counts concern examples used
+to evaluate a representation; they do not automatically set the deployed
+training policy.
 
 Low-fidelity sampling can affect the connected source cohort as well as the
 examples scored by the learner. A 10K screening frame is therefore not always a
@@ -404,6 +739,14 @@ uncertainty and a bounded complexity preference. This is a heuristic for choosin
 among observed candidates. It cannot recover a graph discarded before full
 fidelity, nor guarantee the globally best program. The additional finalist
 comparison below specifically checks the production fitting lifecycle.
+
+In the released source, `kurversc/search.py` defines configurations, balanced
+proposals, challengers and frontier retention. `kurversc/core.py` orchestrates
+their evaluation and frozen replay. The selected-configuration runner fixes
+the staged profile's budgets. GraphReduce's graph and node modules implement
+the traversal, keyed joins and generated SQL reductions. These source pointers
+identify the implementation of the method specified here
+[@kurversc020; @graphreduce].
 
 # A symmetric production-faithful finalist check
 
