@@ -411,17 +411,36 @@ native learner integrations are separate interfaces.
 
 ## Source time and knowledge time
 
-For a strict timed source row $r$, a request cutoff $t$, and a phase knowledge
-boundary $b$, source visibility requires
+Each source row is checked against three timestamps:
+
+- **Event time** (`event_time`): when the event represented by that row occurred.
+- **Query cutoff** (`query_cutoff`, denoted $t$ elsewhere): the timestamp for
+  which a prediction is requested.
+- **Phase cutoff** (`phase_cutoff`): the boundary of the frozen source snapshot
+  supplied to the current training, validation or prediction phase.
+
+For a source declared strictly timed, the event must precede both cutoffs:
 
 $$
-\tau(r)<t, \qquad \tau(r)<b.
+\text{event\_time}<\min(\text{query\_cutoff},\text{phase\_cutoff}).
 $$
 
-When an independent availability clock $a(r)$ is declared, the phase export
-also requires $a(r)\leq b$. Event time and availability answer different
-questions: when an event occurred, and when the forecasting procedure could
-know it. Advancing a query clock must not advance a frozen phase's knowledge.
+In words, the row's event must occur before both the prediction cutoff and the
+phase's frozen data boundary. An event exactly at either boundary is excluded.
+For example, with a query cutoff of January 11 at 00:00 and a phase cutoff of
+January 10 at 00:00, an event on January 10 at 12:00 is excluded: it precedes
+the query but falls after the phase boundary.
+
+Some sources also declare a separate **availability time** (`availability_time`):
+when the forecasting procedure could first observe the row. The phase export
+additionally requires
+
+$$
+\text{availability\_time}\leq\text{phase\_cutoff}.
+$$
+
+This availability comparison is inclusive; the event-time comparisons remain
+strict. Advancing the query cutoff does not advance the frozen phase boundary.
 RelBench timed-table adapters declare strict event boundaries. An explicit
 strict boundary cannot be relaxed by a legacy compatibility offset.
 
@@ -557,21 +576,38 @@ annotation does not infer an outcome's meaning or invent arbitrary SQL predicate
 
 ## CDF sketches inside `base`
 
-For an eligible numeric payload $v$, bounded training-only quantile cutpoints
-$c_j$ summarize more than a single mean. For entity $e$ at cutoff $t$, the
-empirical fraction is
+For a numeric payload $v$ on a reducing edge, let $R(e,t)$ be the related source
+rows assigned to receiving entity $e$ at query cutoff $t$, after path/key
+matching, historical-window filtering (Section 5.4) and phase-visibility
+filtering (Section 4.1). The finite-value support and its size are
 
 $$
-\widehat F_{e,t}(c_j)=
-\frac{\sum_{r\in R(e,t)}\mathbf 1[v_r\text{ finite}]\mathbf 1[v_r\leq c_j]}
-     {\sum_{r\in R(e,t)}\mathbf 1[v_r\text{ finite}]}.
+R_v(e,t)=\{r\in R(e,t):v_r\in\mathbb R\},
+\qquad n_v(e,t)=|R_v(e,t)|.
 $$
 
-GraphReduce fits up to seven cutpoints from at most 20,000 eligible training
-rows and also records finite-value coverage. Empty support stays missing;
-constant, binary and entirely unobserved columns do not create these sketches.
-Cutpoints are frozen in the execution plan and are not refitted on validation
-or forecast data.
+Here $v_r$ is the value of $v$ in row $r$; missing values, NaN and either infinity
+are excluded from $R_v(e,t)$. Training-only quantile cutpoints $c_{v,j}$, with
+$j\in\{1,\ldots,J_v\}$ and $0\leq J_v\leq7$, define the bounded empirical CDF
+features:
+
+$$
+\widehat{F}^{(v)}_{e,t}(c_{v,j})=
+\begin{cases}
+\displaystyle\frac{1}{n_v(e,t)}
+ \sum_{r\in R_v(e,t)}\mathbf 1\{v_r\leq c_{v,j}\}, & n_v(e,t)>0,\\[6pt]
+\text{missing}, & n_v(e,t)=0.
+\end{cases}
+$$
+
+Thus each feature is the fraction of finite values at or below its cutpoint;
+empty finite support produces a missing value, not zero. GraphReduce fits the
+cutpoints from at most 20,000 eligible training rows using observed-value
+quantiles, deduplicating the cutpoints and discarding any equal to the
+calibration maximum. It also records finite-value
+coverage separately. Columns with fewer than three distinct finite calibration
+values emit no sketch. Cutpoints are frozen in the execution plan and are not
+refitted on validation or forecast data.
 
 CDF is part of `base`, not an additional family. **The fixed staged recipe sets
 `base_cdf=True`.** Native and diagnostic interfaces can compare CDF on/off, but
@@ -585,7 +621,7 @@ The forecast horizon $H$ defines the target and label maturity. The compute
 lookback $L$ limits source history; these are different quantities. The native
 materializer's default lookback used by this profile is 3,650 days. A timed
 reduction uses source rows in $(t-L,t)$, intersected with the phase's permitted
-data. A window of $w$ days further requires $\tau(r)\geq t-w$; it never restores
+data. A window of $w$ days further requires $\text{event\_time}\geq t-w$; it never restores
 a row excluded by the strict upper cutoff or the phase boundary.
 
 The evaluated profile disables inferred periods. GraphReduce's default day
@@ -671,25 +707,52 @@ that sum.
 
 ## Retention, promotion, and final graph selection
 
-Define higher-is-better utility $U(s)=s$ for ROC-AUC and $U(s)=-s$ for MAE.
-A single-fidelity trial records utility, its sampling standard error, feature
-count, plan and cutoff evidence. Confirmation does not simply take the top few
-scores. Relative to leader $g_*$, the confidence frontier includes candidates
-satisfying
+The search makes two different decisions: which graphs receive more evaluation,
+and which fully evaluated graph is selected. Both use validation evidence.
+
+**Keeping plausible graphs for more evaluation.** Let $g$ be a candidate graph,
+$s_g$ its validation score at the current evaluation stage, and
+$\mathrm{SE}_g$ the estimated sampling standard error of that score. To compare
+both metrics in the same direction, define a higher-is-better utility:
+
+$$
+U(s)=
+\begin{cases}
+s, & \text{for ROC-AUC},\\
+-s, & \text{for MAE}.
+\end{cases}
+$$
+
+For example, AUC 0.80 has higher utility than AUC 0.79, while MAE 4 has higher
+utility than MAE 5 because $-4>-5$. A trial also records its feature count,
+frozen plan and cutoff evidence.
+
+Let $g_*$ denote the current leader and $\delta$ the practical retention margin:
+0.01 AUC for classification, or 1% of the leader's MAE for regression.
+For single-fold evidence, a candidate belongs to the confidence frontier when
 
 $$
 U(s_{g_*})-U(s_g)\leq
-\max\!\left(\delta,\sqrt{\mathrm{SE}_{g_*}^{\,2}+\mathrm{SE}_g^{\,2}}\right),
+\max\!\left(\delta,\sqrt{\mathrm{SE}_{g_*}^{\,2}+\mathrm{SE}_g^{\,2}}\right).
 $$
 
-with $\delta=0.01$ AUC or 1% of the leading MAE. If the frontier exceeds the
-stage budget, structural diversity chooses a bounded subset; otherwise up to
+The left side is the candidate's observed loss relative to the leader. The
+right side is the larger of the practical margin and the two scores' combined
+estimated standard error. The rule therefore keeps a graph close enough in
+score, or uncertain enough, to justify more evaluation. For example, with an
+AUC leader at 0.800, a graph at 0.794 belongs to the frontier because its gap of
+0.006 is below 0.01. When a trial already combines multiple cutoffs, its recorded
+stability-adjusted objective, defined below, supplies the utility term in this
+same rule.
+
+Frontier membership does not guarantee promotion: if the frontier exceeds the
+stage budget, structural diversity chooses a bounded subset. Otherwise up to
 four additional structural controls can fill spare slots. Diversity retains
 representatives of family interactions, sparse family controls, annotation
-policies, depth, history and topology alternatives. Thus an unresolved
-low-fidelity tie preserves several hypotheses, subject to capacity; it is not
-evidence that their full-fidelity scores are equal. The 0.01-AUC *retention*
-margin is distinct from S2's 1% *relative ranking-loss* limit.
+policies, depth, history and topology alternatives. An unresolved low-fidelity
+tie thus preserves several hypotheses, subject to capacity; it does not
+establish equal full-fidelity performance. The 0.01-AUC *retention* margin is
+distinct from S2's 1% *relative ranking-loss* limit.
 
 Nominal 50K confirmation replays each survivor's frozen plan. A historical
 promotion stage runs only if additional eligible training frames are available.
@@ -699,27 +762,49 @@ the best observed variant of each categorical lineage represents that graph,
 so many tie seeds cannot consume every finalist slot. Confidence-frontier
 retention then selects at most twelve lineages for full-source comparisons.
 
-At full rerank, each candidate is scored on the same available chronological
-folds, up to three. Its stability-adjusted utility is
+**Ranking graphs after full-source evaluation.** At full rerank, all candidates
+use the same available chronological validation folds. A fold is an earlier
+prediction origin, not a random split. Let $K\in\{1,2,3\}$ be the number of
+available folds, ordered from oldest to newest, and let $s_{g,k}$ be graph $g$'s
+ROC-AUC or MAE on fold $k$. Define its mean score $\bar s_g$ and across-fold
+dispersion $d_g$ explicitly:
 
 $$
-Q(g)=U(\bar s_g)-0.25\,\frac{\operatorname{sd}(s_{g,1},\ldots,s_{g,K})}
- {\sqrt K}.
+\bar s_g=\frac{1}{K}\sum_{k=1}^{K}s_{g,k},
+\qquad
+d_g=\sqrt{\frac{1}{K}\sum_{k=1}^{K}(s_{g,k}-\bar s_g)^2}.
 $$
 
-Here the dispersion is the population standard deviation over the available
-fold scores, as in the released implementation.
+The ranking score is
 
-The selector first finds the latest-fold leader. A candidate is excluded when
-that leader's recent gain exceeds both the practical veto (0.01 AUC or 1%
-relative MAE) and their combined estimated standard error. Among remaining
-candidates, $Q$ ranks walk-forward performance. A graph with at most half as
-many features can replace that winner only within a practical, uncertainty-based
-tie; paired fold differences are used where available, with a hard maximum
-loss of 0.01 AUC or 1% MAE. Stable configuration ordering resolves remaining
-ties. This is the native graph-selection heuristic. S2 subsequently tests a
-bounded smaller finalist using the stricter, symmetric production comparison
-specified in Section 7.
+$$
+Q(g)=U(\bar s_g)-0.25\,\frac{d_g}{\sqrt K}.
+$$
+
+Higher $Q(g)$ is better. The first term rewards mean predictive performance;
+the second subtracts a penalty for variation across time. Here $d_g$ is the
+population standard deviation, matching the released implementation, and
+$d_g/\sqrt K$ is its heuristic estimate of uncertainty in the mean. The fixed
+coefficient 0.25 controls this penalty; it is not a confidence level. For equal
+mean scores, this rule favors the graph with less variation across folds. With
+only one fold, $d_g=0$ and this term provides no stability evidence. $Q(g)$ is
+used to select graphs; reported task performance uses the original metrics.
+
+**Selecting the graph with recent-performance and complexity safeguards.**
+The selector applies these rules in order:
+
+1. Find the leader on the newest fold ($k=K$). Exclude a candidate if the
+   leader's recent gain exceeds both the practical veto (0.01 AUC or 1%
+   relative MAE) and their combined estimated standard error on that fold.
+2. Among the remaining candidates, choose the graph with the highest $Q(g)$.
+3. A graph with at most half as many features may replace that winner only
+   within a practical, uncertainty-based tie. Paired fold differences estimate
+   uncertainty where available; the permitted mean-score loss is always capped
+   at 0.01 AUC or 1% MAE. Stable configuration ordering resolves remaining ties.
+
+This is the native graph-selection heuristic. S2 subsequently tests at most one
+smaller finalist using the stricter, symmetric production comparison in
+Section 7.
 
 Search standard errors are heuristic: MAE uses the standard error of absolute
 errors, while ROC-AUC uses a positive/negative-count approximation. They do not
@@ -731,8 +816,21 @@ operations, not interchangeable confidence guarantees.
 
 The following pseudocode summarizes the published control flow. `Evaluate`
 includes point-in-time materialization, fitting under the declared learner
-budget, validation and checkpointing. Every stage applies its ceiling before
-execution; unavailable stages retain the preceding completed evidence.
+budget, validation and checkpointing. The phase data $D$, task $\mathcal T$,
+observed labels $Y$ and per-fit learner budget $B$ are shared inputs to every
+evaluation and fitting procedure below. Named parameters distinguish row
+budgets from limits on configurations, evaluations, parents and folds.
+
+The helpers abstract the implementation's stage-specific trial lists.
+The algorithm separates the evidence ledger $E$ from the active successful
+trials $V$. Every evaluation helper returns an augmented ledger, retaining
+earlier records and their fidelity/stage identities. Confirmation and historical
+promotion replace $V$ with the newly successful higher-fidelity trials;
+categorical refinement adds successful variants while retaining their parents.
+The cap, deadline and capacity checks are internal to each procedure. If a
+stage is unavailable or completes no usable trial, it retains the preceding
+active trials. Earlier ledger entries are not mixed back into a later-fidelity
+comparison merely because they had better cheap scores.
 
 ```{=latex}
 \begin{algorithm}[H]
@@ -740,41 +838,49 @@ execution; unavailable stages retain the preceding completed evidence.
 \label{alg:staged-selection}
 \fontsize{9.5}{11.5}\selectfont
 \begin{algorithmic}[1]
-\Require Phase-censored $D$; task $\mathcal T$; observed labels $Y$; masked requests $Q$.
+\Require Phase-censored $D$; task $\mathcal T$; observed labels $Y$; masked requests $Q$; learner budget $B$.
 \Ensure Frozen artifact $A$ and keyed predictions $\widehat Y_Q$.
 \Statex \textit{Representation selection}
-\State $C \gets \Call{BalancedAnchors}{D,\mathcal T;32}$
-\State $E \gets \Call{Evaluate}{C;\text{10K}}$
-\State $P \gets \Call{RetainAnchors}{E;6}$
-\State $E \gets E \cup \Call{EvaluateChallengers}{P,\text{sparse controls};24}$
-\State $E \gets E \cup \Call{EvaluateEligibleCombinations}{E;12}$
-\State $F \gets \Call{FrontierWithControls}{E}$
-\State $E \gets \Call{Confirm}{F;\text{50K},40}$
-\If{additional mature historical support is available}
-    \State $E \gets \Call{PromoteHistory}{E;8}$
+\State $C \gets \Call{BalancedAnchors}{D,\mathcal T;\ \text{max configs}=32}$
+\State $(E,V) \gets \Call{Evaluate}{\varnothing,C;\ \text{rows}=\text{10K}}$
+\State $P \gets \Call{RetainAnchors}{V;\ \text{max configs}=6}$
+\State $(E,V) \gets \Call{EvaluateChallengers}{E,V,P;\ \text{max evals}=24}$
+\State $(E,V) \gets \Call{EvaluateEligibleCombinations}{E,V;\ \text{max evals}=12}$
+\State $F_1 \gets \Call{FrontierWithControls}{V;\ \text{max configs}=40}$
+\State $(E,V) \gets \Call{Confirm}{E,V,F_1;\ \text{rows}=\text{50K},\ \text{max evals}=40}$
+\If{$\Call{HasAdditionalMatureHistory}{D,Y}$}
+    \State $(E,V) \gets \Call{PromoteHistory}{E,V;\ \text{max evals}=8}$
 \EndIf
-\State $E \gets \Call{RefineCategoryTies}{E;\text{parents}\leq2,\ \text{evaluations}\leq8}$
-\State $F \gets \Call{BestPerLineage}{E}$
-\State $G \gets \Call{Frontier}{F;12}$
-\State $g \gets \Call{FullSourceRerank}{G;\text{chronological folds}\leq3}$
+\State $(E,V) \gets \Call{RefineCategoryTies}{E,V;\ \text{max parents}=2,\ \text{max evals}=8}$
+\State $F_2 \gets \Call{BestPerLineage}{V}$
+\State $G \gets \Call{FrontierWithControls}{F_2;\ \text{max configs}=12}$
+\State $(E,g) \gets \Call{FullSourceRerank}{E,G;\ \text{max folds}=3}$
 \Statex \textit{Production selection}
-\State $g \gets \Call{CheckSmallerFinalist}{g;\text{alternate}\leq1}$
+\State $g \gets \Call{CheckSmallerFinalist}{E,g;\ \text{max alternates}=1}$
 \State $\pi \gets \Call{SelectTemporalPolicy}{g}$
-\State $q \gets \Call{SelectOptionalReadout}{g,\pi;\text{common incumbent}}$
+\State $q \gets \Call{SelectOptionalReadout}{g,\pi}$
 \Statex \textit{Freeze and predict}
-\State $A \gets \Call{FreezeAndRefit}{g,\pi,q;Y}$
+\State $A \gets \Call{FreezeAndRefit}{g,\pi,q}$
 \State $\widehat Y_Q \gets \Call{KeyedPredict}{A,Q}$
 \State \Return $(A,\widehat Y_Q)$
 \end{algorithmic}
 \end{algorithm}
 ```
 
-Here $E$ stores trial evidence, $P$ the retained parents, $F$ a retained trial
-set, $G$ the graph
-finalists, $\pi$ a temporal fitting policy and $q$ an optional readout.
-Helper operations include the payload audit, capacity checks and checkpointing
-described above. Numerical arguments are evaluation ceilings; 10K and 50K are
-nominal fidelities. Predictions are saved before any external test scoring.
+Here $C$ is the anchor configuration set; $E$ the accumulated evidence ledger;
+$V$ the active successful trials; and $P$ the retained expansion parents.
+$F_1$ is the frontier with controls sent to confirmation, $F_2$ contains the best
+eligible trial per categorical lineage, and $G$ is the full-rerank finalist set.
+`EvaluateChallengers` includes the sparse controls described in Section 6.1.
+`FullSourceRerank` returns updated evidence and one selected graph $g$, using the
+ranking and safeguards of Section 6.2, rather than returning a ranked list.
+
+The policy $\pi$ specifies training support. Every optional readout is compared
+with the same incumbent defined by $(g,\pi)$. A returned $q=\varnothing$ means
+that none was admitted; `FreezeAndRefit` then refits that incumbent without an
+additional readout. The `rows` values are nominal sampling budgets; `max configs`
+limits a proposed or retained set, while `max evals` limits new evaluations.
+Predictions are saved before any external test scoring.
 
 Initial search support uses the smallest recent window of 3-12 available
 cutoffs with at least 256 labels and, for classification, at least 24 examples
