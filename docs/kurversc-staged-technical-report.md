@@ -1,5 +1,5 @@
 ---
-title: "KurveRSC 0.2.0: Generic Staged Relational Signal Compression"
+title: "KurveRSC 0.2.0: Task-Conditioned Relational Signal Compression"
 subtitle: "Schema-Derived Representations, Temporal Selection, and Reproducible Prediction"
 author: |
   Wes Madrigal  

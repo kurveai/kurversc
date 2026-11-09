@@ -619,7 +619,7 @@ If you use KurveRSC in research, please cite the
 
 ```bibtex
 @techreport{madrigal2026kurversc,
-  title       = {KurveRSC 0.2.0: Generic Staged Relational Signal Compression},
+  title       = {KurveRSC 0.2.0: Task-Conditioned Relational Signal Compression},
   author      = {Madrigal, Wes},
   institution = {Kurve AI},
   year        = {2026},
