@@ -6,6 +6,8 @@ author: |
   Kurve AI
 author-meta: "Wes Madrigal"
 date: "November 5, 2026"
+abstract: >-
+  Relational prediction depends on how information from linked, timestamped tables is compressed into task-level representations. KurveRSC 0.2.0 selects executable relational feature programs using temporal validation, while GraphReduce materializes their entity-level feature frames. A staged search increases evaluation fidelity, checks finalists under the production fitting procedure, and selects training-support policies and generic optional readouts with a shared admission rule. The downstream learner is pluggable; the evaluated procedure uses CatBoost with point-in-time source visibility. RelArena's maintainers independently reproduced the public packages on 21 classification and regression tasks across seven databases. On the November 5, 2026 combined leaderboard of 16 methods, KurveRSC achieves 1913.4 Elo, ranking first among registered systems and fully open-source methods, and second overall. Its 95% task-bootstrap interval of 1832.3-2050.6 overlaps those of leading methods, so the ordering does not establish statistical superiority. These results demonstrate the competitiveness of explicit relational compression paired with a conventional downstream learner. Representation loss, selection fidelity and computational cost remain limitations.
 lang: en-US
 papersize: letter
 fontsize: 10.5pt
@@ -14,7 +16,7 @@ geometry:
 colorlinks: true
 linkcolor: blue
 urlcolor: blue
-toc: true
+toc: false
 toc-depth: 1
 numbersections: true
 bibliography: kurversc-staged-references.bib
@@ -53,10 +55,6 @@ header-includes:
     ```
 ---
 
-```{=latex}
-\clearpage
-```
-
 # RelArena-$\alpha$ results at a glance {.unnumbered .unlisted}
 
 **Highest-ranked open-source method and registered system.**
@@ -76,7 +74,33 @@ The openness cohort is our classification of complete, locally executable
 open-source prediction procedures; category definitions are in Section 10.3
 [@relarena20261105leaderboard; @kurversc020].
 
-# Abstract
+```{=latex}
+\clearpage
+\begingroup
+\hypersetup{linkcolor=black}
+\setcounter{tocdepth}{1}
+\tableofcontents
+\endgroup
+\clearpage
+```
+
+# Introduction
+
+Prediction from relational databases requires converting linked records at
+different granularities into representations aligned with a target entity and
+prediction time. Which relationships, historical observations, reductions and
+annotations survive this conversion can affect predictive quality and cost.
+KurveRSC treats the compression program as an explicit, task-conditioned object
+whose quality is measured with the learner that will consume its output.
+
+The original KurveRSC work introduced validation-guided GraphReduce program
+selection with a downstream learner in the loop and a frozen execution plan
+for replay [@madrigal2026kurversc]. It established a competitive CatBoost-based
+relational prediction baseline. In the November 5, 2026 combined comparison
+panel used here, the earlier registration achieves 1773.8 Elo
+[@relarena20261105leaderboard]. Version 0.2.0 builds on that foundation with
+richer bounded representations, staged evaluation, production-faithful finalist
+checks and temporal training-policy and readout selection.
 
 KurveRSC selects a relational feature program with a supervised learner in the
 loop. GraphReduce executes that program, reducing timestamped, related records

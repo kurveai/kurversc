@@ -21,6 +21,14 @@ pandoc kurversc-staged-technical-report.md \
   --output=kurversc-staged-technical-report.pdf
 ```
 
+The title page uses the manuscript's YAML `abstract` field for the short,
+unnumbered abstract. The default article abstract environment centers the
+heading and sets the paragraph in a narrower, justified block. The results
+panel follows on that page. Automatic `toc` is disabled because a manual LaTeX
+`\tableofcontents` places Contents on the next page, before Section 1,
+Introduction. Keep that ordering when changing the front matter; enabling
+automatic `toc` would put it ahead of the results panel.
+
 The source resolves references from `kurversc-staged-references.bib` and selects
 `assets/kurversc-full-authors.csl` in its metadata. This local adaptation of the
 [IEEE CSL style](https://github.com/citation-style-language/styles/blob/master/ieee.csl)
