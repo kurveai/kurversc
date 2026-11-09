@@ -70,7 +70,7 @@ KurveRSC achieves **1913.4 Elo** (95% task-bootstrap interval 1832.3-2050.6).
 All ranks use point estimates from the same published combined leaderboard.
 The openness cohort is our classification of complete, locally executable
 open-source prediction procedures; category definitions are in Section 10.3
-[@relarena20261105leaderboard; @kurversc020].
+[@relarena20261105snapshot; @kurversc020].
 
 ```{=latex}
 \clearpage
@@ -96,7 +96,7 @@ selection with a downstream learner in the loop and a frozen execution plan
 for replay [@madrigal2026kurversc]. It established a competitive CatBoost-based
 relational prediction baseline. In the November 5, 2026 combined comparison
 panel used here, the earlier registration achieves 1773.8 Elo
-[@relarena20261105leaderboard]. Version 0.2.0 builds on that foundation with
+[@relarena20261105snapshot]. Version 0.2.0 builds on that foundation with
 richer bounded representations, staged evaluation, production-faithful finalist
 checks and temporal training-policy and readout selection.
 
@@ -112,7 +112,12 @@ before saving keyed predictions.
 This report specifies the published **KurveRSC 0.2.0 / GraphReduce 1.10.18**
 procedure.
 
-The fixed profile is `kurversc-generic-staged-v1`. Its optional menu contains
+All reported experiments use a shared staged search and selection procedure,
+with budget limits and validation rules specified in advance. Graph
+configurations and optional components are selected using each task's schema
+and temporal validation data.
+
+The optional menu contains
 parent text heads, training-frame ensembles, target-domain projection, a
 zero-aware distributional readout, and object breadth. All optional candidates
 challenge the same incumbent with one temporal admission rule. Their eligibility
@@ -128,7 +133,7 @@ and fully open-source methods, and second overall**, with **1913.4 Elo**
 1933.6 for the latest TabPFN-Rel client. It wins 11 of their 21 task comparisons.
 This report includes every reproduced
 per-task score and the successful jobs' measured resources
-[@relarena20261105results; @relarena20261105leaderboard; @relarena20261105resources].
+[@relarena20261105snapshot].
 
 The central research objective is to characterize how much predictive power can
 be recovered through relational signal compression and how that value interacts
@@ -1114,7 +1119,7 @@ research campaign that accesses a raw RelBench cache is a different execution
 path and cannot establish that a harness reproduction occurred. The reported
 release qualification uses the registered adapter and actual core split types;
 the completed reproduction identifies the adapter, public packages, source
-boundaries and final result rows [@relarena_software; @hayler2026relarena].
+boundaries and final result rows [@relarena20261105snapshot; @hayler2026relarena].
 
 The package's transitive staged execution closure includes 32 stage modules.
 Their execution is fixed by the packaged procedure; other repository scripts
@@ -1171,7 +1176,7 @@ and GraphReduce 1.10.18, at seed zero, one task per CPU host. The 21 selected
 rows in `baseline_results/results.csv` cover seven databases, twelve binary
 classification tasks and nine regression tasks. All final rows contain finite
 test scores and no error. These are the reference measurements for this report
-[@relarena20261105results].
+[@relarena20261105snapshot].
 
 The snapshot is RelArena `fcab8fb` (November 5, 2026), after the staged-system
 merge and dating of the earlier KurveRSC registration. The
@@ -1198,7 +1203,7 @@ incomplete/exploratory runs. Ratings are anchored to the global constant at
 samples; they describe uncertainty across tasks, not variation across training
 seeds. A models-only board is computed separately and excludes KurveRSC as a
 system; its ratings must not be substituted into this combined comparison
-[@relarena20261105leaderboard].
+[@relarena20261105snapshot].
 
 ![Combined RelArena models-and-systems leaderboard on 21 tasks. Bars show published Elo ratings above the constant-global anchor of 1000; error bars show the 2.5th-97.5th percentiles of 100 task-bootstrap samples. Hatched bars identify systems; KurveRSC 0.2.0 is highlighted. Point labels are rounded to whole Elo; the table retains published precision. All values use the same November 5, 2026 snapshot, and overlapping intervals do not establish a statistically significant ordering.](assets/kurversc-relarena-elo-20261105.svg){#fig:kurversc-elo width=100%}
 
@@ -1237,7 +1242,7 @@ for results against the full panel.
 when it supplies its own tuning procedure, whereas model submissions use the
 framework's standardized tuning regime. KurveRSC has the highest point Elo
 among the registered systems in this combined panel
-[@relarena_software; @relarena20261105leaderboard].
+[@relarena20261105snapshot].
 
 It also has the highest point Elo among fully open-source methods in the panel.
 Here this means that the complete evaluated prediction procedure and required
@@ -1271,7 +1276,7 @@ two TabPFN-Rel variants. All values are selected held-out test scores from the
 same frozen RelArena file. **Bold marks the best score among the seven displayed
 methods**, determined before rounding; it does not indicate statistical
 significance. Appendix B includes all sixteen methods, including earlier
-releases and simpler baselines [@relarena20261105results].
+releases and simpler baselines [@relarena20261105snapshot].
 
 ```{=latex}
 \begingroup
@@ -1351,7 +1356,7 @@ eight tasks on 96-vCPU, 739-GB hosts, and thirteen on 48-core, 190-GB hosts.
 The larger hosts used a 160-GiB DuckDB working-memory limit and a 100-GiB
 temporary-directory limit; the smaller hosts used 48 GiB and 20 GiB,
 respectively. One task ran per host. Host RAM is reported in GB; observed
-Slurm `MaxRSS` is reported in GiB [@relarena20261105resources].
+Slurm `MaxRSS` is reported in GiB [@relarena20261105snapshot].
 
 | Task | Host RAM, GB | Job wall time, h | Peak RSS, GiB |
 |:---------------------------|------------:|----------------:|--------------:|
@@ -1391,7 +1396,7 @@ hosts. Consequently, this is a complete set of final results, **not a claim of
 21 successful first attempts**. Peaks depend on engine limits and execution
 conditions and are observations, not minimum-memory requirements. Slurm MaxRSS
 is not interchangeable with the earlier author's process-tree RSS or cgroup
-memory peaks [@relarena20261105resources].
+memory peaks [@relarena20261105snapshot].
 
 ## Execution budgets and parallel admission
 
@@ -1577,7 +1582,8 @@ dates are recorded in the individual reference entries.
 
 # Appendix A: release and implementation provenance
 
-The public dependency recipe is:
+The evaluated shared procedure is identified internally as
+`kurversc-generic-staged-v1`. Its public dependency recipe is:
 
 ```text
 kurversc[staged]==0.2.0
@@ -1636,7 +1642,7 @@ and B split columns for readability and follow the leaderboard order.
 **Bold marks the best full-precision score across both panels together** for
 each task. Consequently, a panel may have no bold entry on a particular row.
 All scores use the selected seed-zero rows from the same frozen result file;
-method citations are given in Section 10.3 [@relarena20261105results].
+method citations are given in Section 10.3 [@relarena20261105snapshot].
 
 API-09 and Local-09 are the September 28, 2026 TabPFN-Rel releases; API-08 and
 Local-08 are the August 15, 2026 releases. Kurve-02 is KurveRSC 0.2.0
