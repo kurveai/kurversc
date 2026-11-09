@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
-<title id="title">KurveRSC 0.2.0 architecture</title><desc id="desc">Strict temporal inputs feed bounded, schema-derived relational search. GraphReduce creates a typed entity-level frame for a pluggable learner. Validation promotes candidates from 10K screening to 50K confirmation and full-source rerank. A production-faithful finalist check and temporal policy selection precede one generic optional menu and a shared gate. The selected procedure is frozen and refitted before keyed prediction.</desc>
+<title id="title">KurveRSC 0.2.0 architecture</title><desc id="desc">Strict temporal inputs feed bounded, schema-derived relational search. GraphReduce creates a typed entity-level frame for a pluggable learner. Validation promotes candidates from 10K screening to 50K confirmation and full-source rerank. S2 checks at most one smaller completed finalist with production fitting. S3 fixes the temporal support and fitting policy for the retained graph. S4 compares applicable optional challengers with that same S3 incumbent under one shared gate. The selected procedure is frozen and refitted before keyed prediction.</desc>
 <defs>
 <marker id="arrow-flow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#53667d"/></marker>
 <marker id="arrow-teal" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#087e8b"/></marker>
@@ -18,7 +18,7 @@
 <text x="720" y="156" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="600" text-anchor="middle">Source time &lt; query cutoff; phase and label-availability checks</text>
 <path d="M720,181 L720,203" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
 <rect x="20" y="207" width="1400" height="250" rx="9" fill="#f6f9fd" stroke="#779ac4" stroke-width="1.8"/>
-<text x="44" y="241" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" text-anchor="start">1. Staged relational search (S1)</text>
+<text x="44" y="241" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" text-anchor="start">1. Choose a feature program (S1)</text>
 <rect x="44" y="260" width="404" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
 <text x="64" y="294" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">Schema-derived programs</text>
 <text x="64" y="330" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Depth 1-4; bounded repeats</text>
@@ -39,17 +39,17 @@
 <text x="720" y="444" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="600" text-anchor="middle">10K screening → 50K confirmation → full-source rerank</text>
 <path d="M225,461 L225,479" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
 <rect x="20" y="484" width="410" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
-<text x="40" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">2. Finalist check (S2)</text>
-<text x="40" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Production-faithful comparison</text>
-<text x="40" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Classification and regression</text>
+<text x="40" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">2. Graph check (S2)</text>
+<text x="40" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">At most 1 smaller finalist</text>
+<text x="40" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Production fit / refit</text>
 <rect x="495" y="484" width="400" height="116" rx="9" fill="#edf4fc" stroke="#b9c7d6" stroke-width="1.8"/>
 <text x="515" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">3. Training policy (S3)</text>
-<text x="515" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Recent / pooled / blends</text>
-<text x="515" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Matched origins and seeds</text>
+<text x="515" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Same graph; choose support</text>
+<text x="515" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Recent / pooled / blends</text>
 <rect x="960" y="484" width="460" height="116" rx="9" fill="#eff8f6" stroke="#b9c7d6" stroke-width="1.8"/>
-<text x="980" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">4. Generic optional menu</text>
+<text x="980" y="518" fill="#172b42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" text-anchor="start">4. Optional challengers (S4)</text>
 <text x="980" y="554" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Text, ensembles and readouts</text>
-<text x="980" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">One incumbent; shared gate</text>
+<text x="980" y="584" fill="#53667d" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="400" text-anchor="start">Same S3 control; shared gate</text>
 <path d="M434,539 L490,539" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
 <path d="M899,539 L955,539" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>
 <path d="M1190,604 V620 H520 V639" fill="none" stroke="#53667d" stroke-width="2.8" marker-end="url(#arrow-flow)"/>

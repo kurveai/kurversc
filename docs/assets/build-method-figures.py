@@ -101,7 +101,7 @@ class Figure:
 
 
 def architecture():
-    f = Figure(1440, 720, "KurveRSC 0.2.0 architecture", "Strict temporal inputs feed bounded, schema-derived relational search. GraphReduce creates a typed entity-level frame for a pluggable learner. Validation promotes candidates from 10K screening to 50K confirmation and full-source rerank. A production-faithful finalist check and temporal policy selection precede one generic optional menu and a shared gate. The selected procedure is frozen and refitted before keyed prediction.")
+    f = Figure(1440, 720, "KurveRSC 0.2.0 architecture", "Strict temporal inputs feed bounded, schema-derived relational search. GraphReduce creates a typed entity-level frame for a pluggable learner. Validation promotes candidates from 10K screening to 50K confirmation and full-source rerank. S2 checks at most one smaller completed finalist with production fitting. S3 fixes the temporal support and fitting policy for the retained graph. S4 compares applicable optional challengers with that same S3 incumbent under one shared gate. The selected procedure is frozen and refitted before keyed prediction.")
     f.node(20, 12, 660, 90, "Relational database", ["Tables, keys and source clocks"])
     f.node(760, 12, 660, 90, "Task contract", ["Root, horizon, labels and masked requests"])
     f.arrow(350, 106, 350, 115, kind="flow")
@@ -111,7 +111,7 @@ def architecture():
     f.arrow(720, 181, 720, 203, kind="flow")
 
     f.rect(20, 207, 1400, 250, fill="#f6f9fd", stroke="#779ac4")
-    f.text(44, 241, "1. Staged relational search (S1)", size=30, bold=True)
+    f.text(44, 241, "1. Choose a feature program (S1)", size=30, bold=True)
     f.node(44, 260, 404, 116, "Schema-derived programs", ["Depth 1-4; bounded repeats", "Families, CDF, annotations"])
     f.node(518, 260, 404, 116, "GraphReduce", ["Filter, annotate, reduce, join", "Entity-level feature frame"])
     f.node(992, 260, 404, 116, "Pluggable learner", ["CatBoost: evaluated reference", "TFMs via compatible adapters"], fill=SOFT)
@@ -123,9 +123,9 @@ def architecture():
     f.text(720, 444, "10K screening → 50K confirmation → full-source rerank", size=27, bold=True, anchor="middle")
 
     f.arrow(225, 461, 225, 479, kind="flow")
-    f.node(20, 484, 410, 116, "2. Finalist check (S2)", ["Production-faithful comparison", "Classification and regression"])
-    f.node(495, 484, 400, 116, "3. Training policy (S3)", ["Recent / pooled / blends", "Matched origins and seeds"])
-    f.node(960, 484, 460, 116, "4. Generic optional menu", ["Text, ensembles and readouts", "One incumbent; shared gate"], fill=SOFT)
+    f.node(20, 484, 410, 116, "2. Graph check (S2)", ["At most 1 smaller finalist", "Production fit / refit"])
+    f.node(495, 484, 400, 116, "3. Training policy (S3)", ["Same graph; choose support", "Recent / pooled / blends"])
+    f.node(960, 484, 460, 116, "4. Optional challengers (S4)", ["Text, ensembles and readouts", "Same S3 control; shared gate"], fill=SOFT)
     f.arrow(434, 539, 490, 539, kind="flow")
     f.arrow(899, 539, 955, 539, kind="flow")
     f.path("M1190,604 V620 H520 V639", kind="flow")

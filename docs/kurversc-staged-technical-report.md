@@ -160,11 +160,26 @@ reproduction documentation are available at
 
 # Architecture overview {.unnumbered}
 
-Figure 1 summarizes representation search, production selection and frozen
-prediction. GraphReduce executes candidate programs; the pluggable learner
-supplies their validation evidence.
+Figure 1 separates four decisions: which relational feature program to use,
+whether a smaller finalist can replace it, how to fit the retained graph on
+historical support, and whether an optional challenger improves that procedure.
+GraphReduce executes candidate programs; the pluggable learner supplies their
+validation evidence.
 
-![KurveRSC 0.2.0 architecture. GraphReduce compresses point-in-time histories for a pluggable learner (CatBoost here). Temporal validation selects the procedure; outer test scoring remains external.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
+![KurveRSC 0.2.0 architecture. S1 searches many feature programs at increasing fidelity. S2 checks at most one smaller completed finalist using the production fit/refit lifecycle. S3 selects temporal support and fitting policy for the retained graph. S4 compares applicable optional challengers with the same S3 incumbent under one shared admission rule. The selected procedure is frozen and refitted; outer test scoring remains external.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
+
+| Stage | Decision | Output passed to the next stage |
+|:-------|:----------------------------------|:-----------------------------------|
+| **S1** | Which paths, depth, feature families and representations? | Incumbent program plus completed finalist evidence. |
+| **S2** | Can one substantially smaller finalist replace the incumbent under production fitting? | One retained feature program. |
+| **S3** | Which historical support and fitting policy for that program? | Graph plus temporal fitting policy: the S4 incumbent. |
+| **S4** | Does an applicable optional challenger improve on that S3 incumbent? | Selected optional challenger, or the unchanged S3 procedure. |
+
+S2 is a bounded check, not another broad graph search. In S3, pooling combines
+examples from historical cutoffs in a shared fit; S4's three- or five-frame
+ensembles instead fit separate members and combine predictions. Models are
+trained for validation throughout selection. The final refit occurs after all
+choices are frozen; validation seeds do not imply an inference ensemble.
 
 # Scope and release identity
 
