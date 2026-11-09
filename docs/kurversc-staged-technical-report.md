@@ -3,7 +3,7 @@ title: "KurveRSC 0.2.0: Task-Conditioned Relational Signal Compression"
 subtitle: "Schema-Derived Representations, Temporal Selection, and Reproducible Prediction"
 author: |
   Wes Madrigal  
-  Kurve AI
+  Kurve, Inc.
 author-meta: "Wes Madrigal"
 date: "November 5, 2026"
 abstract: >-
