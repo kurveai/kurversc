@@ -10,10 +10,12 @@ abstract: >-
   Relational prediction depends on how information from linked, timestamped tables is compressed into task-level representations. KurveRSC 0.2.0 selects executable relational feature programs using temporal validation, while GraphReduce materializes their entity-level feature frames. Frozen execution plans preserve the selected representation during prediction. A staged search increases evaluation fidelity, checks finalists under the production fitting procedure, and selects training-support policies and generic optional readouts with a shared admission rule. The downstream learner is pluggable; the evaluated procedure uses CatBoost with point-in-time source visibility. RelArena's maintainers independently reproduced the public packages on 21 classification and regression tasks across seven databases. On the November 5, 2026 combined leaderboard of 16 methods, KurveRSC achieves 1913.4 Elo (95% task-bootstrap interval 1832.3-2050.6), ranking first among registered systems and fully open-source methods, and second overall. These results highlight the importance of optimizing relational representation and signal compression for the prediction task. Representation loss, selection fidelity and computational cost remain limitations.
 lang: en-US
 papersize: letter
-fontsize: 10.5pt
+fontsize: 10pt
 geometry:
   - margin=0.78in
 colorlinks: true
+hyperrefoptions:
+  - pdfversion=1.7
 linkcolor: blue
 urlcolor: blue
 toc: false
@@ -188,13 +190,13 @@ S2 retains one graph; it does not repeat the broad search.
 
 **S3 chooses which historical examples and fitting policy to use.** The graph
 and its feature definitions now stay fixed. Applying that graph at several
-past dates creates several groups of labeled examples; the same customer at
-two dates is two training examples, not two new columns. S3 compares recent
+past dates creates several groups of labeled examples; the same customer observed at
+two dates contributes two training examples, not two new columns. S3 compares recent
 initial support with bounded historical pooling and other declared fitting
 policies. Pooling combines examples before fitting a shared model; a temporal
 blend combines predictions from complete fitting policies. Every policy
-includes the observed-label refit lifecycle. The selected graph-plus-policy
-becomes the baseline for S4.
+includes the observed-label refit lifecycle. The selected graph and training policy
+form the baseline for S4.
 
 **S4 tests optional prediction procedures against that baseline.** Its
 "shared control" is simply the selected S3 procedure and its predictions on
@@ -281,24 +283,23 @@ cutoff. Historical frames repeat this construction at earlier cutoffs; they
 are separate supervised examples, not additional columns.
 
 The database declares primary and foreign keys, source clocks, and observed
-labels. KurveRSC compiles these relationships into a graph oriented outward
-from the root. A graph node is a *path occurrence* of a table: the same physical
+labels. KurveRSC compiles these relationships into a rooted computational graph. A graph node is a *path occurrence* of a table: the same physical
 table can occur more than once under different aliases. An edge records both
-join keys and whether its related rows require reduction. The direction of
-this compute edge describes feature flow toward the root; it need not match
-the direction in which the database stores its foreign key.
+join keys and whether its related rows require reduction. Feature computation proceeds from descendants toward the root;
+this flow need not follow the direction in which the database stores its
+foreign key.
 
 For the bounded search, write a configuration as
 
 $$
-g=(d,\mathcal F,a,h,o,c;B).
+g=(d,\mathcal F,a,h,o,c;\mathcal B).
 $$
 
 Here $d$ is maximum path depth; $\mathcal F$ contains `base` and the selected
 feature families; $a$ enables or disables automatic annotation; $h$ controls
 the historical-target relation; $o$ bounds occurrences of a base table along a
 path; and $c$ specifies categorical handling, including bounded tie refinement.
-$B$ contains payload and feature-expansion limits. The schema and these choices
+$\mathcal B$ contains payload and feature-expansion limits. The schema and these choices
 determine the executable paths. The staged search does not independently search
 every possible edge subset, window length, numeric transform, and learner
 hyperparameter. CDF sketches are fixed on in the evaluated profile.
@@ -311,20 +312,20 @@ z_{e,t}=\Phi_g(D_{<t},e,t), \qquad
 $$
 
 The notation $D_{<t}$ abbreviates the visibility contract in the next section;
-a source record may also have an independent availability clock. Let $A$ be the
+a source record may also have an independent availability clock. Let $\mathcal A$ be the
 declared learner-fitting procedure, including its row budget, seed, and temporal
 support policy. For each temporal validation origin $k$, it produces
 
 $$
-\theta_{g,k}=A(Z^{\mathrm{train}}_{g,k},Y^{\mathrm{train}}_k),\qquad
+\theta_{g,k}=\mathcal A(Z^{\mathrm{train}}_{g,k},Y^{\mathrm{train}}_k),\qquad
 s_{g,k}=M\!\left(Y^{\mathrm{val}}_k,
  f_{\theta_{g,k}}(Z^{\mathrm{val}}_{g,k})\right).
 $$
 
 Each row of either $Z$ is materialized at that row's own query cutoff. Earlier
 training targets must be observable by the fitting boundary. $M$ is ROC-AUC for
-binary classification or MAE for regression; the learner itself optimizes
-Logloss or MAE, respectively. Search compares $g$ under the same declared
+binary classification or MAE for regression; the direct CatBoost learner
+optimizes log loss or MAE, respectively. Search compares $g$ under the same declared
 fitting procedure, using these validation scores and the retention rules in
 Section 6. It does not differentiate through SQL, learn table embeddings, or
 select on held-out test scores. This is supervised selection of a relational
@@ -338,8 +339,9 @@ and replay procedure specified here.
 
 ## Keyed reduction and propagation
 
-Consider a parent occurrence $p$ and a related occurrence $v$. Let $X_p$ denote
-the parent's visible rows and payload, and let $Z_v$ include the child's own
+Consider a parent occurrence $p$ and a related occurrence $v$. Here *payload*
+means source attributes carried into feature construction, in addition to the
+keys used to join rows. Let $X_p$ denote the parent's visible rows and payload, and let $Z_v$ include the child's own
 payload plus features already received from its descendants. If many child
 rows refer to one parent, a reduction $R^g_{v\to p}$ groups $Z_v$ by the declared
 child foreign key and computes a bounded vector of summaries. GraphReduce then
@@ -350,7 +352,9 @@ Z_p=\operatorname{LeftJoin}_{k_p=k_v}
  \!\left(X_p,R^g_{v\to p}(Z_v)\right).
 $$
 
-The join is repeated for each child. A keyed dimension lookup is different:
+Here $k_p$ and $k_v$ are the matching keys recorded on that edge; for a
+reduction, $k_v$ is the child foreign key. The join is repeated for each child.
+A keyed dimension lookup is different:
 when the parent's foreign key identifies a single related row, that row's
 visible attributes can be joined without aggregating it. The adapter records
 this distinction in the edge's `reduce` flag. Keys must satisfy the declared
@@ -589,9 +593,9 @@ requests would change the evaluation cohort.
 A frozen plan records source bindings, path instances, operations, feature
 schema, category choices, and applicable numeric cutpoints. Prediction restores
 and verifies those bindings rather than rediscovering a graph. The source
-superset must support every offered repeated-table configuration. The current
-implementation corrects a mismatch between the offered path space and the
-source graph and checks restored bindings during replay.
+graph must support every repeated-table configuration offered by the search.
+Construction and replay verify that the source bindings are consistent with
+this path space.
 
 ```{=latex}
 \Needspace{20\baselineskip}
@@ -634,7 +638,7 @@ those deviations to the root. It therefore retains information unavailable
 from the root's unconditional mean alone. These are representative expressions;
 applicability and payload limits determine which are emitted.
 
-The families overlap. `base` already includes dated activity/recency and some
+The families overlap. `base` already includes time-based activity/recency and some
 bounded categorical trajectories, as well as standard type-dependent
 aggregations. Adding `sequence` does not create time awareness from nothing;
 it adds a richer bounded collection of activity summaries. The planner audit
@@ -724,9 +728,9 @@ reduction uses source rows in $(t-L,t)$, intersected with the phase's permitted
 data. A window of $w$ days further requires $\text{event\_time}\geq t-w$; it never restores
 a row excluded by the strict upper cutoff or the phase boundary.
 
-The evaluated profile disables inferred periods. GraphReduce's default day
-grid is $\{1,3,4,7,14,30,60,90,180,365,730\}$, with the longer compute lookback
-added during graph hydration. The expansion budget can retain only a subset
+The evaluated profile disables inferred periods. The default day grid is
+$\{1,3,4,7,14,30,60,90,180,365,730\}$.
+Graph hydration also adds the longer compute lookback. The expansion budget can retain only a subset
 of the corresponding expressions. These durations specify retrospective
 windows, not rounding of timestamps: a query at 15:30 still excludes source
 rows at or after 15:30. `state` instead orders eligible rows by event time and
@@ -763,7 +767,7 @@ identifiers or free-text features.
 # Staged graph search and increasing fidelity
 
 Exhaustively fitting all depth, family, annotation and topology combinations at
-full fidelity is expensive. The `staged-retention` profile evaluates a bounded
+full fidelity is expensive. The staged search evaluates a bounded
 schema-derived menu, promotes survivors, then increases data fidelity. Search
 uses no saved task-to-winning-configuration lookup.
 
@@ -992,8 +996,8 @@ fit limit. The fixed CatBoost budget is 300 iterations, depth six, learning rate
 do not bound total materialized source data or total process-tree RAM.
 
 Search support is distinct from deployment support. The initial production
-policy remains `full_training_frames=1`, even when search or rerank evaluates
-several historical cutoffs. Wider production support must win as a complete
+policy uses one training frame (`full_training_frames=1`). Search and rerank
+may evaluate several historical cutoffs. Wider production support must win as a complete
 training-policy candidate. Widening validation must not silently turn the final
 model into an equal-weight average of old models.
 
@@ -1020,13 +1024,14 @@ candidate must be within 1%. The bounded check proceeds only for an alternate
 with at most half the incumbent's feature count and sufficient evidence and
 capacity. Otherwise it retains the incumbent.
 
-Binary ranking and numeric regression use a common lower-is-better scale:
+Binary ranking and numeric regression use a common lower-is-better scale.
+For a score $s$, define
 
 $$
 L(s)=
 \begin{cases}
-1-s, & s=\text{ROC-AUC},\\
-s, & s=\operatorname{MAE}.
+1-s, & \text{for ROC-AUC},\\
+s, & \text{for MAE}.
 \end{cases}
 $$
 
@@ -1047,15 +1052,16 @@ L_{\mathrm{candidate}}\leq 1.01 L_{\mathrm{incumbent}}+10^{-12}.
 $$
 
 Incomplete comparisons do not promote a partially evaluated alternate. Capacity
-preflights and a nested stage timeout bound this extra work. This comparison is
+checks and a stage timeout bound this extra work. This comparison is
 not another unrestricted graph search and does not change the downstream
 learner budget.
 
-Earlier versions applied S2 only to MAE. Version 0.2.0 extends it to both
-supported metrics using the same comparison mechanics. Thirty regression
-before/after comparisons reproduce the prior MAE decisions and evidence
-exactly. Classification has explicit acceptance and veto coverage. Neither
-check establishes that the smaller graph will generalize better in every case.
+The published procedure applies S2 to both supported metrics using the
+same comparison mechanics. Thirty matched regression tests reproduce the
+earlier MAE-only implementation's decisions and evidence exactly.
+Classification tests cover both acceptance and veto cases. These checks
+verify the selection mechanics; they do not establish that the smaller graph
+will generalize better in every case.
 
 # Temporal training policies and the generic optional menu
 
@@ -1064,16 +1070,18 @@ check establishes that the smaller graph will generalize better in every case.
 S3 evaluates complete temporal fitting policies against the selected graph on
 up to three eligible origins and seeds 0, 1 and 2. The initial incumbent uses
 the most recent complete training cutoff, with the declared observed-validation
-refit lifecycle. Alternatives include bounded pooled support, ordered regression
-readouts and temporal blends. The menu can consider up to twelve support
+refit lifecycle. Alternatives include bounded pooled support, an ordered regression
+readout and temporal blends. The ordered readout learns cumulative
+probabilities across training-derived target bins and returns a median-based
+prediction. The menu can consider up to twelve support
 cutoffs with a row floor of 1,000, subject to maturity and available history.
 
 Pooled training applies a shared model-row budget; frame ensembles can fit that
 budget per member. These have different computational and statistical meanings.
 Three validation seeds test repeatability of selection; they are not a default
-three-seed inference ensemble. Deployment uses seed zero. Nor does selecting
-three graph finalists imply that prediction averages three graphs: one graph
-is selected before temporal policy and optional readout selection.
+three-seed inference ensemble. Deployment uses seed zero. Evaluating several graph finalists likewise does not imply averaging
+their predictions: one graph is selected before temporal policy and optional
+readout selection.
 
 ## One optional menu and one incumbent
 
@@ -1105,7 +1113,11 @@ require MiniLM, PyTorch or Transformers. Character length is an imperfect proxy
 for language; admitting a column does not prove it contains semantic text.
 
 Target-domain projection uses eligible observed training targets, not test
-targets. The zero-aware candidate requires at least 20 zero and
+targets. Nonnegative projection clips predictions at zero; integer-count
+projection rounds the nonnegative prediction to the nearest integer. Neither
+imposes an upper bound from the observed target maximum.
+
+The zero-aware candidate requires at least 20 zero and
 20 positive examples and fits positive-amount quantiles at
 $\{0.05,0.25,0.5,0.75,0.95\}$. Its readout approximates a predictive mixture
 with a mass at zero. Separating occurrence from positive amount follows the
@@ -1121,9 +1133,9 @@ maximum share and concentration over horizon-scaled windows. Source lookback
 is capped at 730 days. At most two paths produce 42 features. The cap can
 truncate a long-horizon window; using more eligible paths and scaling history
 limits with the task are remaining generality improvements, not changes in
-this release. The frozen aggregate query runs serially from the first query
-to avoid an unsafe native DuckDB parallel-combine path without changing the
-query, rows or features.
+this release. Object-breadth aggregation uses serial DuckDB execution from the outset
+to avoid an unsafe native parallel-combine path. This changes execution
+concurrency without changing the query, rows or features.
 
 ## Shared temporal admission rule
 
@@ -1180,14 +1192,15 @@ Neither requires a RelBench dataset name or a saved winning graph.
 python -m pip install "kurversc[staged]==0.2.0" "graphreduce==1.10.18"
 ```
 
+```{=latex}
+\Needspace{8\baselineskip}
+```
+
 ```python
 import kurversc
 
-# context declares the schema, observed labels, clocks, and masked requests.
 result = kurversc.run_staged_task(
-    context,
-    output="artifacts/task",
-    task_hours=23.75,
+    context, output="artifacts/task", task_hours=23.75,
     minimum_available_memory_gib=8,
 )
 predictions = result.predictions
@@ -1210,9 +1223,8 @@ release qualification uses the registered adapter and actual core split types;
 the completed reproduction identifies the adapter, public packages, source
 boundaries and final result rows [@relarena20261105snapshot; @hayler2026relarena].
 
-The package's transitive staged execution closure includes 32 stage modules.
-Their execution is fixed by the packaged procedure; other repository scripts
-are not implicit runtime choices. The staged extra does not require a
+The packaged staged procedure invokes a fixed set of 32 stage modules.
+Other repository scripts are not implicit runtime choices. The staged extra does not require a
 deep-learning semantic encoder.
 
 ## Warehouse backends and the Kurve product
@@ -1255,7 +1267,7 @@ is eligible. They establish end-to-end execution, not meaningful predictive
 quality or a large-database resource envelope. Qualification reused existing
 numerical dependencies; it is not a cold installation of every dependency on
 every supported platform. Detailed source checks are recorded in the
-[qualification receipt](generic-staged-validation.json).
+[qualification receipt](https://github.com/kurveai/kurversc/blob/31ab0b2a71a231fdc075f63ac081ad8dd7e6a7ce/docs/generic-staged-validation.json).
 
 ## Reproduced evaluation and provenance
 
@@ -1273,7 +1285,7 @@ merge and dating of the earlier KurveRSC registration. The
 [published leaderboard](https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/README.md#-leaderboards) and
 [resource record](https://github.com/PriorLabs/relarena/blob/fcab8fb46b82299321c101b9a921d9a3f7c72263/docs/models/kurversc-staged-resources.md)
 identify the exact comparison. The
-[machine-readable extract](assets/kurversc-relarena-reproduction-20261105.json)
+[machine-readable extract](https://github.com/kurveai/kurversc/blob/31ab0b2a71a231fdc075f63ac081ad8dd7e6a7ce/docs/assets/kurversc-relarena-reproduction-20261105.json)
 retains full-precision scores, timings, source checksums and model identifiers.
 
 ## Combined leaderboard
@@ -1561,7 +1573,7 @@ an empirical question, as discussed in Section 12.3.
 RelBench and its larger v2 repository supply relational prediction tasks
 [@robinson2024relbench; @gu2026relbenchv2]. GraphSAGE, relational deep learning,
 RelGNN and RelGT instead learn representations through
-neighborhood/message-passing mechanisms
+neighborhood aggregation and message passing
 [@hamilton2017graphsage; @fey2024rdl; @chen2025relgnn; @dwivedi2026relgt]. These
 can retain or learn interactions that a finite set of independent reductions
 erases. KurveRSC does not claim representational equivalence to those models.
@@ -1595,8 +1607,9 @@ baseline uses gradient-boosted decision trees [@ke2017lightgbm], while KurveRSC'
 benchmark learner is CatBoost [@prokhorenkova2018catboost]. KumoRFM explores a
 separate relational in-context architecture [@fey2025kumorfm].
 
-The [TabPFN-3.5 technical report](https://arxiv.org/abs/2609.17895) was most
-recently revised November 3, 2026 at this writing [@jaeger2026tabpfn35]. The
+We cite the November 3, 2026 revision of the
+[TabPFN-3.5 technical report](https://arxiv.org/abs/2609.17895)
+[@jaeger2026tabpfn35]. The
 benchmark comparators are the dated API/local submissions identified in the
 reproduction section; their reproduced scores are distinct from paper-reported
 results. Model papers, training-data papers and software releases are cited for
@@ -1614,8 +1627,8 @@ a matrix must be uncompetitive.
 
 Following the task-conditioned feature-construction lineage above,
 KurveRSC selects a relational program before fitting the tabular learner.
-This addresses the gap between
-unselected summaries and supervised relational compression. It leaves open
+Selection lets the task's validation evidence guide which relational
+summaries reach the learner. It leaves open
 whether the available programs preserve the interactions a particular task
 needs. The maintainer-reproduced second-place overall result provides empirical
 evidence that this matrix-based learner interface can be competitive after
@@ -1700,8 +1713,8 @@ reproducing the reported results.
 
 # References {.unnumbered}
 
-References are numbered in order of first citation and print complete author
-lists. The bibliography covers
+References are numbered in order of first citation and include complete
+author lists. The bibliography covers
 the implementation, protocol, relational feature construction, learned
 representations, search allocation and statistical methods.
 Compact source labels remain linked to the complete original URLs. Product/deployment references describe
@@ -1726,9 +1739,10 @@ graphreduce==1.10.18
 ```
 
 Both were published on November 4, 2026. For source audit, the release snapshots
-are KurveRSC `cf6599bd7de21f32b299c3cdce75f611ad050a06` and GraphReduce
-`21aff2e9ad83d69d7fc468d01e3d56a0dc6ca976`. The latter is the code published as
-GraphReduce 1.10.18, not an unpublished local patch. Documentation revisions do
+are [KurveRSC `cf6599b`](https://github.com/kurveai/kurversc/tree/cf6599bd7de21f32b299c3cdce75f611ad050a06)
+and [GraphReduce `21aff2e`](https://github.com/wesmadrigal/graphreduce/tree/21aff2e9ad83d69d7fc468d01e3d56a0dc6ca976).
+The latter is the code published as GraphReduce 1.10.18, not an unpublished
+local patch. Documentation revisions do
 not alter these released Python payloads.
 
 The public artifact checksums are recorded below. They identify release files,
@@ -1760,9 +1774,9 @@ graphreduce-1.10.18.tar.gz SHA-256
 | Object-history boundary | `scripts/phase_frozen_object_breadth.py` |
 | Packaged stage closure | `staged_build.py`, `kurversc/staged_runtime.py` |
 
-The current [release specification](staged-release.md),
-[review/change record](generic-staged-review.md) and
-[qualification receipt](generic-staged-validation.json) provide companion
+The current [release specification](https://github.com/kurveai/kurversc/blob/31ab0b2a71a231fdc075f63ac081ad8dd7e6a7ce/docs/staged-release.md),
+[review/change record](https://github.com/kurveai/kurversc/blob/31ab0b2a71a231fdc075f63ac081ad8dd7e6a7ce/docs/generic-staged-review.md) and
+[qualification receipt](https://github.com/kurveai/kurversc/blob/31ab0b2a71a231fdc075f63ac081ad8dd7e6a7ce/docs/generic-staged-validation.json) provide companion
 evidence. Reproduction uses the declared packages, source boundaries and
 fixed procedure.
 

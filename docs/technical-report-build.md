@@ -87,3 +87,25 @@ Before publishing, check local links and citation keys, render every page with
 Poppler, and inspect headings, tables, formulas, code and bibliography. Do not
 report benchmark scores without a matching completed evaluation of the
 released procedure.
+
+## arXiv source upload
+
+Build the upload archive from the same manuscript, bibliography and vector
+figures used for the report:
+
+```bash
+python assets/build-arxiv-source.py
+```
+
+This creates the source archive alongside the report. Upload that archive and
+select **XeLaTeX**, with **kurversc.tex** as the main file. The archive contains
+the standalone LaTeX manuscript and the four PDF figures it includes. The
+numbered, full-author bibliography is already expanded into the LaTeX source;
+the arXiv build does not require Pandoc, citeproc or a bibliography processor.
+Companion evidence links point to permanent public repository URLs.
+
+The archive omits the compiled main PDF, auxiliary files, unused artwork and
+local build paths. To test it, extract it into an empty directory and run
+XeLaTeX three times from that directory, or use
+LaTeXmk with the XeLaTeX processor. Check the arXiv-generated preview before
+completing submission; arXiv's TeX Live version may differ from the local build.
