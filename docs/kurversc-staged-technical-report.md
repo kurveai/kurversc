@@ -7,7 +7,7 @@ author: |
 author-meta: "Wes Madrigal"
 date: "November 5, 2026"
 abstract: >-
-  Relational prediction depends on how information from linked, timestamped tables is compressed into task-level representations. KurveRSC 0.2.0 selects executable relational feature programs using temporal validation, while GraphReduce materializes their entity-level feature frames. A staged search increases evaluation fidelity, checks finalists under the production fitting procedure, and selects training-support policies and generic optional readouts with a shared admission rule. The downstream learner is pluggable; the evaluated procedure uses CatBoost with point-in-time source visibility. RelArena's maintainers independently reproduced the public packages on 21 classification and regression tasks across seven databases. On the November 5, 2026 combined leaderboard of 16 methods, KurveRSC achieves 1913.4 Elo, ranking first among registered systems and fully open-source methods, and second overall. Its 95% task-bootstrap interval of 1832.3-2050.6 overlaps those of leading methods, so the ordering does not establish statistical superiority. These results demonstrate the competitiveness of explicit relational compression paired with a conventional downstream learner. Representation loss, selection fidelity and computational cost remain limitations.
+  Relational prediction depends on how information from linked, timestamped tables is compressed into task-level representations. KurveRSC 0.2.0 selects executable relational feature programs using temporal validation, while GraphReduce materializes their entity-level feature frames. Frozen execution plans preserve the selected representation during prediction. A staged search increases evaluation fidelity, checks finalists under the production fitting procedure, and selects training-support policies and generic optional readouts with a shared admission rule. The downstream learner is pluggable; the evaluated procedure uses CatBoost with point-in-time source visibility. RelArena's maintainers independently reproduced the public packages on 21 classification and regression tasks across seven databases. On the November 5, 2026 combined leaderboard of 16 methods, KurveRSC achieves 1913.4 Elo (95% task-bootstrap interval 1832.3-2050.6), ranking first among registered systems and fully open-source methods, and second overall. These results highlight the importance of optimizing relational representation and signal compression for the prediction task. Representation loss, selection fidelity and computational cost remain limitations.
 lang: en-US
 papersize: letter
 fontsize: 10.5pt
@@ -126,8 +126,7 @@ these public packages and merged the system on November 5, 2026. On the frozen
 and fully open-source methods, and second overall**, with **1913.4 Elo**
 (95% task-bootstrap interval 1832.3-2050.6), versus
 1933.6 for the latest TabPFN-Rel client. It wins 11 of their 21 task comparisons.
-The broad overlapping intervals do not establish a statistically significant
-difference in aggregate performance. This report includes every reproduced
+This report includes every reproduced
 per-task score and the successful jobs' measured resources
 [@relarena20261105results; @relarena20261105leaderboard; @relarena20261105resources].
 
