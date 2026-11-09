@@ -914,73 +914,63 @@ operations, not interchangeable confidence guarantees.
 
 ## End-to-end search and deployment
 
-The following pseudocode summarizes the published control flow. `Evaluate`
-includes point-in-time materialization, fitting under the declared learner
-budget, validation and checkpointing. The phase data $D$, task $\mathcal T$,
-observed labels $Y$ and per-fit learner budget $B$ are shared inputs to every
-evaluation and fitting procedure below. Named parameters distinguish row
-budgets from limits on configurations, evaluations, parents and folds.
-
-The helpers abstract the implementation's stage-specific trial lists.
-The algorithm separates the evidence ledger $E$ from the active successful
-trials $V$. Every evaluation helper returns an augmented ledger, retaining
-earlier records and their fidelity/stage identities. Confirmation and historical
-promotion replace $V$ with the newly successful higher-fidelity trials;
-categorical refinement adds successful variants while retaining their parents.
-The cap, deadline and capacity checks are internal to each procedure. If a
-stage is unavailable or completes no usable trial, it retains the preceding
-active trials. Earlier ledger entries are not mixed back into a later-fidelity
-comparison merely because they had better cheap scores.
+Algorithm 2 summarizes the published procedure as a sequence of decisions.
+The phase-censored data $D$, task $\mathcal T$, observed labels $Y$ and
+per-fit learner budget $B$ are shared inputs throughout. Every evaluation
+includes point-in-time feature materialization, learner fitting, validation
+and checkpointing. Section 6.1 gives the exact stage budgets; Section 6.2
+defines which graphs survive and how the full-fidelity winner is selected.
+Stages S1-S4 match Figure 1.
 
 ```{=latex}
 \begin{algorithm}[H]
-\caption{Bounded staged relational program selection}
+\caption{From candidate graphs to a frozen prediction procedure}
 \label{alg:staged-selection}
 \fontsize{9.5}{11.5}\selectfont
 \begin{algorithmic}[1]
-\Require Phase-censored $D$; task $\mathcal T$; observed labels $Y$; masked requests $Q$; learner budget $B$.
+\Require Phase-censored data $D$; task $\mathcal T$; observed labels $Y$; masked requests $Q$; learner budget $B$.
 \Ensure Frozen artifact $A$ and keyed predictions $\widehat Y_Q$.
-\Statex \textit{Representation selection}
-\State $C \gets \Call{BalancedAnchors}{D,\mathcal T;\ \text{max configs}=32}$
-\State $(E,V) \gets \Call{Evaluate}{\varnothing,C;\ \text{rows}=\text{10K}}$
-\State $P \gets \Call{RetainAnchors}{V;\ \text{max configs}=6}$
-\State $(E,V) \gets \Call{EvaluateChallengers}{E,V,P;\ \text{max evals}=24}$
-\State $(E,V) \gets \Call{EvaluateEligibleCombinations}{E,V;\ \text{max evals}=12}$
-\State $F_1 \gets \Call{FrontierWithControls}{V;\ \text{max configs}=40}$
-\State $(E,V) \gets \Call{Confirm}{E,V,F_1;\ \text{rows}=\text{50K},\ \text{max evals}=40}$
-\If{$\Call{HasAdditionalMatureHistory}{D,Y}$}
-    \State $(E,V) \gets \Call{PromoteHistory}{E,V;\ \text{max evals}=8}$
-\EndIf
-\State $(E,V) \gets \Call{RefineCategoryTies}{E,V;\ \text{max parents}=2,\ \text{max evals}=8}$
-\State $F_2 \gets \Call{BestPerLineage}{V}$
-\State $G \gets \Call{FrontierWithControls}{F_2;\ \text{max configs}=12}$
-\State $(E,g) \gets \Call{FullSourceRerank}{E,G;\ \text{max folds}=3}$
-\Statex \textit{Production selection}
-\State $g \gets \Call{CheckSmallerFinalist}{E,g;\ \text{max alternates}=1}$
-\State $\pi \gets \Call{SelectTemporalPolicy}{g}$
-\State $q \gets \Call{SelectOptionalReadout}{g,\pi}$
-\Statex \textit{Freeze and predict}
-\State $A \gets \Call{FreezeAndRefit}{g,\pi,q}$
-\State $\widehat Y_Q \gets \Call{KeyedPredict}{A,Q}$
-\State \Return $(A,\widehat Y_Q)$
+\Statex \textbf{S1: choose the graph representation}
+\State Build balanced schema-derived anchor graphs; evaluate on nominal 10K-example frames.
+\State Expand retained anchors with applicable graph changes and sparse feature-family controls.
+\State Evaluate bounded combinations of changes that improved validation.
+\State Retain strong or uncertain graphs, preserving structural diversity and controls.
+\State Replay retained plans and reevaluate on nominal 50K-example frames.
+\State Where available, add validation evidence from additional eligible historical cutoffs.
+\State Test bounded category-tie variants, retaining their parent graphs.
+\State Keep the best eligible variant per categorical lineage; retain a bounded, diverse finalist set.
+\State Evaluate finalists on full eligible source frames and common chronological validation folds.
+\State $g \gets$ Select using recent performance, temporal stability, uncertainty and bounded complexity (Section 6.2).
+\Statex \textbf{S2: check a smaller graph under production fitting}
+\State Compare $g$ with at most one smaller finalist using matched production fits.
+\State Replace $g$ only when all matched comparisons satisfy Section 7.
+\Statex \textbf{S3: select the training support and fitting policy}
+\State $\pi \gets$ Select historical training cutoffs and the fitting policy while keeping $g$ fixed (Section 8.1).
+\Statex \textbf{S4: test optional prediction procedures}
+\State $q \gets$ Select an optional procedure against the fixed $(g,\pi)$ baseline using the shared admission rule; use $\varnothing$ if none is admitted (Sections 8.2--8.3).
+\Statex \textbf{Freeze, refit and predict}
+\State $A \gets$ Freeze $(g,\pi,q)$ and refit using eligible observed labels.
+\State $\widehat Y_Q \gets$ Predict for $Q$ using $A$, preserving request keys and order.
+\State \Return $(A,\widehat Y_Q)$.
 \end{algorithmic}
 \end{algorithm}
 ```
 
-Here $C$ is the anchor configuration set; $E$ the accumulated evidence ledger;
-$V$ the active successful trials; and $P$ the retained expansion parents.
-$F_1$ is the frontier with controls sent to confirmation, $F_2$ contains the best
-eligible trial per categorical lineage, and $G$ is the full-rerank finalist set.
-`EvaluateChallengers` includes the sparse controls described in Section 6.1.
-`FullSourceRerank` returns updated evidence and one selected graph $g$, using the
-ranking and safeguards of Section 6.2, rather than returning a ranked list.
+Here $g$ is the selected graph, $\pi$ its training policy, and $q$ an optional
+prediction procedure. S2 tests the production fitting lifecycle; S3 chooses
+the historical examples and how models use them. S4 compares complete optional
+procedures with the same selected baseline. If $q=\varnothing$, the final
+artifact uses that baseline without an additional procedure. Predictions are
+saved before external test scoring.
 
-The policy $\pi$ specifies training support. Every optional readout is compared
-with the same incumbent defined by $(g,\pi)$. A returned $q=\varnothing$ means
-that none was admitted; `FreezeAndRefit` then refits that incumbent without an
-additional readout. The `rows` values are nominal sampling budgets; `max configs`
-limits a proposed or retained set, while `max evals` limits new evaluations.
-Predictions are saved before any external test scoring.
+The implementation retains all validation records with their stage and
+fidelity. Confirmation and historical promotion use newly successful
+higher-fidelity trials when available; categorical refinement retains parents
+alongside successful variants. Earlier cheap scores do not replace later
+evidence. Each stage applies its candidate caps, deadline and capacity checks;
+an unavailable stage or one with no usable result retains the preceding
+candidates or incumbent. The 10K and 50K values are nominal sampling budgets,
+not counts of graph configurations or total learner fits.
 
 Initial search support uses the smallest recent window of 3-12 available
 cutoffs with at least 256 labels and, for classification, at least 24 examples
