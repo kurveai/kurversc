@@ -330,6 +330,12 @@ Section 6. It does not differentiate through SQL, learn table embeddings, or
 select on held-out test scores. This is supervised selection of a relational
 program with a learner in the loop.
 
+Target-dependent aggregation and validation-guided relational feature
+construction have substantial precedent
+[@perlich2003aggregation; @qi2024feataug]. KurveRSC instantiates this lineage
+with the bounded multihop program space and staged temporal selection, fitting
+and replay procedure specified here.
+
 ## Keyed reduction and propagation
 
 Consider a parent occurrence $p$ and a related occurrence $v$. Let $X_p$ denote
@@ -664,6 +670,11 @@ TF-IDF parent-text head in Section 8 is a different operation. Automatic
 annotation does not infer an outcome's meaning or invent arbitrary SQL predicates.
 
 ## CDF sketches inside `base`
+
+Distribution-preserving aggregation has earlier relational-learning precedents,
+including ACORA's distributional features for categorical and identifier
+attributes [@perlich2006distribution]. That is conceptual motivation for retaining more
+than a mean; the bounded numeric CDF below is a different construction.
 
 For a numeric payload $v$ on a reducing edge, let $R(e,t)$ be the related source
 rows assigned to receiving entity $e$ at query cutoff $t$, after path/key
@@ -1107,7 +1118,11 @@ Target-domain projection uses eligible observed training targets, not test
 targets. The zero-aware candidate requires at least 20 zero and
 20 positive examples and fits positive-amount quantiles at
 $\{0.05,0.25,0.5,0.75,0.95\}$. Its readout approximates a predictive mixture
-with a mass at zero [@koenker1978quantiles].
+with a mass at zero. Separating occurrence from positive amount follows the
+two-part modeling lineage of Cragg [@cragg1971limited]; the particular
+positive-amount quantile models draw on quantile regression
+[@koenker1978quantiles]. This candidate is a bounded quantile-mixture readout,
+not the parametric model in Cragg's paper.
 
 Object breadth considers timed declared paths to keyed objects with at least
 64 visible distinct objects, retaining the top two paths by distinct-object
@@ -1125,10 +1140,30 @@ query, rows or features.
 The optional selector requires at least two origins and three seeds. Every
 latest-origin seed must improve over the incumbent. Older origins supply a
 practical safety veto: no more than 0.005 AUC or 1% relative MAE degradation
-under the selector's older-origin checks. A paired, entity-cluster bootstrap
-uses 600 draws with $\alpha=0.05$ and a menu-size multiplicity adjustment; the
-temporal gain lower bound must be positive [@efron1979bootstrap]. If adequate
-support is unavailable, the incumbent stays selected.
+under the selector's older-origin checks. A paired bootstrap attempts 600
+entity-cluster resamples, rather than treating repeated observations of an
+entity as independent [@efron1979bootstrap; @field2007clustered]. The
+time-combined bound shares one Poisson(1) multiplier per entity across origins,
+weights the latest origin by one half, and divides the remaining half among
+older origins. Cluster-bootstrap properties depend on the modeled dependence;
+these references do not establish validity under every relational dependence
+structure.
+
+The multiplicity step is a **Bonferroni tail allocation**
+[@dunn1961multiple]. With $m$ challenger names represented in the supplied
+evidence, excluding the incumbent, the implementation sets
+
+$$
+\alpha_{\mathrm{menu}}=\frac{\alpha}{\max(1,m)},\qquad \alpha=0.05.
+$$
+
+This is the empirical lower-quantile level for each challenger's bootstrap
+gain bound. The temporal gain lower bound must be positive, alongside the
+seed and older-origin checks. Candidates without adequate evidence cannot be
+admitted; if none is admissible, the incumbent remains. The allocation applies to the
+challenger menu in that selector call, not the entire adaptive graph search
+or repeated development comparisons. It is an approximate bootstrap admission
+rule, not an exact error-control result for the complete pipeline.
 
 The recent-only lower bound is recorded as a diagnostic and is **not** a
 separate positive-bound requirement. This definition is shared by optional
@@ -1138,7 +1173,8 @@ explicit relative-loss rule above, not this optional admission test.
 These checks reduce unsupported promotions. They do not guarantee no future
 regression, account for every hypothesis examined during development, or prove
 transfer to an unrelated database. A global blend menu is still a finite search
-space; adequate fresh evaluation remains necessary.
+space; adequate fresh evaluation remains necessary
+[@cawley2010overfitting].
 
 # Execution, portability, and production use
 
@@ -1499,10 +1535,38 @@ concurrency and the resource measure used.
 
 ## Relational feature construction and learned neighborhood representations
 
-Deep Feature Synthesis and OneBM automate relational feature construction
-[@kanter2015dfs; @lam2017onebm]. KurveRSC follows the broad idea of constructing
-entity-grain features from related records, with supervised program selection,
-explicit temporal phases and frozen execution as central requirements.
+Task-sensitive relational aggregation has a substantial history. Perlich
+and Provost relate relational concept classes to the aggregation operators
+needed to express them, including target-dependent distributional summaries
+[@perlich2003aggregation]. Their later ACORA work develops distribution-based
+aggregation for high-cardinality categorical and identifier attributes
+[@perlich2006distribution]. These precedents motivate preserving distinctions
+that simple summaries lose; they are not the same operators as KurveRSC's
+bounded numeric CDF features. Deep Feature Synthesis and OneBM subsequently
+automate broad relational feature construction
+[@kanter2015dfs; @lam2017onebm].
+
+FeatAug searches predicate-aware SQL aggregation queries from one-to-many
+tables using the validation loss of a model trained with the augmented
+features [@qi2024feataug]. It is direct prior work for the learner-in-the-loop
+objective. KurveRSC's distinguishing scope is its declared bounded multihop
+program space and the S1-S4 temporal selection, fitting and frozen-replay
+procedure, rather than supervised aggregation in general.
+
+RelAgent uses an LLM to construct and revise SQL feature programs and model
+configurations through validation feedback; the selected SQL and predictor
+then run without further LLM calls [@huang2026relagent]. It shares the
+separation of search from deployed execution. KurveRSC instead obtains
+proposals from a declared bounded representation space and uses fixed staged
+promotion and fitting-policy rules.
+
+Relatron places relational deep learning and DFS approaches in a shared
+architecture space, including DFS aggregation layers and downstream learners,
+and uses task-embedding-based meta-selection [@chen2026relatron]. Both
+approaches address task-dependent representation choice. KurveRSC directly
+evaluates schema-derived programs on temporal origins instead of using
+Relatron's learned task router. Its selection-fidelity limitations remain
+an empirical question, as discussed in Section 12.3.
 
 RelBench and its larger v2 repository supply relational prediction tasks
 [@robinson2024relbench; @gu2026relbenchv2]. GraphSAGE, relational deep learning,
@@ -1558,8 +1622,9 @@ when constructing flat features [@kumo_flat_tables]. These are substantive
 representation concerns. They are not a theorem that every learner consuming
 a matrix must be uncompetitive.
 
-KurveRSC makes a different design choice: select a task-conditioned relational
-program before fitting the tabular learner. This addresses the gap between
+Following the task-conditioned feature-construction lineage above,
+KurveRSC selects a relational program before fitting the tabular learner.
+This addresses the gap between
 unselected summaries and supervised relational compression. It leaves open
 whether the available programs preserve the interactions a particular task
 needs. The maintainer-reproduced second-place overall result provides empirical
@@ -1571,6 +1636,13 @@ pretraining disclosure and compute protocol.
 
 ## Search allocation and uncertainty
 
+Relatron reports unreliable validation-based architecture selection in its
+searched RDL/DFS space and uses task signals and meta-selection to improve
+routing [@chen2026relatron]. This makes selection reliability a substantive
+part of the comparison, not merely a search-speed concern. KurveRSC's temporal
+staging and finalist checks must likewise be assessed for rank fidelity and
+selection regret; they do not by themselves establish faithful selection.
+
 Successive halving, Hyperband and BOHB study allocation of expensive evaluations
 [@jamieson2016successivehalving; @li2018hyperband; @falkner2018bohb]. The present
 stages use a related increasing-fidelity idea, but do not inherit a guarantee
@@ -1579,8 +1651,10 @@ must be measured for this representation space and deployment lifecycle.
 
 Paired temporal comparisons and cluster resampling account for some correlated
 entity observations. They do not turn reused development tasks into untouched
-tests. Conservative admission is a selection mechanism, not proof that a
-specialized transform generalizes. Future claims should emphasize fresh-schema
+tests. Cawley and Talbot show how optimizing a noisy model-selection criterion
+can itself overfit and bias subsequent evaluation [@cawley2010overfitting].
+Conservative admission is a selection mechanism, not proof that a specialized
+transform generalizes. Future claims should emphasize fresh-schema
 evaluations and controlled ablations alongside aggregate benchmark scores.
 
 # Limitations and next steps
