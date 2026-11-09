@@ -1537,6 +1537,23 @@ reproducing the reported results.
 \clearpage
 ```
 
+# References {.unnumbered}
+
+References are numbered in order of first citation and print complete author
+lists. The bibliography covers
+the implementation, protocol, relational feature construction, learned
+representations, search allocation and statistical methods.
+Compact source labels remain linked to the complete original URLs. Product/deployment references describe
+capabilities rather than benchmark results. Publication metadata and access
+dates are recorded in the individual reference entries.
+
+::: {#refs}
+:::
+
+```{=latex}
+\clearpage
+```
+
 # Appendix A: release and implementation provenance
 
 The public dependency recipe is:
@@ -1719,20 +1736,3 @@ Panel B: remaining eight methods.
 ```{=latex}
 \endgroup
 ```
-
-```{=latex}
-\clearpage
-```
-
-# References {.unnumbered}
-
-References are numbered in order of first citation and print complete author
-lists. The bibliography covers
-the implementation, protocol, relational feature construction, learned
-representations, search allocation and statistical methods.
-Compact source labels remain linked to the complete original URLs. Product/deployment references describe
-capabilities rather than benchmark results. Publication metadata and access
-dates are recorded in the individual reference entries.
-
-::: {#refs}
-:::
