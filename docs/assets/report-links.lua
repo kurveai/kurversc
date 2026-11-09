@@ -1,4 +1,5 @@
--- Compact bibliography links and use publication PDF figures in LaTeX output.
+-- Publication formatting: compact reference links, vector PDF figures and
+-- a restrained, centered opening results heading in LaTeX output.
 -- Run after citeproc. Body links and in-text citation links are unchanged.
 function Image(img)
   if FORMAT:match("latex") then
@@ -13,6 +14,16 @@ function Image(img)
     end
   end
   return img
+end
+
+function Header(header)
+  if FORMAT:match("latex") and header.identifier == "results-at-glance" then
+    return {
+      pandoc.RawBlock("latex", "\\begin{center}\n\\fontsize{11}{13}\\selectfont\\bfseries"),
+      pandoc.Plain(header.content),
+      pandoc.RawBlock("latex", "\\end{center}"),
+    }
+  end
 end
 
 local function compact_link(link)

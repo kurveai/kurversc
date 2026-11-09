@@ -29,6 +29,10 @@ panel follows on that page. Automatic `toc` is disabled because a manual LaTeX
 Introduction. Keep that ordering when changing the front matter; enabling
 automatic `toc` would put it ahead of the results panel.
 
+The results heading's `results-at-glance` identifier is handled by
+`report-links.lua`, which renders it as a centered 11-point heading in LaTeX.
+Other headings retain their normal section styling.
+
 The source resolves references from `kurversc-staged-references.bib` and selects
 `assets/kurversc-full-authors.csl` in its metadata. This local adaptation of the
 [IEEE CSL style](https://github.com/citation-style-language/styles/blob/master/ieee.csl)

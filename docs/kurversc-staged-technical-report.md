@@ -55,9 +55,7 @@ header-includes:
     ```
 ---
 
-# RelArena-$\alpha$ results at a glance {.unnumbered .unlisted}
-
-**Highest-ranked open-source method and registered system.**
+# RelArena-$\alpha$ results at a glance {#results-at-glance .unnumbered .unlisted}
 
 | Comparison cohort | KurveRSC rank |
 |:----------------------------------------------|:----------------:|
