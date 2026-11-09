@@ -160,26 +160,70 @@ reproduction documentation are available at
 
 # Architecture overview {.unnumbered}
 
-Figure 1 separates four decisions: which relational feature program to use,
-whether a smaller finalist can replace it, how to fit the retained graph on
-historical support, and whether an optional challenger improves that procedure.
-GraphReduce executes candidate programs; the pluggable learner supplies their
-validation evidence.
+Figure 1 follows a customer-prediction example from linked tables to a saved
+prediction procedure. Both rows read left to right. The stages make different
+decisions about the representation, its fitting policy and optional predictors.
 
-![KurveRSC 0.2.0 architecture. S1 searches many feature programs at increasing fidelity. S2 checks at most one smaller completed finalist using the production fit/refit lifecycle. S3 selects temporal support and fitting policy for the retained graph. S4 compares applicable optional challengers with the same S3 incumbent under one shared admission rule. The selected procedure is frozen and refitted; outer test scoring remains external.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
+![KurveRSC 0.2.0 from linked histories to a frozen prediction procedure. Panels 1-2 construct entity-level feature frames; panels 3-6 show S1-S4. Feature widths and score intervals are schematic, not measured results. Only applicable S4 options run for a given task. The downstream learner is pluggable; CatBoost is the evaluated reference. Each retrospective forecast respects source and label-availability boundaries; outer test scoring remains external.](assets/kurversc-staged-architecture.svg){#fig:kurversc-architecture width=100%}
 
-| Stage | Decision | Output passed to the next stage |
-|:-------|:----------------------------------|:-----------------------------------|
-| **S1** | Which paths, depth, feature families and representations? | Incumbent program plus completed finalist evidence. |
-| **S2** | Can one substantially smaller finalist replace the incumbent under production fitting? | One retained feature program. |
-| **S3** | Which historical support and fitting policy for that program? | Graph plus temporal fitting policy: the S4 incumbent. |
-| **S4** | Does an applicable optional challenger improve on that S3 incumbent? | Selected optional challenger, or the unchanged S3 procedure. |
+**S1 chooses what information to build.** A graph configuration specifies which
+relationships to follow and how to summarize their records into columns for the
+target entity. GraphReduce builds those columns, and a learner measures their
+predictive value. KurveRSC first screens many configurations cheaply, retains
+plausible alternatives, and spends more data and computation on the survivors.
+This stage produces a leading graph and evidence about completed finalists.
 
-S2 is a bounded check, not another broad graph search. In S3, pooling combines
-examples from historical cutoffs in a shared fit; S4's three- or five-frame
-ensembles instead fit separate members and combine predictions. Models are
-trained for validation throughout selection. The final refit occurs after all
-choices are frozen; validation seeds do not imply an inference ensemble.
+**S2 checks that graph under the production fitting procedure.** It compares
+the leader with at most one substantially smaller completed finalist. Both
+follow the same historical simulation: the initial fit learns from earlier
+labeled examples; the refit incorporates later cohorts after their outcomes
+have become known. This reproduces the fitting lifecycle used at deployment.
+Both graphs receive matching training cohorts and seeds. The following forecast
+block stays outside fitting and is used only to score their predictions.
+S2 retains one graph; it does not repeat the broad search.
+
+```{=latex}
+\Needspace{10\baselineskip}
+```
+
+**S3 chooses which historical examples and fitting policy to use.** The graph
+and its feature definitions now stay fixed. Applying that graph at several
+past dates creates several groups of labeled examples; the same customer at
+two dates is two training examples, not two new columns. S3 compares recent
+initial support with bounded historical pooling and other declared fitting
+policies. Pooling combines examples before fitting a shared model; a temporal
+blend combines predictions from complete fitting policies. Every policy
+includes the observed-label refit lifecycle. The selected graph-plus-policy
+becomes the baseline for S4.
+
+**S4 tests optional prediction procedures against that baseline.** Its
+"shared control" is simply the selected S3 procedure and its predictions on
+the same validation cases. Some options introduce additional signal: the
+parent-text head builds a separate TF-IDF word representation and predictor,
+and object breadth adds summaries of distinct objects and interaction
+concentration to its challenger model. Other options combine frame models,
+restrict predictions to the observed target domain, or model zero outcomes
+separately from positive amounts. Eligible raw root fields,
+including strings handled categorically, can already enter S1; S4 is where
+this release separately tests the lexical TF-IDF head. The frame-ensemble
+options use three or five initial historical frames, plus the declared
+observed-label refit cohorts, fitting separate frame members and combining
+their predictions. Each option independently competes with the same S3
+baseline under one admission rule. At most one optional recipe is retained;
+if none passes, the baseline remains. The final procedure is frozen and
+fitted for deployment. Validation seeds test repeatability; they do not
+imply a seed ensemble at inference.
+
+**Why S4 is separate.** We postpone these optional procedures to reduce
+search cost: evaluating every extra representation, model and readout on
+every candidate graph would multiply expensive fits during screening and
+confirmation. This is a budgeted architectural choice. It does not establish
+that the best graph under the initial learner is also best with every
+optional procedure. A graph rejected earlier might work better with a text
+head or extra object features. Future versions may place compatible feature
+generators earlier in representation search, or compare downstream recipes
+across several full-fidelity graph finalists. Those alternatives require
+controlled evaluation of both predictive quality and computation.
 
 # Scope and release identity
 
@@ -207,6 +251,10 @@ limits. They are shared defaults disclosed below, not values rediscovered on eac
 database. The procedure applies to new schemas through their declared tables,
 keys, root entity, horizon and observed labels; candidate selection uses the
 task's own temporal validation evidence.
+
+```{=latex}
+\Needspace{13\baselineskip}
+```
 
 ## Interfaces
 
@@ -1036,7 +1084,7 @@ no recovery cascade activated only when a preceding head keeps the incumbent.
 | Candidate group | Applicable inputs and globally shared action |
 |:--------------------|:-----------------------------------------------------|
 | Parent text | Eligible root categorical/text payload; bounded TF-IDF plus logistic or ridge readout, blended at 0.25 or 0.5. |
-| Frame ensembles | Mature historical support; complete three- or five-frame fitting procedure. |
+| Frame ensembles | Three or five initial historical frames, plus declared observed-label refit cohorts; fit separate frame members and combine predictions. |
 | Target domain | Regression targets observed to be nonnegative or integer counts; clip negative predictions or apply the integer-domain projection. |
 | Zero-aware | Nonnegative regression with adequate zero and positive examples; occurrence model plus positive-amount quantile readout, blended at 0.125, 0.5 or 1. |
 | Object breadth | Declared timed root-to-object relationships; object-history features with a fitted learner, full prediction or a 0.5 blend. |
@@ -1549,6 +1597,14 @@ and selection regret across 10K, 50K and full-source fidelity on identical
 candidate sets. Finalist comparisons should match deployment support and refit
 behavior. Reporting only the final winning score does not reveal whether an
 improvement came from richer signal or a better selection decision.
+
+The separation between graph selection and S4 also limits joint optimization.
+Optional procedures are tested only after one graph is retained. This reduces
+search cost, but a graph that loses under the initial fitting recipe could
+be stronger with an optional representation or readout. Future architectures
+may evaluate compatible feature generators during graph search or jointly
+compare a bounded set of graph finalists and downstream recipes. Such changes
+must be judged under explicit search and compute budgets.
 
 Generalization also depends on source metadata quality, historical data
 availability, eligibility limits and validation support. Top-two object paths,

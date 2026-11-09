@@ -100,43 +100,35 @@ class Figure:
                     minimum_label_points=min(self.font_sizes)*print_width_pt/self.width)
 
 
+class SVGFigure:
+    """Render canonical editable SVG artwork without replacing its composition."""
+
+    def __init__(self, source):
+        self.source = source
+        root = ET.parse(source).getroot()
+        self.width = float(root.attrib["width"])
+        self.height = float(root.attrib["height"])
+        self.font_sizes = [float(node.attrib["font-size"])
+                           for node in root.iter()
+                           if node.tag.endswith("}text") and "font-size" in node.attrib]
+
+    def save(self, name, *, renderer, preview_dir=None):
+        assert self.source.stem == name
+        subprocess.run([renderer, "--format", "pdf", "--output",
+                        str(self.source.with_suffix(".pdf")), str(self.source)], check=True)
+        if preview_dir:
+            preview_dir.mkdir(parents=True, exist_ok=True)
+            subprocess.run([renderer, "--format", "png", "--output",
+                            str(preview_dir/f"{name}.png"), str(self.source)], check=True)
+        print_width_pt = (8.5-2*0.78)*72
+        return dict(name=name, width=self.width, height=self.height,
+                    print_height_inches=(8.5-2*0.78)*self.height/self.width,
+                    minimum_label_points=min(self.font_sizes)*print_width_pt/self.width,
+                    source="editable SVG; main-label sizes exclude math subscripts")
+
+
 def architecture():
-    f = Figure(1440, 720, "KurveRSC 0.2.0 architecture", "Strict temporal inputs feed bounded, schema-derived relational search. GraphReduce creates a typed entity-level frame for a pluggable learner. Validation promotes candidates from 10K screening to 50K confirmation and full-source rerank. S2 checks at most one smaller completed finalist with production fitting. S3 fixes the temporal support and fitting policy for the retained graph. S4 compares applicable optional challengers with that same S3 incumbent under one shared gate. The selected procedure is frozen and refitted before keyed prediction.")
-    f.node(20, 12, 660, 90, "Relational database", ["Tables, keys and source clocks"])
-    f.node(760, 12, 660, 90, "Task contract", ["Root, horizon, labels and masked requests"])
-    f.arrow(350, 106, 350, 115, kind="flow")
-    f.arrow(1090, 106, 1090, 115, kind="flow")
-    f.rect(20, 119, 1400, 58, fill=PALE, stroke="#779ac4")
-    f.text(720, 156, "Source time < query cutoff; phase and label-availability checks", size=27, bold=True, anchor="middle")
-    f.arrow(720, 181, 720, 203, kind="flow")
-
-    f.rect(20, 207, 1400, 250, fill="#f6f9fd", stroke="#779ac4")
-    f.text(44, 241, "1. Choose a feature program (S1)", size=30, bold=True)
-    f.node(44, 260, 404, 116, "Schema-derived programs", ["Depth 1-4; bounded repeats", "Families, CDF, annotations"])
-    f.node(518, 260, 404, 116, "GraphReduce", ["Filter, annotate, reduce, join", "Entity-level feature frame"])
-    f.node(992, 260, 404, 116, "Pluggable learner", ["CatBoost: evaluated reference", "TFMs via compatible adapters"], fill=SOFT)
-    f.arrow(452, 315, 514, 315, kind="flow")
-    f.arrow(926, 315, 988, 315, kind="flow")
-    f.path("M1194,380 V402 H246 V379", kind="blue")
-    f.rect(526, 388, 388, 30, fill="#f6f9fd", stroke="none", radius=0)
-    f.text(720, 410, "Validation-driven promotion", color=BLUE, anchor="middle")
-    f.text(720, 444, "10K screening → 50K confirmation → full-source rerank", size=27, bold=True, anchor="middle")
-
-    f.arrow(225, 461, 225, 479, kind="flow")
-    f.node(20, 484, 410, 116, "2. Graph check (S2)", ["At most 1 smaller finalist", "Production fit / refit"])
-    f.node(495, 484, 400, 116, "3. Training policy (S3)", ["Same graph; choose support", "Recent / pooled / blends"])
-    f.node(960, 484, 460, 116, "4. Optional challengers (S4)", ["Text, ensembles and readouts", "Same S3 control; shared gate"], fill=SOFT)
-    f.arrow(434, 539, 490, 539, kind="flow")
-    f.arrow(899, 539, 955, 539, kind="flow")
-    f.path("M1190,604 V620 H520 V639", kind="flow")
-    f.rect(20, 643, 1000, 64, fill=INK, stroke="none")
-    f.text(44, 684, "Freeze and refit", size=29, bold=True, color=WHITE)
-    f.text(310, 684, "Plan + schema + policy + learner", size=27, color=WHITE)
-    f.arrow(1024, 675, 1085, 675, kind="flow")
-    f.rect(1090, 643, 330, 64, fill=SOFT)
-    f.text(1110, 670, "Keyed predictions", size=27, bold=True)
-    f.text(1110, 698, "Entity / cutoff order", size=26, color=MUTED)
-    return f
+    return SVGFigure(ASSETS/"kurversc-staged-architecture.svg")
 
 
 def reduction():

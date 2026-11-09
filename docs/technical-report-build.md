@@ -58,13 +58,23 @@ links intact for other formats. The Elo figure generator reads the frozen,
 published leaderboard extract rather than recomputing ratings or mixing
 comparison panels.
 
-`build-method-figures.py` regenerates the compact architecture, keyed-reduction
-and worked-example figures. It uses only the Python standard library and
+`build-method-figures.py` renders the editable six-panel architecture SVG to
+its vector PDF and regenerates the keyed-reduction and worked-example figures.
+The architecture SVG is the canonical artwork; rebuilding preserves its
+composition. The script uses only the Python standard library and
 `rsvg-convert`. Optional `--preview-dir /path/to/previews` writes PNGs and a
 dimension receipt outside the source assets. At the report's 6.94-inch text
-width the figures are approximately 3.47, 3.22 and 3.02 inches tall, respectively,
-with minimum labels of 9.0, 9.3 and 9.3 points. Longer explanations belong in
-captions rather than inside the artwork.
+width the architecture is approximately 4.63 inches tall; the other two figures
+are 3.22 and 3.02 inches tall. The dense overview's smallest main labels are
+approximately 5.6 points, excluding mathematical subscripts; the two explanatory
+figures use minimum labels of 9.3 points. All three remain vector artwork.
+
+The paragraphs immediately after Figure 1 explain each stage, distinguish
+historical examples from feature columns and frame ensembles, and define the
+S4 baseline and optional procedures. They also explain why S4 is postponed to
+control cost. Section 13 records the resulting limitation: graph selection and
+optional-procedure selection are sequential and can miss interactions. Keep
+these explanations adjacent to the overview when changing its layout.
 
 Both algorithms use native LaTeX `algorithm` and `algpseudocode` environments,
 with numbered steps, explicit inputs/outputs, indented control flow and
